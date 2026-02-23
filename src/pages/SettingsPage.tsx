@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Filter, Store, MoreHorizontal, Plus, MapPin, Phone } from 'lucide-react';
+import { Search, Filter, Store, MoreHorizontal, Plus, MapPin, Phone, Users } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface StoreConfig {
