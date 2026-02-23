@@ -1,9 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Filter, Settings, Plus, Loader2, RefreshCw, Edit2, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Settings, Plus, Loader2, RefreshCw, Edit2, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { TenantConfig, PaginatedResponse } from '../types';
+
+// Utility for debouncing
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 export const SettingsPage: React.FC = () => {
   const { token } = useAuth();
@@ -11,6 +25,7 @@ export const SettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -24,11 +39,17 @@ export const SettingsPage: React.FC = () => {
   const [editValue, setEditValue] = useState('');
   const [updating, setUpdating] = useState(false);
   
-  const fetchConfigs = async (page = 1) => {
+  const fetchConfigs = useCallback(async (page = 1, search = '') => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://localhost:8012/api/v1/tenant-configs?page=${page}`, {
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', page.toString());
+      if (search) {
+        queryParams.append('search', search);
+      }
+
+      const response = await fetch(`http://localhost:8012/api/v1/tenant-configs?${queryParams.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -52,11 +73,17 @@ export const SettingsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
+  // Fetch when page or debounced search changes
   useEffect(() => {
-    fetchConfigs(currentPage);
-  }, [token, currentPage]);
+    fetchConfigs(currentPage, debouncedSearchTerm);
+  }, [fetchConfigs, currentPage, debouncedSearchTerm]);
+
+  // Reset page when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm]);
 
   const handleEdit = (config: TenantConfig) => {
     setEditingId(config.id);
@@ -102,13 +129,64 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const filteredConfigs = configs.filter(config => 
-    config.config_key.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    config.config_value.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   const formatKey = (key: string) => {
     return key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+
+  // Helper to format values for display
+  const formatDisplayValue = (key: string, value: string) => {
+    // Boolean check
+    if (value === 'true') return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md text-xs font-bold">ATIVO</span>;
+    if (value === 'false') return <span className="px-2 py-1 bg-red-100 text-red-700 rounded-md text-xs font-bold">INATIVO</span>;
+
+    // CNPJ Mask (Simple regex for display)
+    if (key.includes('cnpj') || key.includes('document')) {
+      return value.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+    }
+
+    // Phone Mask
+    if (key.includes('phone') || key.includes('celular') || key.includes('whatsapp')) {
+       // Simple formatter for 10 or 11 digits
+       const digits = value.replace(/\D/g, '');
+       if (digits.length === 11) {
+         return digits.replace(/^(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+       }
+       if (digits.length === 10) {
+         return digits.replace(/^(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+       }
+    }
+
+    return value;
+  };
+
+  // Helper to render the appropriate input for editing
+  const renderEditor = (config: TenantConfig) => {
+    const isBoolean = config.config_value === 'true' || config.config_value === 'false';
+
+    if (isBoolean) {
+      return (
+        <select
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          className="flex-1 p-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+          autoFocus
+        >
+          <option value="true">Ativo (Sim)</option>
+          <option value="false">Inativo (Não)</option>
+        </select>
+      );
+    }
+
+    return (
+      <input
+        type="text"
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        className="flex-1 p-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+        autoFocus
+        placeholder={config.config_value}
+      />
+    );
   };
 
   return (
@@ -121,7 +199,7 @@ export const SettingsPage: React.FC = () => {
           </div>
           <div className="flex gap-2">
             <button 
-              onClick={() => fetchConfigs(currentPage)}
+              onClick={() => fetchConfigs(currentPage, searchTerm)}
               className="bg-white border border-zinc-200 p-2 rounded-xl text-zinc-600 hover:bg-zinc-50 transition-all"
               title="Atualizar"
             >
@@ -146,18 +224,6 @@ export const SettingsPage: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <Filter size={20} className="text-zinc-400" />
-            <select 
-              className="flex-1 md:w-48 p-2 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-            >
-              <option value="all">Todas as Categorias</option>
-              <option value="system">Sistema</option>
-              <option value="integration">Integrações</option>
-              <option value="notifications">Notificações</option>
-            </select>
-          </div>
         </div>
 
         {/* Config List */}
@@ -168,14 +234,14 @@ export const SettingsPage: React.FC = () => {
         ) : error ? (
           <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-center">
             {error}
-            <button onClick={() => fetchConfigs(currentPage)} className="block mx-auto mt-2 text-sm font-semibold hover:underline">
+            <button onClick={() => fetchConfigs(currentPage, searchTerm)} className="block mx-auto mt-2 text-sm font-semibold hover:underline">
               Tentar novamente
             </button>
           </div>
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
-              {filteredConfigs.map((config) => (
+              {configs.map((config) => (
                 <motion.div 
                   key={config.id}
                   initial={{ opacity: 0, y: 10 }}
@@ -196,13 +262,7 @@ export const SettingsPage: React.FC = () => {
                     <div className="flex-1 w-full md:w-auto">
                       {editingId === config.id ? (
                         <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            className="flex-1 p-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            autoFocus
-                          />
+                          {renderEditor(config)}
                           <button 
                             onClick={() => handleUpdate(config)}
                             disabled={updating}
@@ -223,7 +283,7 @@ export const SettingsPage: React.FC = () => {
                           <div className="flex items-center gap-2 justify-between md:justify-end w-full">
                             <div className="inline-block bg-zinc-50 px-4 py-2 rounded-lg border border-zinc-200 max-w-full overflow-hidden text-ellipsis">
                               <span className="font-mono text-sm text-zinc-700 break-all">
-                                {config.config_value}
+                                {formatDisplayValue(config.config_key, config.config_value)}
                               </span>
                             </div>
                             <button 
@@ -243,7 +303,7 @@ export const SettingsPage: React.FC = () => {
                 </motion.div>
               ))}
 
-              {filteredConfigs.length === 0 && (
+              {configs.length === 0 && (
                 <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-zinc-200">
                   <Settings className="w-12 h-12 text-zinc-300 mx-auto mb-3" />
                   <h3 className="text-lg font-medium text-zinc-900">Nenhuma configuração encontrada</h3>
