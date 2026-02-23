@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('admin@teste.com');
   const [password, setPassword] = useState('secret123');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
@@ -32,7 +33,7 @@ export const LoginPage: React.FC = () => {
       }
 
       const data = await response.json();
-      login(data);
+      login(data, rememberMe);
       navigate('/dashboard');
     } catch (err) {
       console.error('Login error:', err);
@@ -115,6 +116,30 @@ export const LoginPage: React.FC = () => {
                   className="block w-full pl-10 pr-3 py-2 border border-zinc-300 rounded-xl leading-5 bg-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition-all"
                   placeholder="••••••••"
                 />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-zinc-300 rounded cursor-pointer"
+                  />
+                  <label htmlFor="remember-me" className="ml-2 block text-sm text-zinc-900 cursor-pointer">
+                    Manter-me conectado
+                  </label>
+                </div>
+
+                <div className="text-sm">
+                  <a href="#" className="font-medium text-emerald-600 hover:text-emerald-500">
+                    Esqueceu a senha?
+                  </a>
+                </div>
               </div>
             </div>
 

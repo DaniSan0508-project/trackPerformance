@@ -13,11 +13,8 @@ export interface Tenant {
   is_active: number;
 }
 
-export interface AuthResponse {
+export interface RefreshResponse {
   access_token: string;
-  refresh_token?: string;
   token_type: string;
   expires_in: number;
-  user: User;
-  tenant: Tenant;
 }
