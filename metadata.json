@@ -1,0 +1,5 @@
+{
+  "name": "TrackPerformance",
+  "description": "A responsive performance tracking application with secure login and dashboard.",
+  "requestFramePermissions": []
+}
