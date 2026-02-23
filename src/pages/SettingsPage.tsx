@@ -46,7 +46,7 @@ export const SettingsPage: React.FC = () => {
       const queryParams = new URLSearchParams();
       queryParams.append('page', page.toString());
       if (search) {
-        queryParams.append('search', search);
+        queryParams.append('filter[search]', search);
       }
 
       const response = await fetch(`http://localhost:8012/api/v1/tenant-configs?${queryParams.toString()}`, {
@@ -204,10 +204,6 @@ export const SettingsPage: React.FC = () => {
               title="Atualizar"
             >
               <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
-            </button>
-            <button className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2">
-              <Plus size={18} />
-              Nova Configuração
             </button>
           </div>
         </div>
