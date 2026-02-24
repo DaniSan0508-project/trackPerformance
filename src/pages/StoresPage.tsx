@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Store, Plus, Loader2, RefreshCw, ChevronLeft, ChevronRight, Phone, Mail } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Search, Store, Plus, Loader2, RefreshCw, ChevronLeft, ChevronRight, Phone, Mail, X, Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Store as StoreType, PaginatedResponse } from '../types';
 
@@ -33,6 +33,18 @@ export const StoresPage: React.FC = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [fromItem, setFromItem] = useState(0);
   const [toItem, setToItem] = useState(0);
+
+  // Create state
+  const [isCreating, setIsCreating] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newStore, setNewStore] = useState({
+    name: '',
+    store_group_id: '',
+    cnpj: '',
+    email: '',
+    phone: '',
+    active: true
+  });
 
   const fetchStores = useCallback(async (page = 1, search = '') => {
     setLoading(true);
@@ -79,9 +91,49 @@ export const StoresPage: React.FC = () => {
     setCurrentPage(1);
   }, [debouncedSearchTerm]);
 
+  const handleCreateStore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      const response = await fetch('http://localhost:8012/api/v1/stores', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          ...newStore,
+          store_group_id: newStore.store_group_id ? parseInt(newStore.store_group_id) : null
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Falha ao criar loja');
+      }
+  
+      // Refresh list
+      fetchStores(currentPage, debouncedSearchTerm);
+      setIsCreating(false);
+      setNewStore({
+        name: '',
+        store_group_id: '',
+        cnpj: '',
+        email: '',
+        phone: '',
+        active: true
+      });
+    } catch (err) {
+      console.error('Error creating store:', err);
+      alert('Erro ao criar loja. Verifique os dados e tente novamente.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <Layout>
-      <div className="p-4 md:p-8 space-y-6">
+      <div className="p-4 md:p-8 space-y-6 relative">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-zinc-900">Lojas</h1>
@@ -95,7 +147,10 @@ export const StoresPage: React.FC = () => {
             >
               <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
             </button>
-            <button className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2">
+            <button 
+              onClick={() => setIsCreating(true)}
+              className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
+            >
               <Plus size={18} />
               Nova Loja
             </button>
@@ -223,6 +278,119 @@ export const StoresPage: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* Create Store Modal */}
+        <AnimatePresence>
+          {isCreating && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
+              >
+                <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
+                  <h2 className="text-xl font-bold text-zinc-900">Nova Loja</h2>
+                  <button 
+                    onClick={() => setIsCreating(false)}
+                    className="text-zinc-400 hover:text-zinc-600 transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+                
+                <form onSubmit={handleCreateStore} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">Nome da Loja *</label>
+                    <input 
+                      type="text" 
+                      required
+                      className="w-full p-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      value={newStore.name}
+                      onChange={(e) => setNewStore({...newStore, name: e.target.value})}
+                      placeholder="Ex: Matriz"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-1">CNPJ</label>
+                      <input 
+                        type="text" 
+                        className="w-full p-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        value={newStore.cnpj}
+                        onChange={(e) => setNewStore({...newStore, cnpj: e.target.value})}
+                        placeholder="00.000.000/0000-00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-1">ID do Grupo</label>
+                      <input 
+                        type="number" 
+                        className="w-full p-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        value={newStore.store_group_id}
+                        onChange={(e) => setNewStore({...newStore, store_group_id: e.target.value})}
+                        placeholder="Opcional"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-1">Email</label>
+                      <input 
+                        type="email" 
+                        className="w-full p-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        value={newStore.email}
+                        onChange={(e) => setNewStore({...newStore, email: e.target.value})}
+                        placeholder="loja@exemplo.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-1">Telefone</label>
+                      <input 
+                        type="text" 
+                        className="w-full p-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        value={newStore.phone}
+                        onChange={(e) => setNewStore({...newStore, phone: e.target.value})}
+                        placeholder="(00) 0000-0000"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2">
+                    <input 
+                      type="checkbox" 
+                      id="active"
+                      checked={newStore.active}
+                      onChange={(e) => setNewStore({...newStore, active: e.target.checked})}
+                      className="w-4 h-4 text-emerald-600 border-zinc-300 rounded focus:ring-emerald-500"
+                    />
+                    <label htmlFor="active" className="text-sm text-zinc-700">Loja Ativa</label>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button 
+                      type="button"
+                      onClick={() => setIsCreating(false)}
+                      className="flex-1 px-4 py-2 border border-zinc-300 text-zinc-700 rounded-xl hover:bg-zinc-50 font-medium"
+                    >
+                      Cancelar
+                    </button>
+                    <button 
+                      type="submit"
+                      disabled={creating}
+                      className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-medium disabled:opacity-50 flex justify-center items-center gap-2"
+                    >
+                      {creating ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
+                      Criar Loja
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </Layout>
   );
