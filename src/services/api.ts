@@ -125,6 +125,9 @@ export const api = {
       },
     });
     if (!response.ok) throw new Error('Falha ao excluir loja');
+    if (response.status === 204) {
+      return;
+    }
     return response.json();
   }
 };
