@@ -129,5 +129,46 @@ export const api = {
       return;
     }
     return response.json();
+  },
+
+  createStoreGroup: async (token: string, data: Partial<StoreGroup>) => {
+    const response = await fetch(`${API_BASE_URL}/store-groups`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Falha ao criar grupo');
+    return response.json();
+  },
+
+  updateStoreGroup: async (token: string, id: number, data: Partial<StoreGroup>) => {
+    const response = await fetch(`${API_BASE_URL}/store-groups/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Falha ao atualizar grupo');
+    return response.json();
+  },
+
+  deleteStoreGroup: async (token: string, id: number) => {
+    const response = await fetch(`${API_BASE_URL}/store-groups/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao excluir grupo');
+    if (response.status === 204) return;
+    return response.json();
   }
 };

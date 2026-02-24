@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Store, Plus, Loader2, RefreshCw, ChevronLeft, ChevronRight, Phone, Mail, Edit2, X, Save, CheckCircle, Trash2 } from 'lucide-react';
+import { Search, Store, Plus, Loader2, RefreshCw, ChevronLeft, ChevronRight, Phone, Mail, Edit2, X, Save, CheckCircle, Trash2, Settings, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Store as StoreType, PaginatedResponse, StoreGroup } from '../types';
@@ -20,6 +20,69 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+const GroupListItem: React.FC<{ 
+  group: StoreGroup; 
+  onUpdate: (id: number, name: string) => Promise<void>;
+  onDelete: (id: number) => Promise<void>;
+}> = ({ group, onUpdate, onDelete }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState(group.name);
+  const [loading, setLoading] = useState(false);
+
+  const handleSave = async () => {
+    if (name.trim() === group.name) {
+      setIsEditing(false);
+      return;
+    }
+    setLoading(true);
+    await onUpdate(group.id, name);
+    setLoading(false);
+    setIsEditing(false);
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm('Tem certeza que deseja excluir este grupo?')) {
+      setLoading(true);
+      await onDelete(group.id);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between p-3 bg-zinc-50 rounded-lg border border-zinc-200 group hover:border-emerald-200 transition-colors">
+      {isEditing ? (
+        <div className="flex items-center gap-2 flex-1">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="flex-1 p-1.5 text-sm border border-zinc-300 rounded-md focus:ring-2 focus:ring-emerald-500 outline-none"
+            autoFocus
+          />
+          <button onClick={handleSave} disabled={loading} className="p-1.5 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200">
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+          </button>
+          <button onClick={() => { setName(group.name); setIsEditing(false); }} disabled={loading} className="p-1.5 bg-zinc-200 text-zinc-600 rounded-md hover:bg-zinc-300">
+            <X size={14} />
+          </button>
+        </div>
+      ) : (
+        <>
+          <span className="text-sm font-medium text-zinc-700">{group.name}</span>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onClick={() => setIsEditing(true)} className="p-1.5 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors">
+              <Edit2 size={14} />
+            </button>
+            <button onClick={handleDelete} className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors">
+              <Trash2 size={14} />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 export const StoresPage: React.FC = () => {
   const { token } = useAuth();
   const [stores, setStores] = useState<StoreType[]>([]);
@@ -38,9 +101,13 @@ export const StoresPage: React.FC = () => {
 
   // Modal & Form state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isManagingGroups, setIsManagingGroups] = useState(false);
   const [editingStore, setEditingStore] = useState<StoreType | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  
   const [formData, setFormData] = useState({
     name: '',
     cnpj: '',
@@ -93,6 +160,7 @@ export const StoresPage: React.FC = () => {
   }, [debouncedSearchTerm]);
 
   const handleOpenModal = (store?: StoreType) => {
+    setIsManagingGroups(false);
     if (store) {
       setEditingStore(store);
       setFormData({
@@ -120,6 +188,7 @@ export const StoresPage: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingStore(null);
+    setIsManagingGroups(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -159,6 +228,44 @@ export const StoresPage: React.FC = () => {
       alert('Erro ao excluir loja.');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleCreateGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !newGroupName.trim()) return;
+    setCreatingGroup(true);
+    try {
+      await api.createStoreGroup(token, { name: newGroupName, active: true });
+      await fetchGroups();
+      setNewGroupName('');
+    } catch (error) {
+      console.error('Error creating group:', error);
+      alert('Erro ao criar grupo.');
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
+  const handleUpdateGroup = async (id: number, name: string) => {
+    if (!token) return;
+    try {
+      await api.updateStoreGroup(token, id, { name });
+      await fetchGroups();
+    } catch (error) {
+      console.error('Error updating group:', error);
+      alert('Erro ao atualizar grupo.');
+    }
+  };
+
+  const handleDeleteGroup = async (id: number) => {
+    if (!token) return;
+    try {
+      await api.deleteStoreGroup(token, id);
+      await fetchGroups();
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      alert('Erro ao excluir grupo. Verifique se não há lojas vinculadas.');
     }
   };
 
@@ -338,106 +445,159 @@ export const StoresPage: React.FC = () => {
                 className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
               >
                 <div className="p-6 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
-                  <h2 className="text-xl font-bold text-zinc-900">
-                    {editingStore ? 'Editar Loja' : 'Nova Loja'}
-                  </h2>
+                  <div className="flex items-center gap-2">
+                    {isManagingGroups && (
+                      <button onClick={() => setIsManagingGroups(false)} className="mr-2 text-zinc-400 hover:text-zinc-600">
+                        <ChevronLeft size={20} />
+                      </button>
+                    )}
+                    <h2 className="text-xl font-bold text-zinc-900">
+                      {isManagingGroups ? 'Gerenciar Grupos' : (editingStore ? 'Editar Loja' : 'Nova Loja')}
+                    </h2>
+                  </div>
                   <button onClick={handleCloseModal} className="text-zinc-400 hover:text-zinc-600 transition-colors">
                     <X size={24} />
                   </button>
                 </div>
                 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Nome da Loja *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                      placeholder="Ex: Loja Matriz"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 mb-1">CNPJ</label>
+                {isManagingGroups ? (
+                  <div className="p-6 space-y-4">
+                    <form onSubmit={handleCreateGroup} className="flex gap-2 mb-4">
                       <input
                         type="text"
-                        value={formData.cnpj}
-                        onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
-                        className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                        placeholder="00.000.000/0000-00"
+                        value={newGroupName}
+                        onChange={(e) => setNewGroupName(e.target.value)}
+                        placeholder="Nome do novo grupo"
+                        className="flex-1 p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                       />
+                      <button 
+                        type="submit" 
+                        disabled={creatingGroup || !newGroupName.trim()}
+                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                      >
+                        {creatingGroup ? <Loader2 size={20} className="animate-spin" /> : <Plus size={20} />}
+                      </button>
+                    </form>
+                    
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                      {groups.length === 0 ? (
+                        <p className="text-center text-zinc-500 py-4">Nenhum grupo cadastrado.</p>
+                      ) : (
+                        groups.map(group => (
+                          <GroupListItem 
+                            key={group.id} 
+                            group={group} 
+                            onUpdate={handleUpdateGroup}
+                            onDelete={handleDeleteGroup}
+                          />
+                        ))
+                      )}
                     </div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-zinc-700 mb-1">Telefone</label>
+                      <label className="block text-sm font-medium text-zinc-700 mb-1">Nome da Loja *</label>
                       <input
                         type="text"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        required
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                        placeholder="(00) 00000-0000"
+                        placeholder="Ex: Loja Matriz"
                       />
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                      placeholder="loja@empresa.com"
-                    />
-                  </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-700 mb-1">CNPJ</label>
+                        <input
+                          type="text"
+                          value={formData.cnpj}
+                          onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
+                          className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                          placeholder="00.000.000/0000-00"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-700 mb-1">Telefone</label>
+                        <input
+                          type="text"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                          placeholder="(00) 00000-0000"
+                        />
+                      </div>
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Grupo de Lojas</label>
-                    <select
-                      value={formData.store_group_id}
-                      onChange={(e) => setFormData({ ...formData, store_group_id: e.target.value ? Number(e.target.value) : '' })}
-                      className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
-                    >
-                      <option value="">Selecione um grupo (opcional)</option>
-                      {groups.map(group => (
-                        <option key={group.id} value={group.id}>{group.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                        placeholder="loja@empresa.com"
+                      />
+                    </div>
 
-                  <div className="flex items-center gap-2 pt-2">
-                    <input
-                      type="checkbox"
-                      id="active"
-                      checked={formData.active}
-                      onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                      className="w-4 h-4 text-emerald-600 border-zinc-300 rounded focus:ring-emerald-500"
-                    />
-                    <label htmlFor="active" className="text-sm font-medium text-zinc-700 cursor-pointer">
-                      Loja Ativa
-                    </label>
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-1">Grupo de Lojas</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={formData.store_group_id}
+                          onChange={(e) => setFormData({ ...formData, store_group_id: e.target.value ? Number(e.target.value) : '' })}
+                          className="flex-1 p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+                        >
+                          <option value="">Selecione um grupo (opcional)</option>
+                          {groups.map(group => (
+                            <option key={group.id} value={group.id}>{group.name}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setIsManagingGroups(true)}
+                          className="p-2.5 border border-zinc-300 rounded-xl hover:bg-zinc-50 text-zinc-600 transition-colors"
+                          title="Gerenciar Grupos"
+                        >
+                          <Settings size={20} />
+                        </button>
+                      </div>
+                    </div>
 
-                  <div className="pt-4 flex gap-3">
-                    <button
-                      type="button"
-                      onClick={handleCloseModal}
-                      className="flex-1 px-4 py-2.5 border border-zinc-300 text-zinc-700 font-medium rounded-xl hover:bg-zinc-50 transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="flex-1 px-4 py-2.5 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
-                    >
-                      {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
-                      {saving ? 'Salvando...' : 'Salvar'}
-                    </button>
-                  </div>
-                </form>
+                    <div className="flex items-center gap-2 pt-2">
+                      <input
+                        type="checkbox"
+                        id="active"
+                        checked={formData.active}
+                        onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                        className="w-4 h-4 text-emerald-600 border-zinc-300 rounded focus:ring-emerald-500"
+                      />
+                      <label htmlFor="active" className="text-sm font-medium text-zinc-700 cursor-pointer">
+                        Loja Ativa
+                      </label>
+                    </div>
+
+                    <div className="pt-4 flex gap-3">
+                      <button
+                        type="button"
+                        onClick={handleCloseModal}
+                        className="flex-1 px-4 py-2.5 border border-zinc-300 text-zinc-700 font-medium rounded-xl hover:bg-zinc-50 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="flex-1 px-4 py-2.5 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+                      >
+                        {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+                        {saving ? 'Salvando...' : 'Salvar'}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </motion.div>
             </div>
           )}
