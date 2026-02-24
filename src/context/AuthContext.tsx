@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, Tenant, AuthResponse, RefreshResponse } from '../types';
+import { api } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
@@ -81,39 +82,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!token) return;
 
     try {
-      const response = await fetch('http://localhost:8012/api/v1/refresh', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
+      const data: RefreshResponse = await api.refreshToken(token);
+      setToken(data.access_token);
+      
+      // Update stored data with new token
+      const updateStorage = (storage: Storage) => {
+        const stored = storage.getItem('track_performance_auth');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.access_token = data.access_token;
+          parsed.expires_in = data.expires_in;
+          storage.setItem('track_performance_auth', JSON.stringify(parsed));
+        }
+      };
 
-      if (response.ok) {
-        const data: RefreshResponse = await response.json();
-        setToken(data.access_token);
-        
-        // Update stored data with new token
-        const updateStorage = (storage: Storage) => {
-          const stored = storage.getItem('track_performance_auth');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            parsed.access_token = data.access_token;
-            parsed.expires_in = data.expires_in;
-            storage.setItem('track_performance_auth', JSON.stringify(parsed));
-          }
-        };
-
-        updateStorage(localStorage);
-        updateStorage(sessionStorage);
-      } else {
-        // If refresh fails (e.g., 401), logout
-        logout();
-      }
+      updateStorage(localStorage);
+      updateStorage(sessionStorage);
     } catch (error) {
       console.error('Failed to refresh token', error);
-      // Optional: logout on network error? Or retry?
-      // For now, we keep the user logged in until explicit failure or expiration
+      // If refresh fails (e.g., 401), logout
+      logout();
     }
   }, [token, logout]);
 

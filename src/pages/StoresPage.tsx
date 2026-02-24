@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Store, Plus, Loader2, RefreshCw, ChevronLeft, ChevronRight, Phone, Mail, X, Check } from 'lucide-react';
+import { Search, Store, Plus, Loader2, RefreshCw, ChevronLeft, ChevronRight, Phone, Mail, Edit2, X, Save, CheckCircle, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Store as StoreType, PaginatedResponse } from '../types';
+import { Store as StoreType, PaginatedResponse, StoreGroup } from '../types';
+import { api } from '../services/api';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -22,6 +23,7 @@ function useDebounce<T>(value: T, delay: number): T {
 export const StoresPage: React.FC = () => {
   const { token } = useAuth();
   const [stores, setStores] = useState<StoreType[]>([]);
+  const [groups, setGroups] = useState<StoreGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,52 +36,47 @@ export const StoresPage: React.FC = () => {
   const [fromItem, setFromItem] = useState(0);
   const [toItem, setToItem] = useState(0);
 
-  // Create state
-  const [isCreating, setIsCreating] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [newStore, setNewStore] = useState({
+  // Modal & Form state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingStore, setEditingStore] = useState<StoreType | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [formData, setFormData] = useState({
     name: '',
-    store_group_id: '',
     cnpj: '',
     email: '',
     phone: '',
-    active: true
+    active: true,
+    store_group_id: '' as number | ''
   });
 
   const fetchStores = useCallback(async (page = 1, search = '') => {
+    if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const queryParams = new URLSearchParams();
-      queryParams.append('page', page.toString());
-      queryParams.append('include', 'tenant,group');
-      if (search) {
-        queryParams.append('filter[name]', search);
-      }
-
-      const response = await fetch(`http://localhost:8012/api/v1/stores?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Falha ao carregar lojas');
-      }
-
-      const data: PaginatedResponse<StoreType> = await response.json();
+      const data = await api.getStores(token, page, search);
       setStores(data.data);
       setCurrentPage(data.current_page);
       setTotalPages(data.last_page);
       setTotalItems(data.total);
       setFromItem(data.from);
       setToItem(data.to);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching stores:', err);
-      setError('Não foi possível carregar as lojas. Verifique sua conexão.');
+      setError(err.message || 'Não foi possível carregar as lojas.');
     } finally {
       setLoading(false);
+    }
+  }, [token]);
+
+  const fetchGroups = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await api.getStoreGroups(token);
+      setGroups(data.data);
+    } catch (error) {
+      console.error('Error fetching groups', error);
     }
   }, [token]);
 
@@ -88,52 +85,86 @@ export const StoresPage: React.FC = () => {
   }, [fetchStores, currentPage, debouncedSearchTerm]);
 
   useEffect(() => {
+    fetchGroups();
+  }, [fetchGroups]);
+
+  useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearchTerm]);
 
-  const handleCreateStore = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreating(true);
-    try {
-      const response = await fetch('http://localhost:8012/api/v1/stores', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          ...newStore,
-          store_group_id: newStore.store_group_id ? parseInt(newStore.store_group_id) : null
-        }),
+  const handleOpenModal = (store?: StoreType) => {
+    if (store) {
+      setEditingStore(store);
+      setFormData({
+        name: store.name,
+        cnpj: store.cnpj || '',
+        email: store.email || '',
+        phone: store.phone || '',
+        active: store.active,
+        store_group_id: store.store_group_id || ''
       });
-  
-      if (!response.ok) {
-        throw new Error('Falha ao criar loja');
-      }
-  
-      // Refresh list
-      fetchStores(currentPage, debouncedSearchTerm);
-      setIsCreating(false);
-      setNewStore({
+    } else {
+      setEditingStore(null);
+      setFormData({
         name: '',
-        store_group_id: '',
         cnpj: '',
         email: '',
         phone: '',
-        active: true
+        active: true,
+        store_group_id: ''
       });
-    } catch (err) {
-      console.error('Error creating store:', err);
-      alert('Erro ao criar loja. Verifique os dados e tente novamente.');
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingStore(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    setSaving(true);
+    try {
+      const dataToSave: any = { ...formData };
+      if (dataToSave.store_group_id === '') {
+        dataToSave.store_group_id = null;
+      }
+
+      if (editingStore) {
+        await api.updateStore(token, editingStore.id, dataToSave);
+      } else {
+        await api.createStore(token, dataToSave);
+      }
+
+      await fetchStores(currentPage, searchTerm);
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error saving store:', error);
+      alert('Erro ao salvar loja. Verifique os dados e tente novamente.');
     } finally {
-      setCreating(false);
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!token || !window.confirm('Tem certeza que deseja excluir esta loja?')) return;
+    setDeletingId(id);
+    try {
+      await api.deleteStore(token, id);
+      await fetchStores(currentPage, searchTerm);
+    } catch (error) {
+      console.error('Error deleting store:', error);
+      alert('Erro ao excluir loja.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
   return (
     <Layout>
-      <div className="p-4 md:p-8 space-y-6 relative">
+      <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-zinc-900">Lojas</h1>
@@ -148,7 +179,7 @@ export const StoresPage: React.FC = () => {
               <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
             </button>
             <button 
-              onClick={() => setIsCreating(true)}
+              onClick={() => handleOpenModal()}
               className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
             >
               <Plus size={18} />
@@ -226,15 +257,32 @@ export const StoresPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex-1 md:text-right">
+                    <div className="flex flex-col md:items-end gap-2">
                         {store.group && (
-                            <span className="inline-block bg-zinc-100 text-zinc-600 px-3 py-1 rounded-full text-xs font-medium mb-2">
+                            <span className="inline-block bg-zinc-100 text-zinc-600 px-3 py-1 rounded-full text-xs font-medium">
                                 {store.group.name}
                             </span>
                         )}
-                        <p className="text-xs text-zinc-400 mt-1">
+                        <p className="text-xs text-zinc-400">
                             Atualizado em: {new Date(store.updated_at).toLocaleDateString()}
                         </p>
+                        <div className="flex items-center gap-2 mt-2 md:mt-0">
+                          <button 
+                            onClick={() => handleOpenModal(store)}
+                            className="flex items-center gap-1 text-sm text-emerald-600 hover:text-emerald-700 font-medium p-2 hover:bg-emerald-50 rounded-lg transition-colors"
+                            title="Editar"
+                          >
+                            <Edit2 size={18} />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(store.id)}
+                            disabled={deletingId === store.id}
+                            className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 font-medium p-2 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                            title="Excluir"
+                          >
+                            {deletingId === store.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                          </button>
+                        </div>
                     </div>
                   </div>
                 </motion.div>
@@ -279,9 +327,9 @@ export const StoresPage: React.FC = () => {
           </div>
         )}
 
-        {/* Create Store Modal */}
+        {/* Create/Edit Modal */}
         <AnimatePresence>
-          {isCreating && (
+          {isModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -289,101 +337,104 @@ export const StoresPage: React.FC = () => {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
               >
-                <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
-                  <h2 className="text-xl font-bold text-zinc-900">Nova Loja</h2>
-                  <button 
-                    onClick={() => setIsCreating(false)}
-                    className="text-zinc-400 hover:text-zinc-600 transition-colors"
-                  >
+                <div className="p-6 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
+                  <h2 className="text-xl font-bold text-zinc-900">
+                    {editingStore ? 'Editar Loja' : 'Nova Loja'}
+                  </h2>
+                  <button onClick={handleCloseModal} className="text-zinc-400 hover:text-zinc-600 transition-colors">
                     <X size={24} />
                   </button>
                 </div>
                 
-                <form onSubmit={handleCreateStore} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 mb-1">Nome da Loja *</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       required
-                      className="w-full p-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      value={newStore.name}
-                      onChange={(e) => setNewStore({...newStore, name: e.target.value})}
-                      placeholder="Ex: Matriz"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                      placeholder="Ex: Loja Matriz"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-zinc-700 mb-1">CNPJ</label>
-                      <input 
-                        type="text" 
-                        className="w-full p-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        value={newStore.cnpj}
-                        onChange={(e) => setNewStore({...newStore, cnpj: e.target.value})}
+                      <input
+                        type="text"
+                        value={formData.cnpj}
+                        onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
+                        className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                         placeholder="00.000.000/0000-00"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-zinc-700 mb-1">ID do Grupo</label>
-                      <input 
-                        type="number" 
-                        className="w-full p-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        value={newStore.store_group_id}
-                        onChange={(e) => setNewStore({...newStore, store_group_id: e.target.value})}
-                        placeholder="Opcional"
+                      <label className="block text-sm font-medium text-zinc-700 mb-1">Telefone</label>
+                      <input
+                        type="text"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                        placeholder="(00) 00000-0000"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 mb-1">Email</label>
-                      <input 
-                        type="email" 
-                        className="w-full p-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        value={newStore.email}
-                        onChange={(e) => setNewStore({...newStore, email: e.target.value})}
-                        placeholder="loja@exemplo.com"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 mb-1">Telefone</label>
-                      <input 
-                        type="text" 
-                        className="w-full p-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        value={newStore.phone}
-                        onChange={(e) => setNewStore({...newStore, phone: e.target.value})}
-                        placeholder="(00) 0000-0000"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                      placeholder="loja@empresa.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">Grupo de Lojas</label>
+                    <select
+                      value={formData.store_group_id}
+                      onChange={(e) => setFormData({ ...formData, store_group_id: e.target.value ? Number(e.target.value) : '' })}
+                      className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+                    >
+                      <option value="">Selecione um grupo (opcional)</option>
+                      {groups.map(group => (
+                        <option key={group.id} value={group.id}>{group.name}</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="flex items-center gap-2 pt-2">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       id="active"
-                      checked={newStore.active}
-                      onChange={(e) => setNewStore({...newStore, active: e.target.checked})}
+                      checked={formData.active}
+                      onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
                       className="w-4 h-4 text-emerald-600 border-zinc-300 rounded focus:ring-emerald-500"
                     />
-                    <label htmlFor="active" className="text-sm text-zinc-700">Loja Ativa</label>
+                    <label htmlFor="active" className="text-sm font-medium text-zinc-700 cursor-pointer">
+                      Loja Ativa
+                    </label>
                   </div>
 
-                  <div className="flex gap-3 pt-4">
-                    <button 
+                  <div className="pt-4 flex gap-3">
+                    <button
                       type="button"
-                      onClick={() => setIsCreating(false)}
-                      className="flex-1 px-4 py-2 border border-zinc-300 text-zinc-700 rounded-xl hover:bg-zinc-50 font-medium"
+                      onClick={handleCloseModal}
+                      className="flex-1 px-4 py-2.5 border border-zinc-300 text-zinc-700 font-medium rounded-xl hover:bg-zinc-50 transition-colors"
                     >
                       Cancelar
                     </button>
-                    <button 
+                    <button
                       type="submit"
-                      disabled={creating}
-                      className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-medium disabled:opacity-50 flex justify-center items-center gap-2"
+                      disabled={saving}
+                      className="flex-1 px-4 py-2.5 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
                     >
-                      {creating ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
-                      Criar Loja
+                      {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+                      {saving ? 'Salvando...' : 'Salvar'}
                     </button>
                   </div>
                 </form>

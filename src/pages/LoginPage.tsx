@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { LogIn, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('admin@teste.com');
@@ -19,29 +20,16 @@ export const LoginPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:8012/api/v1/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Falha na autenticação. Verifique suas credenciais.');
-      }
-
-      const data = await response.json();
+      const data = await api.login({ email, password });
       login(data, rememberMe);
       navigate('/dashboard');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Login error:', err);
-      // For demo purposes, if the local API is not available, we can offer a mock login
-      setError('Não foi possível conectar ao servidor. Verifique se o backend está rodando em http://localhost:8012');
-      
-      // OPTIONAL: Mock login for preview purposes if the user wants to see the dashboard
-      // login(MOCK_DATA); navigate('/dashboard');
+      if (err.message === 'Failed to fetch') {
+        setError('Não foi possível conectar ao servidor (http://localhost:8012). Verifique se o backend está rodando.');
+      } else {
+        setError(err.message || 'Ocorreu um erro ao tentar fazer login.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -174,21 +162,6 @@ export const LoginPage: React.FC = () => {
               </button>
             </div>
           </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-zinc-200" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-zinc-500">Credenciais de Teste</span>
-              </div>
-            </div>
-            <div className="mt-4 text-xs text-zinc-400 text-center space-y-1">
-              <p>Email: admin@teste.com</p>
-              <p>Senha: secret123</p>
-            </div>
-          </div>
         </div>
       </motion.div>
     </div>

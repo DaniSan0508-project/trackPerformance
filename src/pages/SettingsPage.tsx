@@ -4,6 +4,7 @@ import { Search, Settings, Loader2, RefreshCw, X, Check, ChevronLeft, ChevronRig
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { TenantConfig, PaginatedResponse } from '../types';
+import { api } from '../services/api';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -35,7 +36,7 @@ const getIconForConfig = (key: string) => {
   return <Settings className="w-6 h-6 text-zinc-600" />;
 };
 
-const ConfigItem = ({ config, onUpdate }: { config: TenantConfig, onUpdate: (config: TenantConfig, newValue: string) => Promise<void> }) => {
+const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConfig, newValue: string) => Promise<void> }> = ({ config, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(config.config_value);
   const [updating, setUpdating] = useState(false);
@@ -181,36 +182,20 @@ export const SettingsPage: React.FC = () => {
   const [toItem, setToItem] = useState(0);
 
   const fetchConfigs = useCallback(async (page = 1, search = '') => {
+    if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const queryParams = new URLSearchParams();
-      queryParams.append('page', page.toString());
-      if (search) {
-        queryParams.append('filter[search]', search);
-      }
-
-      const response = await fetch(`http://localhost:8012/api/v1/tenant-configs?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Falha ao carregar configurações');
-      }
-
-      const data: PaginatedResponse<TenantConfig> = await response.json();
+      const data = await api.getTenantConfigs(token, page, search);
       setConfigs(data.data);
       setCurrentPage(data.current_page);
       setTotalPages(data.last_page);
       setTotalItems(data.total);
       setFromItem(data.from);
       setToItem(data.to);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching configs:', err);
-      setError('Não foi possível carregar as configurações. Verifique sua conexão.');
+      setError(err.message || 'Não foi possível carregar as configurações. Verifique sua conexão.');
     } finally {
       setLoading(false);
     }
@@ -225,24 +210,13 @@ export const SettingsPage: React.FC = () => {
   }, [debouncedSearchTerm]);
 
   const handleUpdateConfig = async (config: TenantConfig, newValue: string) => {
+    if (!token) return;
     try {
-      const response = await fetch(`http://localhost:8012/api/v1/tenant-configs/${config.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          tenant_id: config.tenant_id,
-          config_key: config.config_key,
-          config_value: newValue
-        }),
+      await api.updateTenantConfig(token, config.id, {
+        tenant_id: config.tenant_id,
+        config_key: config.config_key,
+        config_value: newValue
       });
-
-      if (!response.ok) {
-        throw new Error('Falha ao atualizar configuração');
-      }
 
       // Update local state
       setConfigs(prevConfigs => prevConfigs.map(c => 
