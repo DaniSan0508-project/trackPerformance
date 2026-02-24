@@ -56,3 +56,24 @@ export interface RefreshResponse {
   token_type: string;
   expires_in: number;
 }
+
+export interface StoreGroup {
+  id: number;
+  name: string;
+  active: boolean;
+}
+
+export interface Store {
+  id: number;
+  name: string;
+  cnpj: string;
+  email: string;
+  phone: string;
+  active: boolean;
+  tenant_id: number;
+  store_group_id: number | null;
+  created_at: string;
+  updated_at: string;
+  tenant?: Tenant;
+  group?: StoreGroup;
+}
