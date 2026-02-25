@@ -10,7 +10,8 @@ import {
   Bell, 
   Search,
   Menu,
-  Store
+  Store,
+  MessageSquare
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -54,6 +55,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             icon={<Store size={20} />} 
             label="Lojas" 
             active={location.pathname === '/stores'} 
+          />
+          <NavItem 
+            to="/posts" 
+            icon={<MessageSquare size={20} />} 
+            label="Posts" 
+            active={location.pathname === '/posts'} 
           />
           <NavItem 
             to="/team" 
@@ -136,6 +143,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             to="/stores" 
             icon={<Store size={24} />} 
             active={location.pathname === '/stores'} 
+          />
+          <MobileNavItem 
+            to="/posts" 
+            icon={<MessageSquare size={24} />} 
+            active={location.pathname === '/posts'} 
           />
           <MobileNavItem 
             to="/team" 

@@ -1,4 +1,4 @@
-import { PaginatedResponse, Store, StoreGroup, TenantConfig } from '../types';
+import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post } from '../types';
 
 const API_BASE_URL = 'http://localhost:8012/api/v1';
 
@@ -26,6 +26,24 @@ export const api = {
     });
     if (!response.ok) throw new Error('Falha ao atualizar token');
     return response.json();
+  },
+
+  getPosts: async (token: string, page = 1, search = '') => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    queryParams.append('include', 'user');
+    if (search) {
+      queryParams.append('filter[content]', search);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/posts?${queryParams.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar posts');
+    return response.json() as Promise<PaginatedResponse<Post>>;
   },
 
   getStores: async (token: string, page = 1, search = '') => {

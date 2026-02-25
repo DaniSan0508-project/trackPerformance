@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { StoresPage } from './pages/StoresPage';
+import { PostsPage } from './pages/PostsPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -30,6 +31,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <StoresPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/posts" 
+            element={
+              <ProtectedRoute>
+                <PostsPage />
               </ProtectedRoute>
             } 
           />

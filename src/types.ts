@@ -77,3 +77,16 @@ export interface Store {
   tenant?: Tenant;
   group?: StoreGroup;
 }
+
+export interface Post {
+  id: number;
+  user_id: number;
+  survey_id: number | null;
+  content: string;
+  image_url: string | null;
+  earns_coins: boolean;
+  created_at: string;
+  updated_at: string;
+  image_full_url: string | null;
+  user?: User;
+}
