@@ -289,13 +289,14 @@ export const PostsPage: React.FC = () => {
                     {/* Content */}
                     <div className="space-y-1 mb-2">
                       <button 
+                        type="button"
                         onClick={() => setContentModalPost(post)}
-                        className="text-left w-full group"
+                        className="text-left w-full group block"
                       >
-                        <p className="text-sm text-zinc-900 line-clamp-3 group-hover:text-zinc-700 transition-colors">
+                        <div className="text-sm text-zinc-900 line-clamp-3 group-hover:text-zinc-700 transition-colors">
                           <span className="font-semibold mr-2">{post.user?.name}</span>
                           {post.content}
-                        </p>
+                        </div>
                         {post.content.length > 150 && (
                           <span className="text-xs text-zinc-400 mt-1 block group-hover:underline">Ver mais...</span>
                         )}
@@ -353,6 +354,8 @@ export const PostsPage: React.FC = () => {
             )}
           </div>
         )}
+
+      </div>
 
         {/* Likes Modal */}
         <AnimatePresence>
@@ -496,6 +499,7 @@ export const PostsPage: React.FC = () => {
           {contentModalPost && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
               <motion.div 
+                key="content-modal"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
@@ -533,7 +537,6 @@ export const PostsPage: React.FC = () => {
             </div>
           )}
         </AnimatePresence>
-      </div>
     </Layout>
   );
 };
