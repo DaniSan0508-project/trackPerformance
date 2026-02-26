@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Post, Like, Comment } from '../types';
+import { Post, Like, Comment, User as UserType } from '../types';
 import { api } from '../services/api';
 
 // Utility for debouncing
@@ -20,7 +20,7 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-const UserListItem: React.FC<{ user?: { name: string; profile_image_url?: string | null }; subtext?: string }> = ({ user, subtext }) => (
+const UserListItem: React.FC<{ user?: UserType | { name: string; profile_image_url?: string | null }; subtext?: string }> = ({ user, subtext }) => (
   <div className="flex items-center gap-3 p-2 hover:bg-zinc-50 rounded-lg transition-colors">
     <div className="w-10 h-10 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-500 flex-shrink-0 overflow-hidden">
       {user?.profile_image_url ? (
@@ -54,6 +54,10 @@ export const PostsPage: React.FC = () => {
   // Modal state
   const [likesModalPost, setLikesModalPost] = useState<Post | null>(null);
   const [commentsModalPost, setCommentsModalPost] = useState<Post | null>(null);
+  
+  // Users cache
+  const [usersCache, setUsersCache] = useState<Record<number, UserType>>({});
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   const fetchPosts = useCallback(async (page = 1, search = '') => {
     if (!token) return;
@@ -67,6 +71,16 @@ export const PostsPage: React.FC = () => {
       setTotalItems(data.total);
       setFromItem(data.from);
       setToItem(data.to);
+      
+      // Cache post authors
+      const newUsers: Record<number, UserType> = {};
+      data.data.forEach(post => {
+        if (post.user) {
+          newUsers[post.user.id] = post.user;
+        }
+      });
+      setUsersCache(prev => ({ ...prev, ...newUsers }));
+      
     } catch (err: any) {
       console.error('Error fetching posts:', err);
       setError(err.message || 'Não foi possível carregar os posts.');
@@ -74,6 +88,51 @@ export const PostsPage: React.FC = () => {
       setLoading(false);
     }
   }, [token]);
+
+  // Fetch missing users for modals
+  const fetchMissingUsers = async (userIds: number[]) => {
+    if (!token) return;
+    const missingIds = userIds.filter(id => !usersCache[id]);
+    if (missingIds.length === 0) return;
+
+    setLoadingUsers(true);
+    try {
+      // Fetch users in parallel
+      const promises = missingIds.map(id => api.getUser(token, id).catch(() => null));
+      const results = await Promise.all(promises);
+      
+      const newUsers: Record<number, UserType> = {};
+      results.forEach((user, index) => {
+        if (user) {
+          // Handle if wrapped in data or direct object
+          const userData = user.data || user;
+          if (userData.id) {
+            newUsers[userData.id] = userData;
+          }
+        }
+      });
+      
+      setUsersCache(prev => ({ ...prev, ...newUsers }));
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  useEffect(() => {
+    if (likesModalPost?.likes) {
+      const userIds = likesModalPost.likes.map(l => l.user_id);
+      fetchMissingUsers(userIds);
+    }
+  }, [likesModalPost]);
+
+  useEffect(() => {
+    if (commentsModalPost?.comments) {
+      const userIds = commentsModalPost.comments.map(c => c.user_id);
+      fetchMissingUsers(userIds);
+    }
+  }, [commentsModalPost]);
 
   useEffect(() => {
     fetchPosts(currentPage, debouncedSearchTerm);
@@ -283,12 +342,16 @@ export const PostsPage: React.FC = () => {
                   </button>
                 </div>
                 <div className="p-4 overflow-y-auto flex-1">
-                  {likesModalPost.likes && likesModalPost.likes.length > 0 ? (
+                  {loadingUsers ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="w-6 h-6 text-zinc-400 animate-spin" />
+                    </div>
+                  ) : likesModalPost.likes && likesModalPost.likes.length > 0 ? (
                     <div className="space-y-2">
                       {likesModalPost.likes.map((like) => (
                         <UserListItem 
                           key={like.id} 
-                          user={like.user} 
+                          user={usersCache[like.user_id] || like.user} 
                           subtext={new Date(like.created_at).toLocaleDateString()}
                         />
                       ))}
@@ -321,28 +384,35 @@ export const PostsPage: React.FC = () => {
                   </button>
                 </div>
                 <div className="p-4 overflow-y-auto flex-1">
-                  {commentsModalPost.comments && commentsModalPost.comments.length > 0 ? (
+                  {loadingUsers ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="w-6 h-6 text-zinc-400 animate-spin" />
+                    </div>
+                  ) : commentsModalPost.comments && commentsModalPost.comments.length > 0 ? (
                     <div className="space-y-4">
-                      {commentsModalPost.comments.map((comment) => (
-                        <div key={comment.id} className="flex gap-3">
-                          <div className="w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-500 flex-shrink-0 overflow-hidden mt-1">
-                            {comment.user?.profile_image_url ? (
-                              <img src={comment.user.profile_image_url} alt={comment.user.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <User size={16} />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="bg-zinc-50 p-3 rounded-2xl rounded-tl-none">
-                              <p className="text-sm font-semibold text-zinc-900 mb-1">{comment.user?.name || 'Usuário Desconhecido'}</p>
-                              <p className="text-sm text-zinc-700">{comment.text}</p>
+                      {commentsModalPost.comments.map((comment) => {
+                        const user = usersCache[comment.user_id] || comment.user;
+                        return (
+                          <div key={comment.id} className="flex gap-3">
+                            <div className="w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-500 flex-shrink-0 overflow-hidden mt-1">
+                              {user?.profile_image_url ? (
+                                <img src={user.profile_image_url} alt={user.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <User size={16} />
+                              )}
                             </div>
-                            <p className="text-xs text-zinc-400 mt-1 ml-2">
-                              {new Date(comment.created_at).toLocaleDateString()} às {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </p>
+                            <div className="flex-1">
+                              <div className="bg-zinc-50 p-3 rounded-2xl rounded-tl-none">
+                                <p className="text-sm font-semibold text-zinc-900 mb-1">{user?.name || 'Usuário Desconhecido'}</p>
+                                <p className="text-sm text-zinc-700">{comment.text}</p>
+                              </div>
+                              <p className="text-xs text-zinc-400 mt-1 ml-2">
+                                {new Date(comment.created_at).toLocaleDateString()} às {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-center py-8 text-zinc-500">
