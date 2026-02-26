@@ -78,6 +78,25 @@ export interface Store {
   group?: StoreGroup;
 }
 
+export interface Like {
+  id: number;
+  user_id: number;
+  post_id: number;
+  created_at: string;
+  updated_at: string;
+  user?: User;
+}
+
+export interface Comment {
+  id: number;
+  user_id: number;
+  post_id: number;
+  text: string;
+  created_at: string;
+  updated_at: string;
+  user?: User;
+}
+
 export interface Post {
   id: number;
   user_id: number;
@@ -89,4 +108,8 @@ export interface Post {
   updated_at: string;
   image_full_url: string | null;
   user?: User;
+  likes?: Like[];
+  likes_count?: number;
+  comments?: Comment[];
+  comments_count?: number;
 }

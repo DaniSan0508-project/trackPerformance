@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Post } from '../types';
+import { Post, Like, Comment } from '../types';
 import { api } from '../services/api';
 
 // Utility for debouncing
@@ -20,6 +20,22 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+const UserListItem: React.FC<{ user?: { name: string; profile_image_url?: string | null }; subtext?: string }> = ({ user, subtext }) => (
+  <div className="flex items-center gap-3 p-2 hover:bg-zinc-50 rounded-lg transition-colors">
+    <div className="w-10 h-10 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-500 flex-shrink-0 overflow-hidden">
+      {user?.profile_image_url ? (
+        <img src={user.profile_image_url} alt={user.name} className="w-full h-full object-cover" />
+      ) : (
+        <User size={20} />
+      )}
+    </div>
+    <div>
+      <p className="font-medium text-sm text-zinc-900">{user?.name || 'Usuário Desconhecido'}</p>
+      {subtext && <p className="text-xs text-zinc-500">{subtext}</p>}
+    </div>
+  </div>
+);
+
 export const PostsPage: React.FC = () => {
   const { token } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -34,6 +50,10 @@ export const PostsPage: React.FC = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [fromItem, setFromItem] = useState(0);
   const [toItem, setToItem] = useState(0);
+
+  // Modal state
+  const [likesModalPost, setLikesModalPost] = useState<Post | null>(null);
+  const [commentsModalPost, setCommentsModalPost] = useState<Post | null>(null);
 
   const fetchPosts = useCallback(async (page = 1, search = '') => {
     if (!token) return;
@@ -176,13 +196,33 @@ export const PostsPage: React.FC = () => {
                       </button>
                     </div>
 
+                    {/* Likes Count */}
+                    <div className="mb-2">
+                      <button 
+                        onClick={() => setLikesModalPost(post)}
+                        className="text-sm font-semibold text-zinc-900 hover:text-zinc-600 transition-colors"
+                      >
+                        {post.likes_count || 0} curtidas
+                      </button>
+                    </div>
+
                     {/* Content */}
-                    <div className="space-y-1">
+                    <div className="space-y-1 mb-2">
                       <p className="text-sm text-zinc-900 line-clamp-3">
                         <span className="font-semibold mr-2">{post.user?.name}</span>
                         {post.content}
                       </p>
                     </div>
+
+                    {/* Comments Count */}
+                    {(post.comments_count || 0) > 0 && (
+                      <button 
+                        onClick={() => setCommentsModalPost(post)}
+                        className="text-sm text-zinc-500 hover:text-zinc-800 transition-colors text-left"
+                      >
+                        Ver todos os {post.comments_count} comentários
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -225,6 +265,95 @@ export const PostsPage: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* Likes Modal */}
+        <AnimatePresence>
+          {likesModalPost && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]"
+              >
+                <div className="p-4 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
+                  <h2 className="text-lg font-bold text-zinc-900">Curtidas</h2>
+                  <button onClick={() => setLikesModalPost(null)} className="text-zinc-400 hover:text-zinc-600 transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="p-4 overflow-y-auto flex-1">
+                  {likesModalPost.likes && likesModalPost.likes.length > 0 ? (
+                    <div className="space-y-2">
+                      {likesModalPost.likes.map((like) => (
+                        <UserListItem 
+                          key={like.id} 
+                          user={like.user} 
+                          subtext={new Date(like.created_at).toLocaleDateString()}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-zinc-500">
+                      Nenhuma curtida ainda.
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Comments Modal */}
+        <AnimatePresence>
+          {commentsModalPost && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]"
+              >
+                <div className="p-4 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
+                  <h2 className="text-lg font-bold text-zinc-900">Comentários</h2>
+                  <button onClick={() => setCommentsModalPost(null)} className="text-zinc-400 hover:text-zinc-600 transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="p-4 overflow-y-auto flex-1">
+                  {commentsModalPost.comments && commentsModalPost.comments.length > 0 ? (
+                    <div className="space-y-4">
+                      {commentsModalPost.comments.map((comment) => (
+                        <div key={comment.id} className="flex gap-3">
+                          <div className="w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-500 flex-shrink-0 overflow-hidden mt-1">
+                            {comment.user?.profile_image_url ? (
+                              <img src={comment.user.profile_image_url} alt={comment.user.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <User size={16} />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="bg-zinc-50 p-3 rounded-2xl rounded-tl-none">
+                              <p className="text-sm font-semibold text-zinc-900 mb-1">{comment.user?.name || 'Usuário Desconhecido'}</p>
+                              <p className="text-sm text-zinc-700">{comment.text}</p>
+                            </div>
+                            <p className="text-xs text-zinc-400 mt-1 ml-2">
+                              {new Date(comment.created_at).toLocaleDateString()} às {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-zinc-500">
+                      Nenhum comentário ainda.
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </Layout>
   );

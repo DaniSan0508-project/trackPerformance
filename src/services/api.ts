@@ -31,7 +31,8 @@ export const api = {
   getPosts: async (token: string, page = 1, search = '') => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
-    queryParams.append('include', 'user');
+    // Requesting user, likes with user, and comments with user
+    queryParams.append('include', 'user,likes.user,comments.user');
     if (search) {
       queryParams.append('filter[content]', search);
     }
