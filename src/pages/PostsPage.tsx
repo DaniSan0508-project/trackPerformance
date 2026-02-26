@@ -54,6 +54,7 @@ export const PostsPage: React.FC = () => {
   // Modal state
   const [likesModalPost, setLikesModalPost] = useState<Post | null>(null);
   const [commentsModalPost, setCommentsModalPost] = useState<Post | null>(null);
+  const [shareModalPost, setShareModalPost] = useState<Post | null>(null);
   
   // Users cache
   const [usersCache, setUsersCache] = useState<Record<number, UserType>>({});
@@ -118,6 +119,30 @@ export const PostsPage: React.FC = () => {
     } finally {
       setLoadingUsers(false);
     }
+  };
+
+  const handleShare = async (post: Post) => {
+    const shareData = {
+      title: `Post de ${post.user?.name}`,
+      text: post.content,
+      url: window.location.href // Or specific post URL if available
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      setShareModalPost(post);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert('Link copiado para a área de transferência!');
+    setShareModalPost(null);
   };
 
   useEffect(() => {
@@ -200,7 +225,7 @@ export const PostsPage: React.FC = () => {
                   {/* Header */}
                   <div className="p-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 p-[2px] rounded-full flex-shrink-0">
+                      <div className="w-8 h-8 bg-gradient-to-tr from-emerald-400 via-green-500 to-teal-600 p-[2px] rounded-full flex-shrink-0">
                         <div className="w-full h-full bg-white rounded-full p-[2px]">
                           {post.user?.profile_image_url ? (
                             <img src={post.user.profile_image_url} alt={post.user.name} className="w-full h-full rounded-full object-cover" />
@@ -240,19 +265,14 @@ export const PostsPage: React.FC = () => {
                   <div className="p-3 pb-2 flex-1 flex flex-col">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-4">
-                        <button className="text-zinc-800 hover:text-red-500 transition-colors">
-                          <Heart size={24} />
-                        </button>
-                        <button className="text-zinc-800 hover:text-zinc-600 transition-colors">
-                          <MessageSquare size={24} />
-                        </button>
-                        <button className="text-zinc-800 hover:text-zinc-600 transition-colors">
+                        <button 
+                          onClick={() => handleShare(post)}
+                          className="text-zinc-800 hover:text-emerald-600 transition-colors p-1"
+                          title="Compartilhar"
+                        >
                           <Share2 size={24} />
                         </button>
                       </div>
-                      <button className="text-zinc-800 hover:text-zinc-600 transition-colors">
-                        <Bookmark size={24} />
-                      </button>
                     </div>
 
                     {/* Likes Count */}
@@ -419,6 +439,44 @@ export const PostsPage: React.FC = () => {
                       Nenhum comentário ainda.
                     </div>
                   )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+        {/* Share Modal */}
+        <AnimatePresence>
+          {shareModalPost && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden"
+              >
+                <div className="p-4 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
+                  <h2 className="text-lg font-bold text-zinc-900">Compartilhar</h2>
+                  <button onClick={() => setShareModalPost(null)} className="text-zinc-400 hover:text-zinc-600 transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="p-6 grid grid-cols-2 gap-4">
+                  <a 
+                    href={`https://wa.me/?text=${encodeURIComponent(`Confira este post de ${shareModalPost.user?.name}: ${shareModalPost.content} ${window.location.href}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
+                  >
+                    <Share2 size={24} />
+                    <span className="text-sm font-medium">WhatsApp</span>
+                  </a>
+                  <button 
+                    onClick={() => copyToClipboard(window.location.href)}
+                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-zinc-50 text-zinc-700 hover:bg-zinc-100 transition-colors"
+                  >
+                    <Share2 size={24} />
+                    <span className="text-sm font-medium">Copiar Link</span>
+                  </button>
                 </div>
               </motion.div>
             </div>
