@@ -55,6 +55,7 @@ export const PostsPage: React.FC = () => {
   const [likesModalPost, setLikesModalPost] = useState<Post | null>(null);
   const [commentsModalPost, setCommentsModalPost] = useState<Post | null>(null);
   const [shareModalPost, setShareModalPost] = useState<Post | null>(null);
+  const [contentModalPost, setContentModalPost] = useState<Post | null>(null);
   
   // Users cache
   const [usersCache, setUsersCache] = useState<Record<number, UserType>>({});
@@ -287,10 +288,18 @@ export const PostsPage: React.FC = () => {
 
                     {/* Content */}
                     <div className="space-y-1 mb-2">
-                      <p className="text-sm text-zinc-900 line-clamp-3">
-                        <span className="font-semibold mr-2">{post.user?.name}</span>
-                        {post.content}
-                      </p>
+                      <button 
+                        onClick={() => setContentModalPost(post)}
+                        className="text-left w-full group"
+                      >
+                        <p className="text-sm text-zinc-900 line-clamp-3 group-hover:text-zinc-700 transition-colors">
+                          <span className="font-semibold mr-2">{post.user?.name}</span>
+                          {post.content}
+                        </p>
+                        {post.content.length > 150 && (
+                          <span className="text-xs text-zinc-400 mt-1 block group-hover:underline">Ver mais...</span>
+                        )}
+                      </button>
                     </div>
 
                     {/* Comments Count */}
@@ -477,6 +486,48 @@ export const PostsPage: React.FC = () => {
                     <Share2 size={24} />
                     <span className="text-sm font-medium">Copiar Link</span>
                   </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+        {/* Content Modal */}
+        <AnimatePresence>
+          {contentModalPost && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh]"
+              >
+                <div className="p-4 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-500 overflow-hidden">
+                       {contentModalPost.user?.profile_image_url ? (
+                        <img src={contentModalPost.user.profile_image_url} alt={contentModalPost.user.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <User size={16} />
+                      )}
+                    </div>
+                    <span className="font-semibold text-sm text-zinc-900">{contentModalPost.user?.name}</span>
+                  </div>
+                  <button onClick={() => setContentModalPost(null)} className="text-zinc-400 hover:text-zinc-600 transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="p-6 overflow-y-auto">
+                  <p className="text-zinc-900 whitespace-pre-wrap leading-relaxed text-sm md:text-base">
+                    {contentModalPost.content}
+                  </p>
+                  <div className="mt-6 pt-4 border-t border-zinc-100 flex justify-between items-center text-xs text-zinc-400">
+                    <span>Postado em {new Date(contentModalPost.created_at).toLocaleDateString()} às {new Date(contentModalPost.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    {contentModalPost.earns_coins && (
+                      <span className="text-amber-600 font-medium flex items-center gap-1">
+                        💰 Ganha Moedas
+                      </span>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             </div>
