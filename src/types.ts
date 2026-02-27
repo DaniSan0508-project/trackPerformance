@@ -116,10 +116,12 @@ export interface Post {
 
 export interface Feedback {
   id: number;
-  sender_id: number;
+  sender_id?: number;
   recipient_id: number;
   content: string;
   is_anonymous: boolean;
   created_at: string;
   updated_at: string;
+  sender?: User | { anonymous: boolean };
+  recipient?: User;
 }

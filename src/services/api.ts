@@ -1,4 +1,4 @@
-import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User } from '../types';
+import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback } from '../types';
 
 const API_BASE_URL = 'http://localhost:8012/api/v1';
 
@@ -68,6 +68,21 @@ export const api = {
     });
     if (!response.ok) throw new Error('Falha ao enviar feedback');
     return response.json();
+  },
+
+  getFeedbacks: async (token: string, page = 1) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    queryParams.append('include', 'sender,recipient');
+    
+    const response = await fetch(`${API_BASE_URL}/feedbacks?${queryParams.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar feedbacks');
+    return response.json() as Promise<PaginatedResponse<Feedback>>;
   },
 
   getPosts: async (token: string, page = 1, search = '') => {
