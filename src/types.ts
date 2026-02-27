@@ -113,3 +113,13 @@ export interface Post {
   comments?: Comment[];
   comments_count?: number;
 }
+
+export interface Feedback {
+  id: number;
+  sender_id: number;
+  recipient_id: number;
+  content: string;
+  is_anonymous: boolean;
+  created_at: string;
+  updated_at: string;
+}

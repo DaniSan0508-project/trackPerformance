@@ -1,4 +1,4 @@
-import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post } from '../types';
+import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User } from '../types';
 
 const API_BASE_URL = 'http://localhost:8012/api/v1';
 
@@ -36,6 +36,37 @@ export const api = {
       },
     });
     if (!response.ok) throw new Error('Falha ao carregar usuário');
+    return response.json();
+  },
+
+  getUsers: async (token: string, page = 1, search = '') => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    if (search) {
+      queryParams.append('filter[name]', search);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar usuários');
+    return response.json() as Promise<PaginatedResponse<User>>;
+  },
+
+  sendFeedback: async (token: string, data: { recipient_id: number; content: string; is_anonymous: boolean }) => {
+    const response = await fetch(`${API_BASE_URL}/feedbacks`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Falha ao enviar feedback');
     return response.json();
   },
 
