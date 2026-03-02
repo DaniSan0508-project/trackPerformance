@@ -32,9 +32,16 @@ export interface User {
   name: string;
   email: string;
   tenant_id: number;
-  user_type: string;
-  user_type_id?: number;
+  user_type?: string; // Keep optional if not always present
+  user_type_id: number;
   profile_image_url: string | null;
+  coin_balance?: number;
+  role?: string | null;
+  description?: string | null;
+  external_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  store_id?: number | null;
 }
 
 export interface Tenant {
