@@ -134,3 +134,26 @@ export interface Feedback {
   sender?: User | { anonymous: boolean };
   recipient?: User;
 }
+
+export interface RewardImage {
+  id: number;
+  reward_id: number;
+  image_path: string;
+  is_primary: boolean;
+  display_order: number;
+  image_full_url: string;
+}
+
+export interface Reward {
+  id: number;
+  tenant_id: number;
+  name: string;
+  description: string;
+  price_coins: string | number;
+  stock: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  images: RewardImage[];
+  primary_image?: RewardImage;
+}

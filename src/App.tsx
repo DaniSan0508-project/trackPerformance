@@ -8,6 +8,7 @@ import { StoresPage } from './pages/StoresPage';
 import { PostsPage } from './pages/PostsPage';
 import { FeedbacksPage } from './pages/FeedbacksPage';
 import { TeamPage } from './pages/TeamPage';
+import { RewardsPage } from './pages/RewardsPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -57,6 +58,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <TeamPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/rewards" 
+            element={
+              <ProtectedRoute>
+                <RewardsPage />
               </ProtectedRoute>
             } 
           />

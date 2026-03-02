@@ -1,4 +1,4 @@
-import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback } from '../types';
+import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward } from '../types';
 
 const API_BASE_URL = 'http://localhost:8012/api/v1';
 
@@ -324,5 +324,23 @@ export const api = {
     if (!response.ok) throw new Error('Falha ao excluir grupo');
     if (response.status === 204) return;
     return response.json();
+  },
+
+  getRewards: async (token: string, page = 1, search = '') => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    queryParams.append('include', 'images,primaryImage');
+    if (search) {
+      queryParams.append('filter[name]', search);
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/rewards?${queryParams.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar prêmios');
+    return response.json() as Promise<PaginatedResponse<Reward>>;
   }
 };
