@@ -235,6 +235,12 @@ export const PostsPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Debug Info (Temporary) */}
+        <div className="bg-yellow-50 border border-yellow-200 p-2 rounded text-xs text-yellow-800 mb-4">
+          Current User ID: {currentUser?.id} ({typeof currentUser?.id})<br/>
+          Name: {currentUser?.name}
+        </div>
+
         {/* Filters */}
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-zinc-100 flex flex-col md:flex-row gap-4 items-center">
           <div className="relative flex-1 w-full">
@@ -303,6 +309,10 @@ export const PostsPage: React.FC = () => {
                       
                       {activeMenuPostId === post.id && (
                         <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-zinc-100 py-1 z-10 overflow-hidden">
+                          <div className="px-2 py-1 text-[10px] text-zinc-400 border-b border-zinc-100">
+                            Post User: {post.user_id} ({typeof post.user_id})<br/>
+                            You: {currentUser?.id} ({typeof currentUser?.id})
+                          </div>
                           {(String(post.user_id) === String(currentUser?.id) || String(post.user?.id) === String(currentUser?.id)) ? (
                             <>
                               <button 
