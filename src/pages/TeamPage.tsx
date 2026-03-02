@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { User as UserType } from '../types';
+import { User as UserType, Store } from '../types';
 import { api } from '../services/api';
 
 // Utility for debouncing
@@ -21,8 +21,9 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export const TeamPage: React.FC = () => {
-  const { token } = useAuth();
+  const { token, user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserType[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,6 +35,23 @@ export const TeamPage: React.FC = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [fromItem, setFromItem] = useState(0);
   const [toItem, setToItem] = useState(0);
+
+  // Modal & Form state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserType | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    user_type_id: 2,
+    store_id: '' as number | '',
+    photo: null as File | null
+  });
+
+  const isAdmin = currentUser?.user_type_id === 1;
 
   const fetchUsers = useCallback(async (page = 1, search = '') => {
     if (!token) return;
@@ -55,6 +73,19 @@ export const TeamPage: React.FC = () => {
     }
   }, [token]);
 
+  const fetchStores = useCallback(async () => {
+    if (!token) return;
+    try {
+      // Fetch all stores (or enough to populate dropdown)
+      const data = await api.getStores(token, 1, ''); 
+      // Ideally fetch all, but pagination might limit. For now, fetching first page.
+      // If needed, we can implement a "load more" or fetch all logic.
+      setStores(data.data);
+    } catch (error) {
+      console.error('Error fetching stores', error);
+    }
+  }, [token]);
+
   useEffect(() => {
     fetchUsers(currentPage, debouncedSearchTerm);
   }, [fetchUsers, currentPage, debouncedSearchTerm]);
@@ -62,6 +93,101 @@ export const TeamPage: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearchTerm]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchStores();
+    }
+  }, [isAdmin, fetchStores]);
+
+  const handleOpenModal = (user?: UserType) => {
+    if (user) {
+      setEditingUser(user);
+      setFormData({
+        name: user.name,
+        email: user.email,
+        password: '', // Password not populated on edit
+        user_type_id: user.user_type_id,
+        store_id: user.store_id || '',
+        photo: null
+      });
+    } else {
+      setEditingUser(null);
+      setFormData({
+        name: '',
+        email: '',
+        password: '',
+        user_type_id: 2,
+        store_id: '',
+        photo: null
+      });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingUser(null);
+    setFormData({
+      name: '',
+      email: '',
+      password: '',
+      user_type_id: 2,
+      store_id: '',
+      photo: null
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    setSaving(true);
+    try {
+      const data = new FormData();
+      data.append('name', formData.name);
+      data.append('email', formData.email);
+      if (formData.password) {
+        data.append('password', formData.password);
+      }
+      data.append('user_type_id', String(formData.user_type_id));
+      if (formData.store_id) {
+        data.append('store_id', String(formData.store_id));
+      }
+      if (formData.photo) {
+        data.append('photo', formData.photo);
+      }
+
+      if (editingUser) {
+        await api.updateUser(token, editingUser.id, data);
+        alert('Usuário atualizado com sucesso!');
+      } else {
+        await api.createUser(token, data);
+        alert('Usuário criado com sucesso!');
+      }
+
+      await fetchUsers(currentPage, searchTerm);
+      handleCloseModal();
+    } catch (error: any) {
+      console.error('Error saving user:', error);
+      alert(error.message || 'Erro ao salvar usuário.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (user: UserType) => {
+    if (!token || !window.confirm(`Tem certeza que deseja excluir o usuário ${user.name}?`)) return;
+    setDeletingId(user.id);
+    try {
+      await api.deleteUser(token, user.id);
+      await fetchUsers(currentPage, searchTerm);
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      alert(error.message || 'Erro ao excluir usuário.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const getUserTypeLabel = (typeId: number) => {
     return typeId === 1 ? 'Administrador' : 'Usuário';
@@ -89,6 +215,15 @@ export const TeamPage: React.FC = () => {
             >
               <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
             </button>
+            {isAdmin && (
+              <button 
+                onClick={() => handleOpenModal()}
+                className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
+              >
+                <Plus size={18} />
+                Novo Usuário
+              </button>
+            )}
           </div>
         </div>
 
@@ -144,6 +279,24 @@ export const TeamPage: React.FC = () => {
                         </span>
                       </div>
                     </div>
+                    {isAdmin && (
+                      <div className="flex gap-1">
+                        <button 
+                          onClick={() => handleOpenModal(user)}
+                          className="p-1.5 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                          title="Editar"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(user)}
+                          className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Excluir"
+                        >
+                          {deletingId === user.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-3 flex-1">
@@ -212,6 +365,152 @@ export const TeamPage: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* Create/Edit User Modal */}
+        <AnimatePresence>
+          {isModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]"
+              >
+                <div className="p-6 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
+                  <h2 className="text-xl font-bold text-zinc-900">
+                    {editingUser ? 'Editar Usuário' : 'Novo Usuário'}
+                  </h2>
+                  <button onClick={handleCloseModal} className="text-zinc-400 hover:text-zinc-600 transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+                
+                <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+                  <div className="flex justify-center mb-6">
+                    <div className="relative group cursor-pointer">
+                      <div className="w-24 h-24 rounded-full bg-zinc-100 flex items-center justify-center overflow-hidden border-2 border-zinc-200">
+                        {formData.photo ? (
+                          <img 
+                            src={URL.createObjectURL(formData.photo)} 
+                            alt="Preview" 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : editingUser?.profile_image_url ? (
+                          <img 
+                            src={editingUser.profile_image_url} 
+                            alt={editingUser.name} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User size={40} className="text-zinc-400" />
+                        )}
+                      </div>
+                      <label htmlFor="photo-upload" className="absolute bottom-0 right-0 bg-emerald-600 text-white p-1.5 rounded-full shadow-md cursor-pointer hover:bg-emerald-700 transition-colors">
+                        <Camera size={16} />
+                        <input 
+                          id="photo-upload" 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setFormData({ ...formData, photo: e.target.files[0] });
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">Nome *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                      placeholder="Nome completo"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">Email *</label>
+                    <input
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                      placeholder="email@exemplo.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">
+                      {editingUser ? 'Senha (deixe em branco para manter)' : 'Senha *'}
+                    </label>
+                    <input
+                      type="password"
+                      required={!editingUser}
+                      minLength={6}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                      placeholder="******"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-1">Tipo de Usuário</label>
+                      <select
+                        value={formData.user_type_id}
+                        onChange={(e) => setFormData({ ...formData, user_type_id: Number(e.target.value) })}
+                        className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+                      >
+                        <option value={2}>Usuário</option>
+                        <option value={1}>Administrador</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-1">Loja</label>
+                      <select
+                        value={formData.store_id}
+                        onChange={(e) => setFormData({ ...formData, store_id: e.target.value ? Number(e.target.value) : '' })}
+                        className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+                      >
+                        <option value="">Selecione uma loja</option>
+                        {stores.map(store => (
+                          <option key={store.id} value={store.id}>{store.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={handleCloseModal}
+                      className="flex-1 px-4 py-2.5 border border-zinc-300 text-zinc-700 font-medium rounded-xl hover:bg-zinc-50 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="flex-1 px-4 py-2.5 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+                    >
+                      {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+                      {saving ? 'Salvando...' : 'Salvar'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </Layout>
   );

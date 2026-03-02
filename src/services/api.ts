@@ -143,6 +143,45 @@ export const api = {
     return response.json();
   },
 
+  createUser: async (token: string, formData: FormData) => {
+    const response = await fetch(`${API_BASE_URL}/users`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Falha ao criar usuário');
+    return response.json();
+  },
+
+  updateUser: async (token: string, id: number, formData: FormData) => {
+    const response = await fetch(`${API_BASE_URL}/users/update/${id}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Falha ao atualizar usuário');
+    return response.json();
+  },
+
+  deleteUser: async (token: string, id: number) => {
+    const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao excluir usuário');
+    if (response.status === 204) return;
+    return response.json();
+  },
+
   getStores: async (token: string, page = 1, search = '') => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
