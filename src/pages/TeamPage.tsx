@@ -279,8 +279,8 @@ export const TeamPage: React.FC = () => {
                         </span>
                       </div>
                     </div>
-                    {isAdmin && (
-                      <div className="flex gap-1">
+                    <div className="flex gap-1">
+                      {(isAdmin || currentUser?.id === user.id) && (
                         <button 
                           onClick={() => handleOpenModal(user)}
                           className="p-1.5 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
@@ -288,6 +288,8 @@ export const TeamPage: React.FC = () => {
                         >
                           <Edit2 size={16} />
                         </button>
+                      )}
+                      {isAdmin && (
                         <button 
                           onClick={() => handleDelete(user)}
                           className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -295,8 +297,8 @@ export const TeamPage: React.FC = () => {
                         >
                           {deletingId === user.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-3 flex-1">
@@ -467,7 +469,8 @@ export const TeamPage: React.FC = () => {
                       <select
                         value={formData.user_type_id}
                         onChange={(e) => setFormData({ ...formData, user_type_id: Number(e.target.value) })}
-                        className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+                        disabled={!isAdmin}
+                        className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white disabled:bg-zinc-100 disabled:text-zinc-500"
                       >
                         <option value={2}>Usuário</option>
                         <option value={1}>Administrador</option>
@@ -479,7 +482,8 @@ export const TeamPage: React.FC = () => {
                       <select
                         value={formData.store_id}
                         onChange={(e) => setFormData({ ...formData, store_id: e.target.value ? Number(e.target.value) : '' })}
-                        className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+                        disabled={!isAdmin}
+                        className="w-full p-2.5 border border-zinc-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white disabled:bg-zinc-100 disabled:text-zinc-500"
                       >
                         <option value="">Selecione uma loja</option>
                         {stores.map(store => (
