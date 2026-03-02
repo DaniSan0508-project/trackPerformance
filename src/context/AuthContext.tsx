@@ -120,6 +120,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearInterval(intervalId);
   }, [token, refreshAccessToken]);
 
+  // Refresh user data to ensure we have latest fields (like user_type_id)
+  useEffect(() => {
+    const refreshUserData = async () => {
+      if (!token || !user?.id) return;
+      
+      try {
+        const userData = await api.getUser(token, user.id);
+        // Handle if response is wrapped in { data: ... } or direct
+        const freshUser = userData.data || userData;
+        
+        // Only update if there are changes to avoid loops, or just update
+        // Here we specifically care about user_type_id
+        if (JSON.stringify(freshUser) !== JSON.stringify(user)) {
+           setUser(freshUser);
+           
+           // Update storage
+           const updateStorage = (storage: Storage) => {
+             const stored = storage.getItem('track_performance_auth');
+             if (stored) {
+               const parsed = JSON.parse(stored);
+               parsed.user = freshUser;
+               storage.setItem('track_performance_auth', JSON.stringify(parsed));
+             }
+           };
+           
+           if (localStorage.getItem('track_performance_auth')) {
+             updateStorage(localStorage);
+           }
+           if (sessionStorage.getItem('track_performance_auth')) {
+             updateStorage(sessionStorage);
+           }
+        }
+      } catch (err) {
+        console.error('Failed to refresh user data:', err);
+      }
+    };
+
+    refreshUserData();
+  }, [token, user?.id]);
+
   return (
     <AuthContext.Provider value={{ user, tenant, token, login, logout, isAuthenticated: !!token, refreshAccessToken }}>
       {!loading && children}
