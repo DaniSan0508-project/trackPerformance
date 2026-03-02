@@ -102,6 +102,7 @@ export interface Post {
   id: number;
   user_id: number;
   survey_id: number | null;
+  title: string;
   content: string;
   image_url: string | null;
   earns_coins: boolean;

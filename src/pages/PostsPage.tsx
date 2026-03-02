@@ -59,6 +59,7 @@ export const PostsPage: React.FC = () => {
   
   // Create Post state
   const [createPostModal, setCreatePostModal] = useState(false);
+  const [newPostTitle, setNewPostTitle] = useState('');
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostImage, setNewPostImage] = useState<File | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -66,6 +67,7 @@ export const PostsPage: React.FC = () => {
   // Edit/Delete state
   const [activeMenuPostId, setActiveMenuPostId] = useState<number | null>(null);
   const [editPostModal, setEditPostModal] = useState<Post | null>(null);
+  const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
@@ -166,6 +168,7 @@ export const PostsPage: React.FC = () => {
     setIsCreating(true);
     try {
       const formData = new FormData();
+      formData.append('title', newPostTitle);
       formData.append('content', newPostContent);
       if (newPostImage) {
         formData.append('image', newPostImage);
@@ -176,6 +179,7 @@ export const PostsPage: React.FC = () => {
       
       // Reset and close
       setCreatePostModal(false);
+      setNewPostTitle('');
       setNewPostContent('');
       setNewPostImage(null);
       
@@ -212,9 +216,10 @@ export const PostsPage: React.FC = () => {
 
     setIsUpdating(true);
     try {
-      await api.updatePost(token, editPostModal.id, { content: editContent });
-      setPosts(prev => prev.map(p => p.id === editPostModal.id ? { ...p, content: editContent } : p));
+      await api.updatePost(token, editPostModal.id, { title: editTitle, content: editContent });
+      setPosts(prev => prev.map(p => p.id === editPostModal.id ? { ...p, title: editTitle, content: editContent } : p));
       setEditPostModal(null);
+      setEditTitle('');
       setEditContent('');
       alert('Post atualizado com sucesso!');
     } catch (err: any) {
@@ -227,6 +232,7 @@ export const PostsPage: React.FC = () => {
 
   const openEditModal = (post: Post) => {
     setEditPostModal(post);
+    setEditTitle(post.title || '');
     setEditContent(post.content);
     setActiveMenuPostId(null);
   };
@@ -264,10 +270,10 @@ export const PostsPage: React.FC = () => {
           <div className="flex gap-2">
             <button 
               onClick={() => setCreatePostModal(true)}
-              className="bg-emerald-600 text-white p-2 rounded-xl hover:bg-emerald-700 transition-all flex items-center gap-2 px-4 shadow-sm"
+              className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
             >
-              <Plus size={20} />
-              <span className="hidden md:inline font-medium">Novo Post</span>
+              <Plus size={18} />
+              Novo Post
             </button>
             <button 
               onClick={() => fetchPosts(currentPage, searchTerm)}
@@ -412,6 +418,11 @@ export const PostsPage: React.FC = () => {
                         onClick={() => setContentModalPost(post)}
                         className="text-left w-full group block"
                       >
+                        {post.title && (
+                          <h4 className="text-base font-bold text-zinc-900 mb-1 group-hover:text-emerald-700 transition-colors">
+                            {post.title}
+                          </h4>
+                        )}
                         <div className="text-sm text-zinc-900 line-clamp-3 group-hover:text-zinc-700 transition-colors">
                           {post.content}
                         </div>
@@ -650,6 +661,11 @@ export const PostsPage: React.FC = () => {
                   </button>
                 </div>
                 <div className="p-6 overflow-y-auto">
+                  {contentModalPost.title && (
+                    <h3 className="text-xl font-bold text-zinc-900 mb-4">
+                      {contentModalPost.title}
+                    </h3>
+                  )}
                   <p className="text-zinc-900 whitespace-pre-wrap leading-relaxed text-sm md:text-base">
                     {contentModalPost.content}
                   </p>
@@ -684,6 +700,20 @@ export const PostsPage: React.FC = () => {
                 </div>
                 
                 <form onSubmit={handleUpdatePost} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">
+                      Título *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="w-full p-3 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      placeholder="Título do post"
+                    />
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 mb-1">
                       Conteúdo
@@ -737,6 +767,20 @@ export const PostsPage: React.FC = () => {
                 </div>
                 
                 <form onSubmit={handleCreatePost} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">
+                      Título *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newPostTitle}
+                      onChange={(e) => setNewPostTitle(e.target.value)}
+                      className="w-full p-3 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      placeholder="Título do post"
+                    />
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 mb-1">
                       Conteúdo
