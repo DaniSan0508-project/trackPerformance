@@ -105,7 +105,7 @@ export const api = {
 
   updatePost: async (token: string, id: number, data: Partial<Post>) => {
     const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
-      method: 'PUT',
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',

@@ -235,13 +235,6 @@ export const PostsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Debug Info (Temporary) */}
-        <div className="bg-yellow-50 border border-yellow-200 p-2 rounded text-xs text-yellow-800 mb-4">
-          Current User ID: {currentUser?.id} ({typeof currentUser?.id})<br/>
-          User Type ID: {currentUser?.user_type_id} ({typeof currentUser?.user_type_id})<br/>
-          Is Admin? {currentUser?.user_type_id === 1 ? 'Yes' : 'No'}
-        </div>
-
         {/* Filters */}
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-zinc-100 flex flex-col md:flex-row gap-4 items-center">
           <div className="relative flex-1 w-full">
