@@ -103,6 +103,33 @@ export const api = {
     return response.json() as Promise<PaginatedResponse<Post>>;
   },
 
+  updatePost: async (token: string, id: number, data: Partial<Post>) => {
+    const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Falha ao atualizar post');
+    return response.json();
+  },
+
+  deletePost: async (token: string, id: number) => {
+    const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao excluir post');
+    if (response.status === 204) return;
+    return response.json();
+  },
+
   getStores: async (token: string, page = 1, search = '') => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());

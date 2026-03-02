@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Post, Like, Comment, User as UserType } from '../types';
@@ -37,7 +37,7 @@ const UserListItem: React.FC<{ user?: UserType | { name: string; profile_image_u
 );
 
 export const PostsPage: React.FC = () => {
-  const { token } = useAuth();
+  const { token, user: currentUser } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +56,13 @@ export const PostsPage: React.FC = () => {
   const [commentsModalPost, setCommentsModalPost] = useState<Post | null>(null);
   const [shareModalPost, setShareModalPost] = useState<Post | null>(null);
   const [contentModalPost, setContentModalPost] = useState<Post | null>(null);
+  
+  // Edit/Delete state
+  const [activeMenuPostId, setActiveMenuPostId] = useState<number | null>(null);
+  const [editPostModal, setEditPostModal] = useState<Post | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
   
   // Users cache
   const [usersCache, setUsersCache] = useState<Record<number, UserType>>({});
@@ -144,6 +151,47 @@ export const PostsPage: React.FC = () => {
     navigator.clipboard.writeText(text);
     alert('Link copiado para a área de transferência!');
     setShareModalPost(null);
+  };
+
+  const handleDeletePost = async (post: Post) => {
+    if (!token || !window.confirm('Tem certeza que deseja excluir este post?')) return;
+    
+    setIsDeleting(post.id);
+    try {
+      await api.deletePost(token, post.id);
+      setPosts(prev => prev.filter(p => p.id !== post.id));
+      setActiveMenuPostId(null);
+    } catch (err: any) {
+      console.error('Error deleting post:', err);
+      alert(err.message || 'Erro ao excluir post');
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const handleUpdatePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !editPostModal) return;
+
+    setIsUpdating(true);
+    try {
+      await api.updatePost(token, editPostModal.id, { content: editContent });
+      setPosts(prev => prev.map(p => p.id === editPostModal.id ? { ...p, content: editContent } : p));
+      setEditPostModal(null);
+      setEditContent('');
+      alert('Post atualizado com sucesso!');
+    } catch (err: any) {
+      console.error('Error updating post:', err);
+      alert(err.message || 'Erro ao atualizar post');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const openEditModal = (post: Post) => {
+    setEditPostModal(post);
+    setEditContent(post.content);
+    setActiveMenuPostId(null);
   };
 
   useEffect(() => {
@@ -245,9 +293,41 @@ export const PostsPage: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                    <button className="text-zinc-400 hover:text-zinc-600 flex-shrink-0">
-                      <MoreHorizontal size={20} />
-                    </button>
+                    <div className="relative">
+                      <button 
+                        onClick={() => setActiveMenuPostId(activeMenuPostId === post.id ? null : post.id)}
+                        className="text-zinc-400 hover:text-zinc-600 flex-shrink-0 p-1 rounded-full hover:bg-zinc-100 transition-colors"
+                      >
+                        <MoreHorizontal size={20} />
+                      </button>
+                      
+                      {activeMenuPostId === post.id && (
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-zinc-100 py-1 z-10 overflow-hidden">
+                          {post.user?.id === currentUser?.id ? (
+                            <>
+                              <button 
+                                onClick={() => openEditModal(post)}
+                                className="w-full text-left px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 flex items-center gap-2"
+                              >
+                                <Edit size={16} />
+                                Editar
+                              </button>
+                              <button 
+                                onClick={() => handleDeletePost(post)}
+                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                              >
+                                {isDeleting === post.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                Excluir
+                              </button>
+                            </>
+                          ) : (
+                            <div className="px-4 py-2 text-xs text-zinc-400 text-center">
+                              Sem ações disponíveis
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Image */}
@@ -533,6 +613,59 @@ export const PostsPage: React.FC = () => {
                     )}
                   </div>
                 </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+        {/* Edit Post Modal */}
+        <AnimatePresence>
+          {editPostModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
+              >
+                <div className="p-4 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
+                  <h2 className="text-lg font-bold text-zinc-900">Editar Post</h2>
+                  <button onClick={() => setEditPostModal(null)} className="text-zinc-400 hover:text-zinc-600 transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+                
+                <form onSubmit={handleUpdatePost} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">
+                      Conteúdo
+                    </label>
+                    <textarea
+                      required
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      className="w-full p-3 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[150px] resize-none"
+                      placeholder="O que você está pensando?"
+                    />
+                  </div>
+
+                  <div className="pt-2 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditPostModal(null)}
+                      className="flex-1 px-4 py-2 border border-zinc-200 text-zinc-700 rounded-xl hover:bg-zinc-50 transition-colors font-medium"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isUpdating || !editContent.trim()}
+                      className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <Edit size={18} />}
+                      Salvar Alterações
+                    </button>
+                  </div>
+                </form>
               </motion.div>
             </div>
           )}
