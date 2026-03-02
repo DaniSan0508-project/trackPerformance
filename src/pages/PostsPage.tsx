@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2 } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Post, Like, Comment, User as UserType } from '../types';
@@ -57,6 +57,12 @@ export const PostsPage: React.FC = () => {
   const [shareModalPost, setShareModalPost] = useState<Post | null>(null);
   const [contentModalPost, setContentModalPost] = useState<Post | null>(null);
   
+  // Create Post state
+  const [createPostModal, setCreatePostModal] = useState(false);
+  const [newPostContent, setNewPostContent] = useState('');
+  const [newPostImage, setNewPostImage] = useState<File | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+
   // Edit/Delete state
   const [activeMenuPostId, setActiveMenuPostId] = useState<number | null>(null);
   const [editPostModal, setEditPostModal] = useState<Post | null>(null);
@@ -153,6 +159,37 @@ export const PostsPage: React.FC = () => {
     setShareModalPost(null);
   };
 
+  const handleCreatePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+
+    setIsCreating(true);
+    try {
+      const formData = new FormData();
+      formData.append('content', newPostContent);
+      if (newPostImage) {
+        formData.append('image', newPostImage);
+      }
+      formData.append('survey_id', '1');
+
+      await api.createPost(token, formData);
+      
+      // Reset and close
+      setCreatePostModal(false);
+      setNewPostContent('');
+      setNewPostImage(null);
+      
+      // Refresh posts
+      fetchPosts(1, searchTerm);
+      alert('Post criado com sucesso!');
+    } catch (err: any) {
+      console.error('Error creating post:', err);
+      alert(err.message || 'Erro ao criar post');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const handleDeletePost = async (post: Post) => {
     if (!token || !window.confirm('Tem certeza que deseja excluir este post?')) return;
     
@@ -225,6 +262,13 @@ export const PostsPage: React.FC = () => {
             <p className="text-zinc-500">Gerencie e visualize as publicações dos usuários.</p>
           </div>
           <div className="flex gap-2">
+            <button 
+              onClick={() => setCreatePostModal(true)}
+              className="bg-emerald-600 text-white p-2 rounded-xl hover:bg-emerald-700 transition-all flex items-center gap-2 px-4 shadow-sm"
+            >
+              <Plus size={20} />
+              <span className="hidden md:inline font-medium">Novo Post</span>
+            </button>
             <button 
               onClick={() => fetchPosts(currentPage, searchTerm)}
               className="bg-white border border-zinc-200 p-2 rounded-xl text-zinc-600 hover:bg-zinc-50 transition-all"
@@ -668,6 +712,117 @@ export const PostsPage: React.FC = () => {
                     >
                       {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <Edit size={18} />}
                       Salvar Alterações
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+        {/* Create Post Modal */}
+        <AnimatePresence>
+          {createPostModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
+              >
+                <div className="p-4 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
+                  <h2 className="text-lg font-bold text-zinc-900">Criar Novo Post</h2>
+                  <button onClick={() => setCreatePostModal(false)} className="text-zinc-400 hover:text-zinc-600 transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+                
+                <form onSubmit={handleCreatePost} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">
+                      Conteúdo
+                    </label>
+                    <textarea
+                      required
+                      value={newPostContent}
+                      onChange={(e) => setNewPostContent(e.target.value)}
+                      className="w-full p-3 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[150px] resize-none"
+                      placeholder="O que você está pensando?"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">
+                      Imagem (Opcional)
+                    </label>
+                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-zinc-300 border-dashed rounded-xl hover:bg-zinc-50 transition-colors cursor-pointer relative">
+                      <div className="space-y-1 text-center">
+                        {newPostImage ? (
+                          <div className="relative">
+                            <img 
+                              src={URL.createObjectURL(newPostImage)} 
+                              alt="Preview" 
+                              className="mx-auto h-48 object-contain rounded-lg"
+                            />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                setNewPostImage(null);
+                              }}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                            >
+                              <X size={16} />
+                            </button>
+                            <p className="text-xs text-zinc-500 mt-2">{newPostImage.name}</p>
+                          </div>
+                        ) : (
+                          <>
+                            <ImageIcon className="mx-auto h-12 w-12 text-zinc-400" />
+                            <div className="flex text-sm text-zinc-600 justify-center">
+                              <label
+                                htmlFor="file-upload"
+                                className="relative cursor-pointer bg-white rounded-md font-medium text-emerald-600 hover:text-emerald-500 focus-within:outline-none"
+                              >
+                                <span>Upload um arquivo</span>
+                                <input 
+                                  id="file-upload" 
+                                  name="file-upload" 
+                                  type="file" 
+                                  className="sr-only" 
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                      setNewPostImage(e.target.files[0]);
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </div>
+                            <p className="text-xs text-zinc-500">
+                              PNG, JPG, GIF até 5MB
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCreatePostModal(false)}
+                      className="flex-1 px-4 py-2 border border-zinc-200 text-zinc-700 rounded-xl hover:bg-zinc-50 transition-colors font-medium"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isCreating || !newPostContent.trim()}
+                      className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isCreating ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+                      Publicar
                     </button>
                   </div>
                 </form>

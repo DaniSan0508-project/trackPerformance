@@ -103,6 +103,19 @@ export const api = {
     return response.json() as Promise<PaginatedResponse<Post>>;
   },
 
+  createPost: async (token: string, formData: FormData) => {
+    const response = await fetch(`${API_BASE_URL}/posts`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Falha ao criar post');
+    return response.json();
+  },
+
   updatePost: async (token: string, id: number, data: Partial<Post>) => {
     const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
       method: 'POST',
