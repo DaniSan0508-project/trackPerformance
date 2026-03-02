@@ -303,7 +303,7 @@ export const PostsPage: React.FC = () => {
                       
                       {activeMenuPostId === post.id && (
                         <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-zinc-100 py-1 z-10 overflow-hidden">
-                          {post.user?.id === currentUser?.id ? (
+                          {post.user_id === currentUser?.id ? (
                             <>
                               <button 
                                 onClick={() => openEditModal(post)}
