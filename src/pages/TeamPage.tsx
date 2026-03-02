@@ -69,8 +69,8 @@ export const TeamPage: React.FC = () => {
 
   const getUserTypeColor = (typeId: number) => {
     return typeId === 1 
-      ? 'bg-purple-100 text-purple-700 border-purple-200' 
-      : 'bg-blue-100 text-blue-700 border-blue-200';
+      ? 'bg-emerald-100 text-emerald-800 border-emerald-200' 
+      : 'bg-teal-50 text-teal-700 border-teal-200';
   };
 
   return (
