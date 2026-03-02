@@ -235,6 +235,13 @@ export const PostsPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Debug Info (Temporary) */}
+        <div className="bg-yellow-50 border border-yellow-200 p-2 rounded text-xs text-yellow-800 mb-4">
+          Current User ID: {currentUser?.id} ({typeof currentUser?.id})<br/>
+          User Type ID: {currentUser?.user_type_id} ({typeof currentUser?.user_type_id})<br/>
+          Is Admin? {currentUser?.user_type_id === 1 ? 'Yes' : 'No'}
+        </div>
+
         {/* Filters */}
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-zinc-100 flex flex-col md:flex-row gap-4 items-center">
           <div className="relative flex-1 w-full">
@@ -307,7 +314,10 @@ export const PostsPage: React.FC = () => {
                             const isOwner = String(post.user_id) === String(currentUser?.id) || String(post.user?.id) === String(currentUser?.id);
                             const isAdmin = currentUser?.user_type_id === 1;
                             
-                            if (!isOwner && !isAdmin) {
+                            const canEdit = isAdmin || isOwner;
+                            const canDelete = isAdmin || isOwner;
+
+                            if (!canEdit && !canDelete) {
                               return (
                                 <div className="px-4 py-2 text-xs text-zinc-400 text-center">
                                   Sem ações disponíveis
@@ -317,7 +327,7 @@ export const PostsPage: React.FC = () => {
 
                             return (
                               <>
-                                {isOwner && (
+                                {canEdit && (
                                   <button 
                                     onClick={() => openEditModal(post)}
                                     className="w-full text-left px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 flex items-center gap-2"
@@ -326,7 +336,7 @@ export const PostsPage: React.FC = () => {
                                     Editar
                                   </button>
                                 )}
-                                {isAdmin && (
+                                {canDelete && (
                                   <button 
                                     onClick={() => handleDeletePost(post)}
                                     className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"

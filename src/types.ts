@@ -33,6 +33,7 @@ export interface User {
   email: string;
   tenant_id: number;
   user_type: string;
+  user_type_id?: number;
   profile_image_url: string | null;
 }
 
