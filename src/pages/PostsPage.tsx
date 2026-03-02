@@ -358,39 +358,17 @@ export const PostsPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Actions */}
-                  <div className="p-3 pb-2 flex-1 flex flex-col">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-4">
-                        <button 
-                          onClick={() => handleShare(post)}
-                          className="text-zinc-800 hover:text-emerald-600 transition-colors p-1"
-                          title="Compartilhar"
-                        >
-                          <Share2 size={24} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Likes Count */}
-                    <div className="mb-2">
-                      <button 
-                        onClick={() => setLikesModalPost(post)}
-                        className="text-sm font-semibold text-zinc-900 hover:text-zinc-600 transition-colors"
-                      >
-                        {post.likes_count || 0} curtidas
-                      </button>
-                    </div>
-
+                  {/* Actions & Content */}
+                  <div className="p-3 pb-3 flex-1 flex flex-col">
+                    
                     {/* Content */}
-                    <div className="space-y-1 mb-2">
+                    <div className="space-y-1 mb-3">
                       <button 
                         type="button"
                         onClick={() => setContentModalPost(post)}
                         className="text-left w-full group block"
                       >
                         <div className="text-sm text-zinc-900 line-clamp-3 group-hover:text-zinc-700 transition-colors">
-                          <span className="font-semibold mr-2">{post.user?.name}</span>
                           {post.content}
                         </div>
                         {post.content.length > 150 && (
@@ -399,15 +377,26 @@ export const PostsPage: React.FC = () => {
                       </button>
                     </div>
 
-                    {/* Comments Count */}
-                    {(post.comments_count || 0) > 0 && (
+                    {/* Actions (Likes & Comments) */}
+                    <div className="flex items-center gap-4 mt-auto pt-2 border-t border-zinc-50">
+                      <button 
+                        onClick={() => setLikesModalPost(post)}
+                        className="flex items-center gap-1.5 text-zinc-500 hover:text-red-500 transition-colors group"
+                        title="Curtidas"
+                      >
+                        <Heart size={18} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-xs font-medium">{post.likes_count || 0}</span>
+                      </button>
+                      
                       <button 
                         onClick={() => setCommentsModalPost(post)}
-                        className="text-sm text-zinc-500 hover:text-zinc-800 transition-colors text-left"
+                        className="flex items-center gap-1.5 text-zinc-500 hover:text-emerald-600 transition-colors group"
+                        title="Comentários"
                       >
-                        Ver todos os {post.comments_count} comentários
+                        <MessageSquare size={18} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-xs font-medium">{post.comments_count || 0}</span>
                       </button>
-                    )}
+                    </div>
                   </div>
                 </motion.div>
               ))}
