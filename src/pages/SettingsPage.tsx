@@ -23,17 +23,17 @@ function useDebounce<T>(value: T, delay: number): T {
 // Icon mapping helper
 const getIconForConfig = (key: string) => {
   const lowerKey = key.toLowerCase();
-  if (lowerKey.includes('email')) return <Mail className="w-6 h-6 text-zinc-600" />;
-  if (lowerKey.includes('phone') || lowerKey.includes('celular') || lowerKey.includes('whatsapp')) return <Phone className="w-6 h-6 text-zinc-600" />;
-  if (lowerKey.includes('date') || lowerKey.includes('time')) return <Calendar className="w-6 h-6 text-zinc-600" />;
-  if (lowerKey.includes('url') || lowerKey.includes('site') || lowerKey.includes('domain')) return <Globe className="w-6 h-6 text-zinc-600" />;
-  if (lowerKey.includes('notification') || lowerKey.includes('alert')) return <Bell className="w-6 h-6 text-zinc-600" />;
-  if (lowerKey.includes('payment') || lowerKey.includes('card') || lowerKey.includes('pagamento')) return <CreditCard className="w-6 h-6 text-zinc-600" />;
-  if (lowerKey.includes('stock') || lowerKey.includes('estoque')) return <Box className="w-6 h-6 text-zinc-600" />;
-  if (lowerKey.includes('api') || lowerKey.includes('token') || lowerKey.includes('key')) return <LinkIcon className="w-6 h-6 text-zinc-600" />;
-  if (lowerKey.includes('security') || lowerKey.includes('auth') || lowerKey.includes('password')) return <Shield className="w-6 h-6 text-zinc-600" />;
+  if (lowerKey.includes('email')) return <Mail className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
+  if (lowerKey.includes('phone') || lowerKey.includes('celular') || lowerKey.includes('whatsapp')) return <Phone className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
+  if (lowerKey.includes('date') || lowerKey.includes('time')) return <Calendar className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
+  if (lowerKey.includes('url') || lowerKey.includes('site') || lowerKey.includes('domain')) return <Globe className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
+  if (lowerKey.includes('notification') || lowerKey.includes('alert')) return <Bell className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
+  if (lowerKey.includes('payment') || lowerKey.includes('card') || lowerKey.includes('pagamento')) return <CreditCard className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
+  if (lowerKey.includes('stock') || lowerKey.includes('estoque')) return <Box className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
+  if (lowerKey.includes('api') || lowerKey.includes('token') || lowerKey.includes('key')) return <LinkIcon className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
+  if (lowerKey.includes('security') || lowerKey.includes('auth') || lowerKey.includes('password')) return <Shield className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
   
-  return <Settings className="w-6 h-6 text-zinc-600" />;
+  return <Settings className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
 };
 
 const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConfig, newValue: string) => Promise<void> }> = ({ config, onUpdate }) => {
@@ -87,16 +87,16 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100 hover:shadow-md transition-shadow"
+      className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-all duration-200"
     >
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start gap-4 flex-1">
-          <div className="bg-zinc-100 p-3 rounded-xl">
+          <div className="bg-zinc-100 dark:bg-zinc-800 p-3 rounded-xl transition-colors duration-200">
             {getIconForConfig(config.config_key)}
           </div>
           <div className="flex-1">
-            <h3 className="font-bold text-lg text-zinc-900">{formatKey(config.config_key)}</h3>
-            <p className="text-sm text-zinc-500 font-mono mt-1">{config.config_key}</p>
+            <h3 className="font-bold text-lg text-zinc-900 dark:text-zinc-100">{formatKey(config.config_key)}</h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 font-mono mt-1">{config.config_key}</p>
           </div>
         </div>
 
@@ -108,8 +108,8 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
                   onClick={() => setValue(value === 'true' ? 'false' : 'true')}
                   className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
                     value === 'true' 
-                      ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' 
-                      : 'bg-red-100 text-red-700 hover:bg-red-200'
+                      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50' 
+                      : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
                   }`}
                 >
                   {value === 'true' ? 'ATIVO' : 'INATIVO'}
@@ -119,7 +119,7 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
                   type="text"
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
-                  className="flex-1 md:w-64 p-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-right"
+                  className="flex-1 md:w-64 p-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-right transition-colors"
                   autoFocus
                 />
               )}
@@ -137,7 +137,7 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
                   <button 
                     onClick={handleCancel}
                     disabled={updating}
-                    className="p-2 bg-zinc-200 text-zinc-600 rounded-lg hover:bg-zinc-300 disabled:opacity-50 transition-colors"
+                    className="p-2 bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-lg hover:bg-zinc-300 dark:hover:bg-zinc-600 disabled:opacity-50 transition-colors"
                     title="Cancelar"
                   >
                     <X size={18} />
@@ -150,12 +150,12 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
               className="flex flex-col md:items-end cursor-pointer group"
               onClick={() => setIsEditing(true)}
             >
-              <div className="inline-block bg-zinc-50 px-4 py-2 rounded-lg border border-zinc-200 max-w-full overflow-hidden text-ellipsis group-hover:border-emerald-300 group-hover:bg-emerald-50 transition-colors">
-                <span className="font-mono text-sm text-zinc-700 break-all">
+              <div className="inline-block bg-zinc-50 dark:bg-zinc-800 px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 max-w-full overflow-hidden text-ellipsis group-hover:border-emerald-300 dark:group-hover:border-emerald-700 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/20 transition-colors duration-200">
+                <span className="font-mono text-sm text-zinc-700 dark:text-zinc-300 break-all">
                   {formatDisplayValue(config.config_key, config.config_value)}
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 mt-2 group-hover:text-emerald-600 transition-colors">
+              <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                 Clique para editar
               </p>
             </div>
@@ -233,13 +233,13 @@ export const SettingsPage: React.FC = () => {
       <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900">Configurações do Sistema</h1>
-            <p className="text-zinc-500">Gerencie as variáveis e parâmetros do seu ambiente.</p>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Configurações do Sistema</h1>
+            <p className="text-zinc-500 dark:text-zinc-400">Gerencie as variáveis e parâmetros do seu ambiente.</p>
           </div>
           <div className="flex gap-2">
             <button 
               onClick={() => fetchConfigs(currentPage, searchTerm)}
-              className="bg-white border border-zinc-200 p-2 rounded-xl text-zinc-600 hover:bg-zinc-50 transition-all"
+              className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all"
               title="Atualizar"
             >
               <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
@@ -248,13 +248,13 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-zinc-100 flex flex-col md:flex-row gap-4 items-center">
+        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 flex flex-col md:flex-row gap-4 items-center transition-colors duration-200">
           <div className="relative flex-1 w-full">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={20} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400 dark:text-zinc-500" size={20} />
             <input 
               type="text" 
               placeholder="Buscar por chave ou valor..." 
-              className="w-full pl-10 pr-4 py-2 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 transition-colors"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -267,7 +267,7 @@ export const SettingsPage: React.FC = () => {
             <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-center">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
             {error}
             <button onClick={() => fetchConfigs(currentPage, searchTerm)} className="block mx-auto mt-2 text-sm font-semibold hover:underline">
               Tentar novamente
@@ -285,35 +285,35 @@ export const SettingsPage: React.FC = () => {
               ))}
 
               {configs.length === 0 && (
-                <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-zinc-200">
-                  <Settings className="w-12 h-12 text-zinc-300 mx-auto mb-3" />
-                  <h3 className="text-lg font-medium text-zinc-900">Nenhuma configuração encontrada</h3>
-                  <p className="text-zinc-500">Tente ajustar seus filtros de busca.</p>
+                <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700 transition-colors duration-200">
+                  <Settings className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+                  <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">Nenhuma configuração encontrada</h3>
+                  <p className="text-zinc-500 dark:text-zinc-400">Tente ajustar seus filtros de busca.</p>
                 </div>
               )}
             </div>
 
             {/* Pagination Controls */}
             {totalItems > 0 && (
-              <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-zinc-100">
-                <div className="text-sm text-zinc-500">
+              <div className="flex items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
+                <div className="text-sm text-zinc-500 dark:text-zinc-400">
                   Mostrando <span className="font-medium">{fromItem}</span> até <span className="font-medium">{toItem}</span> de <span className="font-medium">{totalItems}</span> resultados
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
-                    className="p-2 border border-zinc-200 rounded-lg hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-300 transition-colors"
                   >
                     <ChevronLeft size={20} />
                   </button>
-                  <span className="text-sm font-medium px-2">
+                  <span className="text-sm font-medium px-2 text-zinc-700 dark:text-zinc-300">
                     Página {currentPage} de {totalPages}
                   </span>
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
-                    className="p-2 border border-zinc-200 rounded-lg hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-300 transition-colors"
                   >
                     <ChevronRight size={20} />
                   </button>

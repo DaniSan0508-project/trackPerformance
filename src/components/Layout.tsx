@@ -200,7 +200,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             icon={<Settings size={24} />} 
             active={location.pathname === '/settings'} 
           />
-          <button onClick={handleLogout} className="text-zinc-400 hover:text-red-500 transition-colors">
+          <button onClick={handleLogout} className="text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">
             <LogOut size={24} />
           </button>
         </nav>
