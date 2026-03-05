@@ -74,7 +74,7 @@ export const api = {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
     queryParams.append('include', 'sender,recipient');
-    
+
     const response = await fetch(`${API_BASE_URL}/feedbacks?${queryParams.toString()}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -82,6 +82,24 @@ export const api = {
       },
     });
     if (!response.ok) throw new Error('Falha ao carregar feedbacks');
+    return response.json() as Promise<PaginatedResponse<Feedback>>;
+  },
+
+  getAllTenantFeedbacks: async (token: string, page = 1, searchName = '') => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    queryParams.append('include', 'sender,recipient');
+    if (searchName) {
+      queryParams.append('filter[sender_name]', searchName);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/feedbacks/tenant?${queryParams.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar feedbacks do tenant');
     return response.json() as Promise<PaginatedResponse<Feedback>>;
   },
 

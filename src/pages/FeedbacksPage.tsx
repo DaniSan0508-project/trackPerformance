@@ -24,8 +24,9 @@ function useDebounce<T>(value: T, delay: number): T {
 export const FeedbacksPage: React.FC = () => {
   const { token, user: currentUser } = useAuth();
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'send' | 'received'>('send');
-  
+  const [activeTab, setActiveTab] = useState<'send' | 'received' | 'all'>('send');
+  const isAdmin = currentUser?.user_type_id === 1;
+
   // Send Feedback State
   const [users, setUsers] = useState<UserType[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -47,6 +48,18 @@ export const FeedbacksPage: React.FC = () => {
   const [feedbacksTotalItems, setFeedbacksTotalItems] = useState(0);
   const [feedbacksFromItem, setFeedbacksFromItem] = useState(0);
   const [feedbacksToItem, setFeedbacksToItem] = useState(0);
+
+  // All Tenant Feedbacks State (Admin)
+  const [allFeedbacks, setAllFeedbacks] = useState<Feedback[]>([]);
+  const [loadingAllFeedbacks, setLoadingAllFeedbacks] = useState(false);
+  const [allFeedbacksError, setAllFeedbacksError] = useState<string | null>(null);
+  const [allFeedbacksPage, setAllFeedbacksPage] = useState(1);
+  const [allFeedbacksTotalPages, setAllFeedbacksTotalPages] = useState(1);
+  const [allFeedbacksTotalItems, setAllFeedbacksTotalItems] = useState(0);
+  const [allFeedbacksFromItem, setAllFeedbacksFromItem] = useState(0);
+  const [allFeedbacksToItem, setAllFeedbacksToItem] = useState(0);
+  const [allFeedbacksSearch, setAllFeedbacksSearch] = useState('');
+  const debouncedAllFeedbacksSearch = useDebounce(allFeedbacksSearch, 500);
 
   // Modal state
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
@@ -96,20 +109,44 @@ export const FeedbacksPage: React.FC = () => {
     }
   }, [token]);
 
+  const fetchAllFeedbacks = useCallback(async (page = 1, search = '') => {
+    if (!token) return;
+    setLoadingAllFeedbacks(true);
+    setAllFeedbacksError(null);
+    try {
+      const data = await api.getAllTenantFeedbacks(token, page, search);
+      setAllFeedbacks(data.data);
+      setAllFeedbacksPage(data.current_page);
+      setAllFeedbacksTotalPages(data.last_page);
+      setAllFeedbacksTotalItems(data.total);
+      setAllFeedbacksFromItem(data.from);
+      setAllFeedbacksToItem(data.to);
+    } catch (err: any) {
+      console.error('Error fetching all feedbacks:', err);
+      setAllFeedbacksError(err.message || 'Não foi possível carregar os feedbacks do tenant.');
+    } finally {
+      setLoadingAllFeedbacks(false);
+    }
+  }, [token]);
+
   useEffect(() => {
     if (activeTab === 'send') {
       fetchUsers(usersPage, debouncedSearchTerm);
-    } else {
+    } else if (activeTab === 'received') {
       fetchFeedbacks(feedbacksPage);
+    } else if (activeTab === 'all') {
+      fetchAllFeedbacks(allFeedbacksPage, debouncedAllFeedbacksSearch);
     }
-  }, [fetchUsers, fetchFeedbacks, activeTab, usersPage, feedbacksPage, debouncedSearchTerm]);
+  }, [fetchUsers, fetchFeedbacks, fetchAllFeedbacks, activeTab, usersPage, feedbacksPage, allFeedbacksPage, debouncedSearchTerm, debouncedAllFeedbacksSearch]);
 
   // Reset page when search changes
   useEffect(() => {
     if (activeTab === 'send') {
       setUsersPage(1);
+    } else if (activeTab === 'all') {
+      setAllFeedbacksPage(1);
     }
-  }, [debouncedSearchTerm]);
+  }, [debouncedSearchTerm, debouncedAllFeedbacksSearch]);
 
   const handleSendFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,12 +180,16 @@ export const FeedbacksPage: React.FC = () => {
             <p className="text-zinc-500 dark:text-zinc-400">Gerencie seus feedbacks enviados e recebidos.</p>
           </div>
           <div className="flex gap-2">
-            <button 
-              onClick={() => activeTab === 'send' ? fetchUsers(usersPage, searchTerm) : fetchFeedbacks(feedbacksPage)}
+            <button
+              onClick={() => {
+                if (activeTab === 'send') fetchUsers(usersPage, searchTerm);
+                else if (activeTab === 'received') fetchFeedbacks(feedbacksPage);
+                else if (activeTab === 'all') fetchAllFeedbacks(allFeedbacksPage, allFeedbacksSearch);
+              }}
               className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-2 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all"
               title="Atualizar"
             >
-              <RefreshCw size={20} className={loadingUsers || loadingFeedbacks ? "animate-spin" : ""} />
+              <RefreshCw size={20} className={loadingUsers || loadingFeedbacks || loadingAllFeedbacks ? "animate-spin" : ""} />
             </button>
           </div>
         </div>
@@ -158,8 +199,8 @@ export const FeedbacksPage: React.FC = () => {
           <button
             onClick={() => setActiveTab('send')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'send' 
-                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' 
+              activeTab === 'send'
+                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
                 : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50'
             }`}
           >
@@ -169,14 +210,27 @@ export const FeedbacksPage: React.FC = () => {
           <button
             onClick={() => setActiveTab('received')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'received' 
-                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' 
+              activeTab === 'received'
+                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
                 : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50'
             }`}
           >
             <Inbox size={18} />
             Recebidos
           </button>
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'all'
+                  ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50'
+              }`}
+            >
+              <MessageSquarePlus size={18} />
+              Geral
+            </button>
+          )}
         </div>
 
         {activeTab === 'send' ? (
@@ -185,9 +239,9 @@ export const FeedbacksPage: React.FC = () => {
             <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 flex flex-col md:flex-row gap-4 items-center transition-colors duration-200">
               <div className="relative flex-1 w-full">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={20} />
-                <input 
-                  type="text" 
-                  placeholder="Buscar usuário por nome..." 
+                <input
+                  type="text"
+                  placeholder="Buscar usuário por nome..."
                   className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -211,7 +265,7 @@ export const FeedbacksPage: React.FC = () => {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {users.map((user) => (
-                    <motion.div 
+                    <motion.div
                       key={user.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -226,8 +280,8 @@ export const FeedbacksPage: React.FC = () => {
                       </div>
                       <h3 className="font-semibold text-lg text-zinc-900 dark:text-white mb-1">{user.name}</h3>
                       <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">{user.email}</p>
-                      
-                      <button 
+
+                      <button
                         onClick={() => setSelectedUser(user)}
                         className="mt-auto w-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                       >
@@ -276,7 +330,7 @@ export const FeedbacksPage: React.FC = () => {
               </div>
             )}
           </>
-        ) : (
+        ) : activeTab === 'received' ? (
           <>
             {/* Received Feedbacks List */}
             {loadingFeedbacks && feedbacks.length === 0 ? (
@@ -296,9 +350,9 @@ export const FeedbacksPage: React.FC = () => {
                   {feedbacks.map((feedback) => {
                     const isAnonymous = feedback.is_anonymous;
                     const sender = feedback.sender as UserType | undefined;
-                    
+
                     return (
-                      <motion.div 
+                      <motion.div
                         key={feedback.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -362,6 +416,122 @@ export const FeedbacksPage: React.FC = () => {
                       <button
                         onClick={() => setFeedbacksPage(prev => Math.min(prev + 1, feedbacksTotalPages))}
                         disabled={feedbacksPage === feedbacksTotalPages}
+                        className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* All Tenant Feedbacks (Admin) */}
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 flex flex-col md:flex-row gap-4 items-center transition-colors duration-200">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={20} />
+                <input
+                  type="text"
+                  placeholder="Buscar por nome do remetente..."
+                  className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+                  value={allFeedbacksSearch}
+                  onChange={(e) => setAllFeedbacksSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {loadingAllFeedbacks && allFeedbacks.length === 0 ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+              </div>
+            ) : allFeedbacksError ? (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
+                {allFeedbacksError}
+                <button onClick={() => fetchAllFeedbacks(allFeedbacksPage, allFeedbacksSearch)} className="block mx-auto mt-2 text-sm font-semibold hover:underline">
+                  Tentar novamente
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-4">
+                  {allFeedbacks.map((feedback) => {
+                    const isAnonymous = feedback.is_anonymous;
+                    const sender = feedback.sender as UserType | undefined;
+                    const recipient = feedback.recipient as UserType | undefined;
+
+                    return (
+                      <motion.div
+                        key={feedback.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6 flex gap-4 transition-colors duration-200"
+                      >
+                        <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 dark:text-zinc-500 flex-shrink-0 overflow-hidden border border-zinc-100 dark:border-zinc-700">
+                          {!isAnonymous && sender?.profile_image_url ? (
+                            <img src={sender.profile_image_url} alt={sender.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <User size={24} />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold text-zinc-900 dark:text-white">
+                                  {isAnonymous ? 'Anônimo' : (sender?.name || 'Usuário Desconhecido')}
+                                </h3>
+                                <span className="text-xs text-zinc-500 dark:text-zinc-400">→</span>
+                                <span className="font-medium text-sm text-zinc-700 dark:text-zinc-300">
+                                  {recipient?.name || 'Destinatário Desconhecido'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                {new Date(feedback.created_at).toLocaleDateString()} às {new Date(feedback.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                            {isAnonymous && (
+                              <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs px-2 py-1 rounded-full font-medium">
+                                Anônimo
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap mt-2">{feedback.content}</p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                {allFeedbacks.length === 0 && (
+                  <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors duration-200">
+                    <MessageSquarePlus className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+                    <h3 className="text-lg font-medium text-zinc-900 dark:text-white">Nenhum feedback encontrado</h3>
+                    <p className="text-zinc-500 dark:text-zinc-400">Tente buscar por outro nome ou ajuste os filtros.</p>
+                  </div>
+                )}
+
+                {/* Pagination Controls */}
+                {allFeedbacksTotalItems > 0 && (
+                  <div className="flex items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
+                    <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                      Mostrando <span className="font-medium">{allFeedbacksFromItem}</span> até <span className="font-medium">{allFeedbacksToItem}</span> de <span className="font-medium">{allFeedbacksTotalItems}</span> resultados
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setAllFeedbacksPage(prev => Math.max(prev - 1, 1))}
+                        disabled={allFeedbacksPage === 1}
+                        className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                      <span className="text-sm font-medium px-2 text-zinc-700 dark:text-zinc-300">
+                        Página {allFeedbacksPage} de {allFeedbacksTotalPages}
+                      </span>
+                      <button
+                        onClick={() => setAllFeedbacksPage(prev => Math.min(prev + 1, allFeedbacksTotalPages))}
+                        disabled={allFeedbacksPage === allFeedbacksTotalPages}
                         className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400"
                       >
                         <ChevronRight size={20} />
