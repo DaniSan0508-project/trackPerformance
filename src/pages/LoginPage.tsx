@@ -36,21 +36,31 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-200">
+    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-200 relative overflow-hidden">
+      {/* Background Image & Overlay */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src="https://images.unsplash.com/photo-1553877616-1528023ee29a?q=80&w=2070&auto=format&fit=crop" 
+          alt="Background" 
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-zinc-900/40 dark:bg-zinc-950/70 backdrop-blur-sm"></div>
+      </div>
+
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="sm:mx-auto sm:w-full sm:max-w-md"
+        className="sm:mx-auto sm:w-full sm:max-w-md relative z-10"
       >
         <div className="flex justify-center">
           <div className="bg-emerald-600 p-3 rounded-2xl shadow-lg">
             <LogIn className="w-8 h-8 text-white" />
           </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-white shadow-sm">
           TrackPerformance
         </h2>
-        <p className="mt-2 text-center text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="mt-2 text-center text-sm text-zinc-200">
           Entre na sua conta para gerenciar seu desempenho
         </p>
       </motion.div>
@@ -59,9 +69,9 @@ export const LoginPage: React.FC = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="mt-8 sm:mx-auto sm:w-full sm:max-w-md"
+        className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10"
       >
-        <div className="bg-white dark:bg-zinc-900 py-8 px-4 shadow-xl rounded-2xl sm:px-10 border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
+        <div className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md py-8 px-4 shadow-2xl rounded-2xl sm:px-10 border border-white/20 dark:border-zinc-700/50 transition-colors duration-200">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
