@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Post, Like, Comment, User as UserType } from '../types';
 import { api } from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -38,6 +39,7 @@ const UserListItem: React.FC<{ user?: UserType | { name: string; profile_image_u
 
 export const PostsPage: React.FC = () => {
   const { token, user: currentUser } = useAuth();
+  const { addToast } = useToast();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -157,7 +159,7 @@ export const PostsPage: React.FC = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert('Link copiado para a área de transferência!');
+    addToast('success', 'Link copiado para a área de transferência!');
     setShareModalPost(null);
   };
 
@@ -185,10 +187,10 @@ export const PostsPage: React.FC = () => {
       
       // Refresh posts
       fetchPosts(1, searchTerm);
-      alert('Post criado com sucesso!');
+      addToast('success', 'Post criado com sucesso!');
     } catch (err: any) {
       console.error('Error creating post:', err);
-      alert(err.message || 'Erro ao criar post');
+      addToast('error', err.message || 'Erro ao criar post');
     } finally {
       setIsCreating(false);
     }
@@ -202,9 +204,10 @@ export const PostsPage: React.FC = () => {
       await api.deletePost(token, post.id);
       setPosts(prev => prev.filter(p => p.id !== post.id));
       setActiveMenuPostId(null);
+      addToast('success', 'Post excluído com sucesso!');
     } catch (err: any) {
       console.error('Error deleting post:', err);
-      alert(err.message || 'Erro ao excluir post');
+      addToast('error', err.message || 'Erro ao excluir post');
     } finally {
       setIsDeleting(null);
     }
@@ -221,10 +224,10 @@ export const PostsPage: React.FC = () => {
       setEditPostModal(null);
       setEditTitle('');
       setEditContent('');
-      alert('Post atualizado com sucesso!');
+      addToast('success', 'Post atualizado com sucesso!');
     } catch (err: any) {
       console.error('Error updating post:', err);
-      alert(err.message || 'Erro ao atualizar post');
+      addToast('error', err.message || 'Erro ao atualizar post');
     } finally {
       setIsUpdating(false);
     }

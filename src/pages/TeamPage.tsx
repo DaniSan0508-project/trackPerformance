@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { User as UserType, Store } from '../types';
 import { api } from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -22,6 +23,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 export const TeamPage: React.FC = () => {
   const { token, user: currentUser } = useAuth();
+  const { addToast } = useToast();
   const [users, setUsers] = useState<UserType[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
@@ -159,17 +161,17 @@ export const TeamPage: React.FC = () => {
 
       if (editingUser) {
         await api.updateUser(token, editingUser.id, data);
-        alert('Usuário atualizado com sucesso!');
+        addToast('success', 'Usuário atualizado com sucesso!');
       } else {
         await api.createUser(token, data);
-        alert('Usuário criado com sucesso!');
+        addToast('success', 'Usuário criado com sucesso!');
       }
 
       await fetchUsers(currentPage, searchTerm);
       handleCloseModal();
     } catch (error: any) {
       console.error('Error saving user:', error);
-      alert(error.message || 'Erro ao salvar usuário.');
+      addToast('error', error.message || 'Erro ao salvar usuário.');
     } finally {
       setSaving(false);
     }
@@ -181,9 +183,10 @@ export const TeamPage: React.FC = () => {
     try {
       await api.deleteUser(token, user.id);
       await fetchUsers(currentPage, searchTerm);
+      addToast('success', 'Usuário excluído com sucesso!');
     } catch (error: any) {
       console.error('Error deleting user:', error);
-      alert(error.message || 'Erro ao excluir usuário.');
+      addToast('error', error.message || 'Erro ao excluir usuário.');
     } finally {
       setDeletingId(null);
     }

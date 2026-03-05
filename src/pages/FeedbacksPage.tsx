@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { User as UserType, Feedback } from '../types';
 import { api } from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -22,6 +23,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 export const FeedbacksPage: React.FC = () => {
   const { token, user: currentUser } = useAuth();
+  const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState<'send' | 'received'>('send');
   
   // Send Feedback State
@@ -120,13 +122,13 @@ export const FeedbacksPage: React.FC = () => {
         content: feedbackContent,
         is_anonymous: isAnonymous
       });
-      alert('Feedback enviado com sucesso!');
+      addToast('success', 'Feedback enviado com sucesso!');
       setSelectedUser(null);
       setFeedbackContent('');
       setIsAnonymous(false);
     } catch (err: any) {
       console.error('Error sending feedback:', err);
-      alert(err.message || 'Erro ao enviar feedback');
+      addToast('error', err.message || 'Erro ao enviar feedback');
     } finally {
       setSending(false);
     }

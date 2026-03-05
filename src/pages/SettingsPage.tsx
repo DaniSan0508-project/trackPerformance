@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { TenantConfig, PaginatedResponse } from '../types';
 import { api } from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -168,6 +169,7 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
 
 export const SettingsPage: React.FC = () => {
   const { token } = useAuth();
+  const { addToast } = useToast();
   const [configs, setConfigs] = useState<TenantConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -222,9 +224,10 @@ export const SettingsPage: React.FC = () => {
       setConfigs(prevConfigs => prevConfigs.map(c => 
         c.id === config.id ? { ...c, config_value: newValue, updated_at: new Date().toISOString() } : c
       ));
+      addToast('success', 'Configuração atualizada com sucesso!');
     } catch (err) {
       console.error('Error updating config:', err);
-      alert('Erro ao atualizar configuração. Tente novamente.');
+      addToast('error', 'Erro ao atualizar configuração. Tente novamente.');
     }
   };
 
