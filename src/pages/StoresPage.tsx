@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { Store as StoreType, PaginatedResponse, StoreGroup } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -24,7 +25,7 @@ function useDebounce<T>(value: T, delay: number): T {
 const GroupListItem: React.FC<{ 
   group: StoreGroup; 
   onUpdate: (id: number, name: string) => Promise<void>;
-  onDelete: (id: number) => Promise<void>;
+  onDelete: (id: number) => void;
 }> = ({ group, onUpdate, onDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(group.name);
@@ -41,12 +42,8 @@ const GroupListItem: React.FC<{
     setIsEditing(false);
   };
 
-  const handleDelete = async () => {
-    if (window.confirm('Tem certeza que deseja excluir este grupo?')) {
-      setLoading(true);
-      await onDelete(group.id);
-      setLoading(false);
-    }
+  const handleDelete = () => {
+    onDelete(group.id);
   };
 
   return (
@@ -110,6 +107,21 @@ export const StoresPage: React.FC = () => {
   const [newGroupName, setNewGroupName] = useState('');
   const [creatingGroup, setCreatingGroup] = useState(false);
   
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => Promise<void>;
+    isLoading: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: async () => {},
+    isLoading: false,
+  });
+
   const [formData, setFormData] = useState({
     name: '',
     cnpj: '',
@@ -220,8 +232,8 @@ export const StoresPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!token || !window.confirm('Tem certeza que deseja excluir esta loja?')) return;
+  const executeDeleteStore = async (id: number) => {
+    if (!token) return;
     setDeletingId(id);
     try {
       await api.deleteStore(token, id);
@@ -237,6 +249,16 @@ export const StoresPage: React.FC = () => {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleDelete = (id: number) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Excluir Loja',
+      message: 'Tem certeza que deseja excluir esta loja? Esta ação não pode ser desfeita.',
+      onConfirm: async () => await executeDeleteStore(id),
+      isLoading: false,
+    });
   };
 
   const handleCreateGroup = async (e: React.FormEvent) => {
@@ -268,7 +290,7 @@ export const StoresPage: React.FC = () => {
     }
   };
 
-  const handleDeleteGroup = async (id: number) => {
+  const executeDeleteGroup = async (id: number) => {
     if (!token) return;
     try {
       await api.deleteStoreGroup(token, id);
@@ -280,8 +302,37 @@ export const StoresPage: React.FC = () => {
     }
   };
 
+  const handleDeleteGroup = (id: number) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Excluir Grupo',
+      message: 'Tem certeza que deseja excluir este grupo? Lojas vinculadas podem ficar sem grupo.',
+      onConfirm: async () => await executeDeleteGroup(id),
+      isLoading: false,
+    });
+  };
+
+  const handleConfirmModalAction = async () => {
+    setConfirmModal(prev => ({ ...prev, isLoading: true }));
+    try {
+      await confirmModal.onConfirm();
+      setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    } catch (error) {
+      console.error('Error in confirm action:', error);
+      setConfirmModal(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
   return (
     <Layout>
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={handleConfirmModalAction}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        isLoading={confirmModal.isLoading}
+      />
       <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>

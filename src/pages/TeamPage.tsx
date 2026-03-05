@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { User as UserType, Store } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -44,6 +45,20 @@ export const TeamPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => Promise<void>;
+    isLoading: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: async () => {},
+    isLoading: false,
+  });
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -177,8 +192,8 @@ export const TeamPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (user: UserType) => {
-    if (!token || !window.confirm(`Tem certeza que deseja excluir o usuário ${user.name}?`)) return;
+  const executeDeleteUser = async (user: UserType) => {
+    if (!token) return;
     setDeletingId(user.id);
     try {
       await api.deleteUser(token, user.id);
@@ -189,6 +204,27 @@ export const TeamPage: React.FC = () => {
       addToast('error', error.message || 'Erro ao excluir usuário.');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleDelete = (user: UserType) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Excluir Usuário',
+      message: `Tem certeza que deseja excluir o usuário ${user.name}? Esta ação não pode ser desfeita.`,
+      onConfirm: async () => await executeDeleteUser(user),
+      isLoading: false,
+    });
+  };
+
+  const handleConfirmModalAction = async () => {
+    setConfirmModal(prev => ({ ...prev, isLoading: true }));
+    try {
+      await confirmModal.onConfirm();
+      setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    } catch (error) {
+      console.error('Error in confirm action:', error);
+      setConfirmModal(prev => ({ ...prev, isLoading: false }));
     }
   };
 
@@ -204,6 +240,14 @@ export const TeamPage: React.FC = () => {
 
   return (
     <Layout>
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={handleConfirmModalAction}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        isLoading={confirmModal.isLoading}
+      />
       <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
