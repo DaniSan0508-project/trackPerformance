@@ -187,7 +187,13 @@ export const api = {
     queryParams.append('page', page.toString());
     queryParams.append('include', 'tenant,group');
     if (search) {
-      queryParams.append('filter[name]', search);
+      // Se começar com número, busca por CNPJ; caso contrário, busca por nome
+      const isNumeric = /^\d/.test(search.trim());
+      if (isNumeric) {
+        queryParams.append('filter[cnpj]', search);
+      } else {
+        queryParams.append('filter[name]', search);
+      }
     }
 
     const response = await fetch(`${API_BASE_URL}/stores?${queryParams.toString()}`, {
