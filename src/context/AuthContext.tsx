@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   tenant: Tenant | null;
   token: string | null;
+  logoUrl: string | null;
   login: (data: AuthResponse, rememberMe?: boolean) => void;
   logout: () => void;
   isAuthenticated: boolean;
@@ -18,6 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Initialize state from storage
@@ -54,6 +56,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadAuthData();
   }, []);
 
+  // Fetch logo when token is available
+  useEffect(() => {
+    const fetchLogo = async () => {
+      if (!token) return;
+      try {
+        const response = await api.getTenantConfigs(token, 1, 'path_logo');
+        const logoConfig = response.data.find(c => c.config_key === 'path_logo');
+        if (logoConfig) {
+          setLogoUrl(logoConfig.config_value);
+        }
+      } catch (error) {
+        console.error('Failed to fetch logo', error);
+      }
+    };
+    fetchLogo();
+  }, [token]);
+
   const login = (data: AuthResponse, rememberMe: boolean = false) => {
     setUser(data.user);
     setTenant(data.tenant);
@@ -74,6 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setTenant(null);
     setToken(null);
+    setLogoUrl(null);
     localStorage.removeItem('track_performance_auth');
     sessionStorage.removeItem('track_performance_auth');
   }, []);
@@ -161,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [token, user?.id]);
 
   return (
-    <AuthContext.Provider value={{ user, tenant, token, login, logout, isAuthenticated: !!token, refreshAccessToken }}>
+    <AuthContext.Provider value={{ user, tenant, token, logoUrl, login, logout, isAuthenticated: !!token, refreshAccessToken }}>
       {!loading && children}
     </AuthContext.Provider>
   );

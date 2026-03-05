@@ -24,7 +24,7 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, logoUrl } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,17 +36,25 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   if (!user) return null;
 
+  const Logo = () => (
+    logoUrl ? (
+      <img src={logoUrl} alt="Logo" className="h-10 w-auto object-contain max-w-[180px]" />
+    ) : (
+      <div className="flex items-center gap-3">
+        <div className="bg-emerald-600 p-2 rounded-lg">
+          <TrendingUp className="w-5 h-5 text-white" />
+        </div>
+        <span className="font-bold text-xl text-zinc-900 dark:text-white">TrackPerf</span>
+      </div>
+    )
+  );
+
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col md:flex-row transition-colors duration-200">
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 h-screen sticky top-0 transition-colors duration-200">
-        <div className="p-6 border-b border-zinc-100 dark:border-zinc-800">
-          <div className="flex items-center gap-3">
-            <div className="bg-emerald-600 p-2 rounded-lg">
-              <TrendingUp className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-xl text-zinc-900 dark:text-white">TrackPerf</span>
-          </div>
+        <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-center md:justify-start min-h-[88px]">
+          <Logo />
         </div>
         
         <nav className="flex-1 p-4 space-y-1">
@@ -116,9 +124,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Header */}
         <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 px-4 py-3 md:px-8 flex items-center justify-between sticky top-0 z-10 transition-colors duration-200">
           <div className="flex items-center gap-4 md:hidden">
-             <div className="bg-emerald-600 p-2 rounded-lg">
-              <TrendingUp className="w-5 h-5 text-white" />
-            </div>
+             <Logo />
           </div>
 
           <div className="hidden md:flex items-center bg-zinc-100 dark:bg-zinc-800 rounded-xl px-3 py-1.5 w-96 transition-colors duration-200">

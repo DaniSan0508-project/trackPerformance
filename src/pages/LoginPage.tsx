@@ -4,7 +4,6 @@ import { motion } from 'motion/react';
 import { LogIn, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import backgroundImage from '../assets/imagem_fundo_login_portal.png';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('admin@teste.com');
@@ -40,12 +39,12 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-200 relative overflow-hidden">
       {/* Background Image & Overlay */}
       <div className="absolute inset-0 z-0">
-        <img
-          src={backgroundImage}
-          alt="Background"
+        <img 
+          src="https://images.unsplash.com/photo-1553877616-1528023ee29a?q=80&w=2070&auto=format&fit=crop" 
+          alt="Background" 
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-zinc-900/20 dark:bg-zinc-950/40 backdrop-blur-[1px]"></div>
+        <div className="absolute inset-0 bg-zinc-900/40 dark:bg-zinc-950/70 backdrop-blur-sm"></div>
       </div>
 
       <motion.div 
