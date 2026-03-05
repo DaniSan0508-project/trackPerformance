@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -13,7 +14,9 @@ import {
   Store,
   MessageSquare,
   MessageSquarePlus,
-  ShoppingBag
+  ShoppingBag,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -22,6 +25,7 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -33,15 +37,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col md:flex-row transition-colors duration-200">
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-zinc-200 h-screen sticky top-0">
-        <div className="p-6 border-b border-zinc-100">
+      <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 h-screen sticky top-0 transition-colors duration-200">
+        <div className="p-6 border-b border-zinc-100 dark:border-zinc-800">
           <div className="flex items-center gap-3">
             <div className="bg-emerald-600 p-2 rounded-lg">
               <TrendingUp className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-xl text-zinc-900">TrackPerf</span>
+            <span className="font-bold text-xl text-zinc-900 dark:text-white">TrackPerf</span>
           </div>
         </div>
         
@@ -96,10 +100,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           />
         </nav>
 
-        <div className="p-4 border-t border-zinc-100">
+        <div className="p-4 border-t border-zinc-100 dark:border-zinc-800">
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full p-3 text-zinc-600 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all"
+            className="flex items-center gap-3 w-full p-3 text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 rounded-xl transition-all"
           >
             <LogOut size={20} />
             <span className="font-medium">Sair</span>
@@ -108,36 +112,44 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 transition-colors duration-200">
         {/* Header */}
-        <header className="bg-white border-b border-zinc-200 px-4 py-3 md:px-8 flex items-center justify-between sticky top-0 z-10">
+        <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 px-4 py-3 md:px-8 flex items-center justify-between sticky top-0 z-10 transition-colors duration-200">
           <div className="flex items-center gap-4 md:hidden">
              <div className="bg-emerald-600 p-2 rounded-lg">
               <TrendingUp className="w-5 h-5 text-white" />
             </div>
           </div>
 
-          <div className="hidden md:flex items-center bg-zinc-100 rounded-xl px-3 py-1.5 w-96">
+          <div className="hidden md:flex items-center bg-zinc-100 dark:bg-zinc-800 rounded-xl px-3 py-1.5 w-96 transition-colors duration-200">
             <Search size={18} className="text-zinc-400" />
             <input 
               type="text" 
               placeholder="Pesquisar..." 
-              className="bg-transparent border-none focus:ring-0 text-sm w-full ml-2"
+              className="bg-transparent border-none focus:ring-0 text-sm w-full ml-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500"
             />
           </div>
 
           <div className="flex items-center gap-3 md:gap-6">
-            <button className="relative p-2 text-zinc-500 hover:bg-zinc-100 rounded-full transition-all">
+            <button 
+              onClick={toggleTheme}
+              className="p-2 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-all"
+              title={theme === 'light' ? 'Modo Escuro' : 'Modo Claro'}
+            >
+              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
+
+            <button className="relative p-2 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-all">
               <Bell size={20} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-zinc-900"></span>
             </button>
             
-            <div className="flex items-center gap-3 pl-3 border-l border-zinc-200">
+            <div className="flex items-center gap-3 pl-3 border-l border-zinc-200 dark:border-zinc-800">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-zinc-900">{user.name}</p>
-                <p className="text-xs text-zinc-500">{user.user_type}</p>
+                <p className="text-sm font-semibold text-zinc-900 dark:text-white">{user.name}</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">{user.user_type}</p>
               </div>
-              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 font-bold border-2 border-emerald-50 shadow-sm">
+              <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold border-2 border-emerald-50 dark:border-emerald-900/50 shadow-sm">
                 {user.name.charAt(0)}
               </div>
             </div>
@@ -147,7 +159,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         {children}
 
         {/* Mobile Nav */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 px-6 py-3 flex justify-between items-center z-20">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 px-6 py-3 flex justify-between items-center z-20 transition-colors duration-200">
           <MobileNavItem 
             to="/dashboard" 
             icon={<LayoutDashboard size={24} />} 
@@ -188,7 +200,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             icon={<Settings size={24} />} 
             active={location.pathname === '/settings'} 
           />
-          <button onClick={handleLogout} className="text-zinc-400">
+          <button onClick={handleLogout} className="text-zinc-400 hover:text-red-500 transition-colors">
             <LogOut size={24} />
           </button>
         </nav>
@@ -198,14 +210,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 };
 
 const NavItem: React.FC<{ icon: React.ReactNode; label: string; active?: boolean; to: string }> = ({ icon, label, active, to }) => (
-  <Link to={to} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${active ? 'bg-emerald-50 text-emerald-700 font-semibold' : 'text-zinc-600 hover:bg-zinc-50'}`}>
+  <Link to={to} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${active ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>
     {icon}
     <span>{label}</span>
   </Link>
 );
 
 const MobileNavItem: React.FC<{ icon: React.ReactNode; active?: boolean; to: string }> = ({ icon, active, to }) => (
-  <Link to={to} className={`${active ? 'text-emerald-600' : 'text-zinc-400'}`}>
+  <Link to={to} className={`${active ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400 dark:text-zinc-500'}`}>
     {icon}
   </Link>
 );

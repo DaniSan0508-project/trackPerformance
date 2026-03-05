@@ -137,13 +137,13 @@ export const FeedbacksPage: React.FC = () => {
       <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900">Feedbacks</h1>
-            <p className="text-zinc-500">Gerencie seus feedbacks enviados e recebidos.</p>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Feedbacks</h1>
+            <p className="text-zinc-500 dark:text-zinc-400">Gerencie seus feedbacks enviados e recebidos.</p>
           </div>
           <div className="flex gap-2">
             <button 
               onClick={() => activeTab === 'send' ? fetchUsers(usersPage, searchTerm) : fetchFeedbacks(feedbacksPage)}
-              className="bg-white border border-zinc-200 p-2 rounded-xl text-zinc-600 hover:bg-zinc-50 transition-all"
+              className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-2 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all"
               title="Atualizar"
             >
               <RefreshCw size={20} className={loadingUsers || loadingFeedbacks ? "animate-spin" : ""} />
@@ -152,13 +152,13 @@ export const FeedbacksPage: React.FC = () => {
         </div>
 
         {/* Tabs */}
-        <div className="flex space-x-1 bg-zinc-100 p-1 rounded-xl w-fit">
+        <div className="flex space-x-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl w-fit transition-colors duration-200">
           <button
             onClick={() => setActiveTab('send')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               activeTab === 'send' 
-                ? 'bg-white text-zinc-900 shadow-sm' 
-                : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-200/50'
+                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' 
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50'
             }`}
           >
             <PenSquare size={18} />
@@ -168,8 +168,8 @@ export const FeedbacksPage: React.FC = () => {
             onClick={() => setActiveTab('received')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               activeTab === 'received' 
-                ? 'bg-white text-zinc-900 shadow-sm' 
-                : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-200/50'
+                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' 
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50'
             }`}
           >
             <Inbox size={18} />
@@ -180,13 +180,13 @@ export const FeedbacksPage: React.FC = () => {
         {activeTab === 'send' ? (
           <>
             {/* Filters */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-zinc-100 flex flex-col md:flex-row gap-4 items-center">
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 flex flex-col md:flex-row gap-4 items-center transition-colors duration-200">
               <div className="relative flex-1 w-full">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={20} />
                 <input 
                   type="text" 
                   placeholder="Buscar usuário por nome..." 
-                  className="w-full pl-10 pr-4 py-2 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -199,7 +199,7 @@ export const FeedbacksPage: React.FC = () => {
                 <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
               </div>
             ) : usersError ? (
-              <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-center">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
                 {usersError}
                 <button onClick={() => fetchUsers(usersPage, searchTerm)} className="block mx-auto mt-2 text-sm font-semibold hover:underline">
                   Tentar novamente
@@ -213,21 +213,21 @@ export const FeedbacksPage: React.FC = () => {
                       key={user.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow"
+                      className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6 flex flex-col items-center text-center hover:shadow-md transition-all duration-200"
                     >
-                      <div className="w-20 h-20 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-400 mb-4 overflow-hidden">
+                      <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 dark:text-zinc-500 mb-4 overflow-hidden border border-zinc-100 dark:border-zinc-700">
                         {user.profile_image_url ? (
                           <img src={user.profile_image_url} alt={user.name} className="w-full h-full object-cover" />
                         ) : (
                           <User size={32} />
                         )}
                       </div>
-                      <h3 className="font-semibold text-lg text-zinc-900 mb-1">{user.name}</h3>
-                      <p className="text-sm text-zinc-500 mb-4">{user.email}</p>
+                      <h3 className="font-semibold text-lg text-zinc-900 dark:text-white mb-1">{user.name}</h3>
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">{user.email}</p>
                       
                       <button 
                         onClick={() => setSelectedUser(user)}
-                        className="mt-auto w-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                        className="mt-auto w-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                       >
                         <MessageSquarePlus size={18} />
                         Enviar Feedback
@@ -237,34 +237,34 @@ export const FeedbacksPage: React.FC = () => {
                 </div>
 
                 {users.length === 0 && (
-                  <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-zinc-200">
-                    <User className="w-12 h-12 text-zinc-300 mx-auto mb-3" />
-                    <h3 className="text-lg font-medium text-zinc-900">Nenhum usuário encontrado</h3>
-                    <p className="text-zinc-500">Tente buscar por outro nome.</p>
+                  <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors duration-200">
+                    <User className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+                    <h3 className="text-lg font-medium text-zinc-900 dark:text-white">Nenhum usuário encontrado</h3>
+                    <p className="text-zinc-500 dark:text-zinc-400">Tente buscar por outro nome.</p>
                   </div>
                 )}
 
                 {/* Pagination Controls */}
                 {usersTotalItems > 0 && (
-                  <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-zinc-100">
-                    <div className="text-sm text-zinc-500">
+                  <div className="flex items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
+                    <div className="text-sm text-zinc-500 dark:text-zinc-400">
                       Mostrando <span className="font-medium">{usersFromItem}</span> até <span className="font-medium">{usersToItem}</span> de <span className="font-medium">{usersTotalItems}</span> resultados
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setUsersPage(prev => Math.max(prev - 1, 1))}
                         disabled={usersPage === 1}
-                        className="p-2 border border-zinc-200 rounded-lg hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400"
                       >
                         <ChevronLeft size={20} />
                       </button>
-                      <span className="text-sm font-medium px-2">
+                      <span className="text-sm font-medium px-2 text-zinc-700 dark:text-zinc-300">
                         Página {usersPage} de {usersTotalPages}
                       </span>
                       <button
                         onClick={() => setUsersPage(prev => Math.min(prev + 1, usersTotalPages))}
                         disabled={usersPage === usersTotalPages}
-                        className="p-2 border border-zinc-200 rounded-lg hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400"
                       >
                         <ChevronRight size={20} />
                       </button>
@@ -282,7 +282,7 @@ export const FeedbacksPage: React.FC = () => {
                 <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
               </div>
             ) : feedbacksError ? (
-              <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-center">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
                 {feedbacksError}
                 <button onClick={() => fetchFeedbacks(feedbacksPage)} className="block mx-auto mt-2 text-sm font-semibold hover:underline">
                   Tentar novamente
@@ -300,9 +300,9 @@ export const FeedbacksPage: React.FC = () => {
                         key={feedback.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6 flex gap-4"
+                        className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6 flex gap-4 transition-colors duration-200"
                       >
-                        <div className="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-400 flex-shrink-0 overflow-hidden">
+                        <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 dark:text-zinc-500 flex-shrink-0 overflow-hidden border border-zinc-100 dark:border-zinc-700">
                           {!isAnonymous && sender?.profile_image_url ? (
                             <img src={sender.profile_image_url} alt={sender.name} className="w-full h-full object-cover" />
                           ) : (
@@ -312,20 +312,20 @@ export const FeedbacksPage: React.FC = () => {
                         <div className="flex-1">
                           <div className="flex justify-between items-start mb-2">
                             <div>
-                              <h3 className="font-semibold text-zinc-900">
+                              <h3 className="font-semibold text-zinc-900 dark:text-white">
                                 {isAnonymous ? 'Anônimo' : (sender?.name || 'Usuário Desconhecido')}
                               </h3>
-                              <p className="text-xs text-zinc-500">
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400">
                                 {new Date(feedback.created_at).toLocaleDateString()} às {new Date(feedback.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </p>
                             </div>
                             {isAnonymous && (
-                              <span className="bg-zinc-100 text-zinc-600 text-xs px-2 py-1 rounded-full font-medium">
+                              <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs px-2 py-1 rounded-full font-medium">
                                 Anônimo
                               </span>
                             )}
                           </div>
-                          <p className="text-zinc-700 whitespace-pre-wrap">{feedback.content}</p>
+                          <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{feedback.content}</p>
                         </div>
                       </motion.div>
                     );
@@ -333,34 +333,34 @@ export const FeedbacksPage: React.FC = () => {
                 </div>
 
                 {feedbacks.length === 0 && (
-                  <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-zinc-200">
-                    <Inbox className="w-12 h-12 text-zinc-300 mx-auto mb-3" />
-                    <h3 className="text-lg font-medium text-zinc-900">Nenhum feedback recebido</h3>
-                    <p className="text-zinc-500">Você ainda não recebeu nenhum feedback.</p>
+                  <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors duration-200">
+                    <Inbox className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+                    <h3 className="text-lg font-medium text-zinc-900 dark:text-white">Nenhum feedback recebido</h3>
+                    <p className="text-zinc-500 dark:text-zinc-400">Você ainda não recebeu nenhum feedback.</p>
                   </div>
                 )}
 
                 {/* Pagination Controls */}
                 {feedbacksTotalItems > 0 && (
-                  <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-zinc-100">
-                    <div className="text-sm text-zinc-500">
+                  <div className="flex items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
+                    <div className="text-sm text-zinc-500 dark:text-zinc-400">
                       Mostrando <span className="font-medium">{feedbacksFromItem}</span> até <span className="font-medium">{feedbacksToItem}</span> de <span className="font-medium">{feedbacksTotalItems}</span> resultados
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setFeedbacksPage(prev => Math.max(prev - 1, 1))}
                         disabled={feedbacksPage === 1}
-                        className="p-2 border border-zinc-200 rounded-lg hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400"
                       >
                         <ChevronLeft size={20} />
                       </button>
-                      <span className="text-sm font-medium px-2">
+                      <span className="text-sm font-medium px-2 text-zinc-700 dark:text-zinc-300">
                         Página {feedbacksPage} de {feedbacksTotalPages}
                       </span>
                       <button
                         onClick={() => setFeedbacksPage(prev => Math.min(prev + 1, feedbacksTotalPages))}
                         disabled={feedbacksPage === feedbacksTotalPages}
-                        className="p-2 border border-zinc-200 rounded-lg hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400"
                       >
                         <ChevronRight size={20} />
                       </button>
@@ -380,18 +380,18 @@ export const FeedbacksPage: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
+                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-zinc-200 dark:border-zinc-800"
               >
-                <div className="p-4 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
-                  <h2 className="text-lg font-bold text-zinc-900">Enviar Feedback</h2>
-                  <button onClick={() => setSelectedUser(null)} className="text-zinc-400 hover:text-zinc-600 transition-colors">
+                <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
+                  <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Enviar Feedback</h2>
+                  <button onClick={() => setSelectedUser(null)} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
                     <X size={24} />
                   </button>
                 </div>
                 
                 <form onSubmit={handleSendFeedback} className="p-6 space-y-4">
-                  <div className="flex items-center gap-3 mb-4 p-3 bg-zinc-50 rounded-xl">
-                    <div className="w-10 h-10 bg-zinc-200 rounded-full flex items-center justify-center text-zinc-500 overflow-hidden">
+                  <div className="flex items-center gap-3 mb-4 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
+                    <div className="w-10 h-10 bg-zinc-200 dark:bg-zinc-700 rounded-full flex items-center justify-center text-zinc-500 dark:text-zinc-400 overflow-hidden">
                       {selectedUser.profile_image_url ? (
                         <img src={selectedUser.profile_image_url} alt={selectedUser.name} className="w-full h-full object-cover" />
                       ) : (
@@ -399,20 +399,20 @@ export const FeedbacksPage: React.FC = () => {
                       )}
                     </div>
                     <div>
-                      <p className="text-sm text-zinc-500">Para:</p>
-                      <p className="font-semibold text-zinc-900">{selectedUser.name}</p>
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400">Para:</p>
+                      <p className="font-semibold text-zinc-900 dark:text-white">{selectedUser.name}</p>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                       Mensagem
                     </label>
                     <textarea
                       required
                       value={feedbackContent}
                       onChange={(e) => setFeedbackContent(e.target.value)}
-                      className="w-full p-3 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[120px] resize-none"
+                      className="w-full p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[120px] resize-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
                       placeholder="Escreva seu feedback construtivo aqui..."
                     />
                   </div>
@@ -423,9 +423,9 @@ export const FeedbacksPage: React.FC = () => {
                       id="anonymous"
                       checked={isAnonymous}
                       onChange={(e) => setIsAnonymous(e.target.checked)}
-                      className="w-4 h-4 text-emerald-600 border-zinc-300 rounded focus:ring-emerald-500"
+                      className="w-4 h-4 text-emerald-600 border-zinc-300 dark:border-zinc-600 rounded focus:ring-emerald-500 bg-white dark:bg-zinc-700"
                     />
-                    <label htmlFor="anonymous" className="text-sm text-zinc-700 select-none cursor-pointer">
+                    <label htmlFor="anonymous" className="text-sm text-zinc-700 dark:text-zinc-300 select-none cursor-pointer">
                       Enviar anonimamente
                     </label>
                   </div>
@@ -434,7 +434,7 @@ export const FeedbacksPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setSelectedUser(null)}
-                      className="flex-1 px-4 py-2 border border-zinc-200 text-zinc-700 rounded-xl hover:bg-zinc-50 transition-colors font-medium"
+                      className="flex-1 px-4 py-2 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors font-medium"
                     >
                       Cancelar
                     </button>
