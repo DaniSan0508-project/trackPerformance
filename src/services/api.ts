@@ -278,7 +278,12 @@ export const api = {
         'Accept': 'application/json',
       },
     });
-    if (!response.ok) throw new Error('Falha ao excluir loja');
+    if (!response.ok) {
+      if (response.status === 400) {
+        throw new Error('STORE_HAS_LINKED_USERS');
+      }
+      throw new Error('Falha ao excluir loja');
+    }
     if (response.status === 204) {
       return;
     }

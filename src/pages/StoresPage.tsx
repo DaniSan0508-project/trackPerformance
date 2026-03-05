@@ -223,9 +223,13 @@ export const StoresPage: React.FC = () => {
     try {
       await api.deleteStore(token, id);
       await fetchStores(currentPage, searchTerm);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting store:', error);
-      alert('Erro ao excluir loja.');
+      if (error.message === 'STORE_HAS_LINKED_USERS') {
+        alert('Não é possível deletar uma loja que tenha usuários vinculados.');
+      } else {
+        alert('Erro ao excluir loja.');
+      }
     } finally {
       setDeletingId(null);
     }
