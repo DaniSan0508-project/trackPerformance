@@ -7,6 +7,7 @@ import { User as UserType, Store } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { userSchema, userUpdateSchema } from '../validators/schemas';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -44,6 +45,7 @@ export const TeamPage: React.FC = () => {
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -76,12 +78,14 @@ export const TeamPage: React.FC = () => {
     setError(null);
     try {
       const data = await api.getUsers(token, page, search);
+      console.log('Users API Response:', data);
       setUsers(data.data);
-      setCurrentPage(data.current_page);
-      setTotalPages(data.last_page);
-      setTotalItems(data.total);
-      setFromItem(data.from);
-      setToItem(data.to);
+      setCurrentPage(data.meta.current_page);
+      setTotalPages(data.meta.last_page);
+      setTotalItems(data.meta.total);
+      setFromItem(data.meta.from);
+      setToItem(data.meta.to);
+      console.log('Pagination:', { page: data.meta.current_page, totalPages: data.meta.last_page, total: data.meta.total });
     } catch (err: any) {
       console.error('Error fetching users:', err);
       setError(err.message || 'Não foi possível carregar a equipe.');
@@ -158,6 +162,31 @@ export const TeamPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
+    setFormErrors({});
+
+    // Usa schema diferente para criação vs edição
+    const schema = editingUser ? userUpdateSchema : userSchema;
+    const result = schema.safeParse({
+      name: formData.name,
+      email: formData.email,
+      password: formData.password,
+      user_type_id: String(formData.user_type_id),
+      store_id: formData.store_id === '' ? undefined : String(formData.store_id),
+    });
+
+    if (!result.success) {
+      const errors = result.error.flatten().fieldErrors;
+      const formattedErrors: { [key: string]: string } = {};
+      Object.entries(errors).forEach(([key, messages]) => {
+        if (messages?.length) {
+          formattedErrors[key] = messages[0];
+        }
+      });
+      setFormErrors(formattedErrors);
+      addToast('error', 'Verifique os campos obrigatórios.');
+      return;
+    }
+
     setSaving(true);
     try {
       const data = new FormData();
@@ -400,7 +429,7 @@ export const TeamPage: React.FC = () => {
                     <ChevronLeft size={20} />
                   </button>
                   <span className="text-sm font-medium px-2 text-zinc-700 dark:text-zinc-300">
-                    Página {currentPage} de {totalPages}
+                    Página {currentPage} de {totalPages} (total: {totalItems})
                   </span>
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
@@ -475,24 +504,28 @@ export const TeamPage: React.FC = () => {
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Nome *</label>
                     <input
                       type="text"
-                      required
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400"
+                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                        formErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                      }`}
                       placeholder="Nome completo"
                     />
+                    {formErrors.name && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.name}</p>}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Email *</label>
                     <input
                       type="email"
-                      required
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400"
+                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                        formErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                      }`}
                       placeholder="email@exemplo.com"
                     />
+                    {formErrors.email && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.email}</p>}
                   </div>
 
                   <div>
@@ -501,13 +534,14 @@ export const TeamPage: React.FC = () => {
                     </label>
                     <input
                       type="password"
-                      required={!editingUser}
-                      minLength={6}
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400"
+                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                        formErrors.password ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                      }`}
                       placeholder="******"
                     />
+                    {formErrors.password && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.password}</p>}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">

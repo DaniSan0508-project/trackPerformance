@@ -46,11 +46,11 @@ export const RewardsPage: React.FC = () => {
     try {
       const data = await api.getRewards(token, page, search);
       setRewards(data.data);
-      setCurrentPage(data.current_page);
-      setTotalPages(data.last_page);
-      setTotalItems(data.total);
-      setFromItem(data.from);
-      setToItem(data.to);
+      setCurrentPage(data.meta.current_page);
+      setTotalPages(data.meta.last_page);
+      setTotalItems(data.meta.total);
+      setFromItem(data.meta.from);
+      setToItem(data.meta.to);
     } catch (err: any) {
       console.error('Error fetching rewards:', err);
       setError(err.message || 'Não foi possível carregar a loja de prêmios.');

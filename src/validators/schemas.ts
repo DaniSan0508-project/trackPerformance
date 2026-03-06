@@ -12,7 +12,7 @@ export const loginSchema = z.object({
     .min(6, 'A senha deve ter no mínimo 6 caracteres'),
 });
 
-// Schema para Usuário
+// Schema para Usuário (criação)
 export const userSchema = z.object({
   name: z
     .string()
@@ -25,13 +25,24 @@ export const userSchema = z.object({
   password: z
     .string()
     .min(1, 'Senha é obrigatória')
-    .min(6, 'A senha deve ter no mínimo 6 caracteres')
-    .optional()
-    .or(z.literal('')),
-  role: z.string().optional(),
-  description: z.string().optional(),
-  store_id: z.string().optional().or(z.literal('')),
-  user_type_id: z.string().optional(),
+    .min(6, 'A senha deve ter no mínimo 6 caracteres'),
+  user_type_id: z.string(),
+  store_id: z.string().optional(),
+});
+
+// Schema para Usuário (edição - senha opcional)
+export const userUpdateSchema = z.object({
+  name: z
+    .string()
+    .min(1, 'Nome é obrigatório')
+    .min(3, 'Nome deve ter no mínimo 3 caracteres'),
+  email: z
+    .string()
+    .min(1, 'E-mail é obrigatório')
+    .email('E-mail inválido'),
+  password: z.string().optional(),
+  user_type_id: z.string(),
+  store_id: z.string().optional(),
 });
 
 // Schema para Loja

@@ -78,11 +78,11 @@ export const FeedbacksPage: React.FC = () => {
       // Filter out current user from the list
       const filteredUsers = data.data.filter(u => u.id !== currentUser?.id);
       setUsers(filteredUsers);
-      setUsersPage(data.current_page);
-      setUsersTotalPages(data.last_page);
-      setUsersTotalItems(data.total);
-      setUsersFromItem(data.from);
-      setUsersToItem(data.to);
+      setUsersPage(data.meta.current_page);
+      setUsersTotalPages(data.meta.last_page);
+      setUsersTotalItems(data.meta.total);
+      setUsersFromItem(data.meta.from);
+      setUsersToItem(data.meta.to);
     } catch (err: any) {
       console.error('Error fetching users:', err);
       setUsersError(err.message || 'Não foi possível carregar os usuários.');
@@ -98,11 +98,11 @@ export const FeedbacksPage: React.FC = () => {
     try {
       const data = await api.getFeedbacks(token, page);
       setFeedbacks(data.data);
-      setFeedbacksPage(data.current_page);
-      setFeedbacksTotalPages(data.last_page);
-      setFeedbacksTotalItems(data.total);
-      setFeedbacksFromItem(data.from);
-      setFeedbacksToItem(data.to);
+      setFeedbacksPage(data.meta.current_page);
+      setFeedbacksTotalPages(data.meta.last_page);
+      setFeedbacksTotalItems(data.meta.total);
+      setFeedbacksFromItem(data.meta.from);
+      setFeedbacksToItem(data.meta.to);
     } catch (err: any) {
       console.error('Error fetching feedbacks:', err);
       setFeedbacksError(err.message || 'Não foi possível carregar os feedbacks.');
@@ -118,11 +118,11 @@ export const FeedbacksPage: React.FC = () => {
     try {
       const data = await api.getAllTenantFeedbacks(token, page, search);
       setAllFeedbacks(data.data);
-      setAllFeedbacksPage(data.current_page);
-      setAllFeedbacksTotalPages(data.last_page);
-      setAllFeedbacksTotalItems(data.total);
-      setAllFeedbacksFromItem(data.from);
-      setAllFeedbacksToItem(data.to);
+      setAllFeedbacksPage(data.meta.current_page);
+      setAllFeedbacksTotalPages(data.meta.last_page);
+      setAllFeedbacksTotalItems(data.meta.total);
+      setAllFeedbacksFromItem(data.meta.from);
+      setAllFeedbacksToItem(data.meta.to);
     } catch (err: any) {
       console.error('Error fetching all feedbacks:', err);
       setAllFeedbacksError(err.message || 'Não foi possível carregar os feedbacks do tenant.');

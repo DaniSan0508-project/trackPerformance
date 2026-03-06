@@ -100,11 +100,11 @@ export const PostsPage: React.FC = () => {
     try {
       const data = await api.getPosts(token, page, search);
       setPosts(data.data);
-      setCurrentPage(data.current_page);
-      setTotalPages(data.last_page);
-      setTotalItems(data.total);
-      setFromItem(data.from);
-      setToItem(data.to);
+      setCurrentPage(data.meta.current_page);
+      setTotalPages(data.meta.last_page);
+      setTotalItems(data.meta.total);
+      setFromItem(data.meta.from);
+      setToItem(data.meta.to);
       
       // Cache post authors
       const newUsers: Record<number, UserType> = {};

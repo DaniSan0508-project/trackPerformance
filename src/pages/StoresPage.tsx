@@ -140,11 +140,11 @@ export const StoresPage: React.FC = () => {
     try {
       const data = await api.getStores(token, page, search);
       setStores(data.data);
-      setCurrentPage(data.current_page);
-      setTotalPages(data.last_page);
-      setTotalItems(data.total);
-      setFromItem(data.from);
-      setToItem(data.to);
+      setCurrentPage(data.meta.current_page);
+      setTotalPages(data.meta.last_page);
+      setTotalItems(data.meta.total);
+      setFromItem(data.meta.from);
+      setToItem(data.meta.to);
     } catch (err: any) {
       console.error('Error fetching stores:', err);
       setError(err.message || 'Não foi possível carregar as lojas.');
@@ -617,7 +617,6 @@ export const StoresPage: React.FC = () => {
                       <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Nome da Loja *</label>
                       <input
                         type="text"
-                        required
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
