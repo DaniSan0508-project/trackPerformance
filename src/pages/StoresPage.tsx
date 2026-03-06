@@ -7,6 +7,8 @@ import { Store as StoreType, PaginatedResponse, StoreGroup } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { storeSchema } from '../validators/schemas';
+import { ZodError } from 'zod';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -128,7 +130,7 @@ export const StoresPage: React.FC = () => {
     email: '',
     phone: '',
     active: true,
-    store_group_id: '' as number | ''
+    store_group_id: null as string | number | null
   });
 
   const fetchStores = useCallback(async (page = 1, search = '') => {
@@ -183,7 +185,7 @@ export const StoresPage: React.FC = () => {
         email: store.email || '',
         phone: store.phone || '',
         active: store.active,
-        store_group_id: store.store_group_id || ''
+        store_group_id: store.store_group_id || null
       });
     } else {
       setEditingStore(null);
@@ -193,7 +195,7 @@ export const StoresPage: React.FC = () => {
         email: '',
         phone: '',
         active: true,
-        store_group_id: ''
+        store_group_id: null
       });
     }
     setIsModalOpen(true);
@@ -205,15 +207,68 @@ export const StoresPage: React.FC = () => {
     setIsManagingGroups(false);
   };
 
+  // Máscara de CNPJ - limita a 14 dígitos
+  const formatCNPJ = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 14);
+    return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/, (_, p1, p2, p3, p4, p5) => {
+      let result = p1;
+      if (p2) result += '.' + p2;
+      if (p3) result += '.' + p3;
+      if (p4) result += '/' + p4;
+      if (p5) result += '-' + p5;
+      return result;
+    });
+  };
+
+  // Máscara de Telefone - limita a 11 dígitos
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    return digits.replace(/^(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  };
+
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
+    setFormErrors({});
+
+    console.log('FormData:', formData);
+
+    // Validação com Zod
+    const result = storeSchema.safeParse(formData);
+    if (!result.success) {
+      const errors = result.error.flatten().fieldErrors;
+      console.log('Validation errors:', errors);
+      const formattedErrors: { [key: string]: string } = {};
+      Object.entries(errors).forEach(([key, messages]) => {
+        if (messages?.length) {
+          formattedErrors[key] = messages[0];
+        }
+      });
+      setFormErrors(formattedErrors);
+      addToast('error', 'Verifique os campos obrigatórios.');
+      return;
+    }
+
+    console.log('Validation passed!');
     setSaving(true);
     try {
-      const dataToSave: any = { ...formData };
-      if (dataToSave.store_group_id === '') {
-        dataToSave.store_group_id = null;
-      }
+      // Garante que store_group_id seja null ou um número
+      const groupId = formData.store_group_id === '' ? null : 
+                      typeof formData.store_group_id === 'string' ? Number(formData.store_group_id) : 
+                      formData.store_group_id;
+
+      const dataToSave: any = {
+        name: formData.name,
+        cnpj: formData.cnpj,
+        email: formData.email,
+        phone: formData.phone,
+        active: formData.active,
+        store_group_id: groupId
+      };
+
+      console.log('Sending data:', dataToSave);
 
       if (editingStore) {
         await api.updateStore(token, editingStore.id, dataToSave);
@@ -565,9 +620,12 @@ export const StoresPage: React.FC = () => {
                         required
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400"
+                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                          formErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                        }`}
                         placeholder="Ex: Loja Matriz"
                       />
+                      {formErrors.name && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.name}</p>}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -576,20 +634,28 @@ export const StoresPage: React.FC = () => {
                         <input
                           type="text"
                           value={formData.cnpj}
-                          onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
-                          className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400"
+                          onChange={(e) => setFormData({ ...formData, cnpj: formatCNPJ(e.target.value) })}
+                          className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                            formErrors.cnpj ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                          }`}
                           placeholder="00.000.000/0000-00"
+                          maxLength={18}
                         />
+                        {formErrors.cnpj && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.cnpj}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Telefone</label>
                         <input
                           type="text"
                           value={formData.phone}
-                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400"
+                          onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })}
+                          className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                            formErrors.phone ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                          }`}
                           placeholder="(00) 00000-0000"
+                          maxLength={15}
                         />
+                        {formErrors.phone && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.phone}</p>}
                       </div>
                     </div>
 
@@ -599,17 +665,20 @@ export const StoresPage: React.FC = () => {
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400"
+                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                          formErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                        }`}
                         placeholder="loja@empresa.com"
                       />
+                      {formErrors.email && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.email}</p>}
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Grupo de Lojas</label>
                       <div className="flex gap-2">
                         <select
-                          value={formData.store_group_id}
-                          onChange={(e) => setFormData({ ...formData, store_group_id: e.target.value ? Number(e.target.value) : '' })}
+                          value={formData.store_group_id || ''}
+                          onChange={(e) => setFormData({ ...formData, store_group_id: e.target.value ? Number(e.target.value) : null })}
                           className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                         >
                           <option value="">Selecione um grupo (opcional)</option>

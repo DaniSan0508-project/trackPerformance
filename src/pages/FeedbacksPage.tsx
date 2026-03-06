@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { User as UserType, Feedback } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { feedbackSchema } from '../validators/schemas';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -66,6 +67,7 @@ export const FeedbacksPage: React.FC = () => {
   const [feedbackContent, setFeedbackContent] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [sending, setSending] = useState(false);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async (page = 1, search = '') => {
     if (!token) return;
@@ -152,6 +154,22 @@ export const FeedbacksPage: React.FC = () => {
     e.preventDefault();
     if (!token || !selectedUser) return;
 
+    setFeedbackError(null);
+
+    // Validação com Zod
+    const result = feedbackSchema.safeParse({
+      recipient_id: selectedUser.id,
+      content: feedbackContent,
+      is_anonymous: isAnonymous
+    });
+
+    if (!result.success) {
+      const errorMessage = result.error.errors[0]?.message || 'Erro na validação';
+      setFeedbackError(errorMessage);
+      addToast('error', errorMessage);
+      return;
+    }
+
     setSending(true);
     try {
       await api.sendFeedback(token, {
@@ -163,6 +181,7 @@ export const FeedbacksPage: React.FC = () => {
       setSelectedUser(null);
       setFeedbackContent('');
       setIsAnonymous(false);
+      setFeedbackError(null);
     } catch (err: any) {
       console.error('Error sending feedback:', err);
       addToast('error', err.message || 'Erro ao enviar feedback');
@@ -584,9 +603,12 @@ export const FeedbacksPage: React.FC = () => {
                       required
                       value={feedbackContent}
                       onChange={(e) => setFeedbackContent(e.target.value)}
-                      className="w-full p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[120px] resize-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+                      className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[120px] resize-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${
+                        feedbackError ? 'border-red-500 focus:ring-red-500' : 'border-zinc-200 dark:border-zinc-700'
+                      }`}
                       placeholder="Escreva seu feedback construtivo aqui..."
                     />
+                    {feedbackError && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{feedbackError}</p>}
                   </div>
 
                   <div className="flex items-center gap-2">

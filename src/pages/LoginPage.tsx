@@ -4,20 +4,35 @@ import { motion } from 'motion/react';
 import { LogIn, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { loginSchema } from '../validators/schemas';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('admin@teste.com');
   const [password, setPassword] = useState('secret123');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setValidationErrors({});
     setError(null);
+
+    // Validação com Zod
+    const result = loginSchema.safeParse({ email, password });
+    if (!result.success) {
+      const errors = result.error.flatten().fieldErrors;
+      setValidationErrors({
+        email: errors.email?.[0],
+        password: errors.password?.[0],
+      });
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
       const data = await api.login({ email, password });
@@ -89,10 +104,17 @@ export const LoginPage: React.FC = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl leading-5 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition-all"
+                  className={`block w-full pl-10 pr-3 py-2 border rounded-xl leading-5 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-emerald-500 sm:text-sm transition-all ${
+                    validationErrors.email
+                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                      : 'border-zinc-300 dark:border-zinc-700 focus:ring-emerald-500'
+                  }`}
                   placeholder="admin@teste.com"
                 />
               </div>
+              {validationErrors.email && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.email}</p>
+              )}
             </div>
 
             <div>
@@ -111,10 +133,17 @@ export const LoginPage: React.FC = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl leading-5 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition-all"
+                  className={`block w-full pl-10 pr-3 py-2 border rounded-xl leading-5 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-emerald-500 sm:text-sm transition-all ${
+                    validationErrors.password
+                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                      : 'border-zinc-300 dark:border-zinc-700 focus:ring-emerald-500'
+                  }`}
                   placeholder="••••••••"
                 />
               </div>
+              {validationErrors.password && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.password}</p>
+              )}
             </div>
 
             <div>

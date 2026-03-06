@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { TenantConfig, PaginatedResponse } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { tenantConfigValidations } from '../validators/schemas';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -50,29 +51,57 @@ const userProfileOptions = [
   { value: 'multiple_companies', label: 'Múltiplas Empresas' }
 ];
 
-const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConfig, newValue: string) => Promise<void> }> = ({ config, onUpdate }) => {
+const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConfig, newValue: string) => Promise<boolean> }> = ({ config, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(config.config_value);
   const [updating, setUpdating] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const isBoolean = config.config_value === 'true' || config.config_value === 'false';
   const isUserProfile = config.config_key === 'user_profile';
   const hasChanged = value !== config.config_value;
+
+  // Validação em tempo real
+  const validateValue = (val: string) => {
+    const validation = tenantConfigValidations[config.config_key as keyof typeof tenantConfigValidations];
+    if (validation) {
+      const result = validation.safeParse(val);
+      if (!result.success) {
+        return result.error.errors[0]?.message || 'Valor inválido';
+      }
+    }
+    return null;
+  };
+
+  // Verifica se há erro de validação
+  const hasError = validationError !== null;
 
   const handleSave = async () => {
     if (!hasChanged) {
       setIsEditing(false);
       return;
     }
+
+    // Valida antes de salvar
+    const error = validateValue(value);
+    if (error) {
+      setValidationError(error);
+      return;
+    }
+
     setUpdating(true);
-    await onUpdate(config, value);
+    const success = await onUpdate(config, value);
     setUpdating(false);
-    setIsEditing(false);
+    if (success) {
+      setIsEditing(false);
+      setValidationError(null);
+    }
   };
 
   const handleCancel = () => {
     setValue(config.config_value);
     setIsEditing(false);
+    setValidationError(null);
   };
 
   const formatDisplayValue = (key: string, val: string) => {
@@ -137,29 +166,42 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
                   ))}
                 </select>
               ) : (
-                <input
-                  type="text"
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  className="flex-1 md:w-64 p-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-right transition-colors"
-                  autoFocus
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={value}
+                    onChange={(e) => {
+                      setValue(e.target.value);
+                      setValidationError(null);
+                    }}
+                    className={`flex-1 md:w-64 p-2 border bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 rounded-lg focus:ring-2 focus:border-emerald-500 text-right transition-colors ${
+                      validationError
+                        ? 'border-red-500 focus:ring-red-500'
+                        : 'border-zinc-300 dark:border-zinc-700 focus:ring-emerald-500'
+                    }`}
+                    autoFocus
+                  />
+                </div>
               )}
 
-              {hasChanged && (
+              {validationError && (
+                <p className="text-xs text-red-600 dark:text-red-400 w-full text-right">{validationError}</p>
+              )}
+
+              {(hasChanged || validationError) && (
                 <>
                   <button
                     onClick={handleSave}
-                    disabled={updating}
-                    className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-                    title="Salvar"
+                    disabled={updating || hasError}
+                    className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    title={hasError ? 'Corrija o erro antes de salvar' : 'Salvar'}
                   >
                     {updating ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
                   </button>
                   <button
                     onClick={handleCancel}
                     disabled={updating}
-                    className="p-2 bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-lg hover:bg-zinc-300 dark:hover:bg-zinc-600 disabled:opacity-50 transition-colors"
+                    className="p-2 bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-lg hover:bg-zinc-300 dark:hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     title="Cancelar"
                   >
                     <X size={18} />
@@ -234,6 +276,18 @@ export const SettingsPage: React.FC = () => {
 
   const handleUpdateConfig = async (config: TenantConfig, newValue: string) => {
     if (!token) return;
+
+    // Validação específica por tipo de configuração
+    const validation = tenantConfigValidations[config.config_key as keyof typeof tenantConfigValidations];
+    if (validation) {
+      const result = validation.safeParse(newValue);
+      if (!result.success) {
+        const errorMessage = result.error.errors[0]?.message || 'Valor inválido';
+        addToast('error', errorMessage);
+        return false; // Retorna false para indicar falha
+      }
+    }
+
     try {
       await api.updateTenantConfig(token, config.id, {
         tenant_id: config.tenant_id,
@@ -242,13 +296,15 @@ export const SettingsPage: React.FC = () => {
       });
 
       // Update local state
-      setConfigs(prevConfigs => prevConfigs.map(c => 
+      setConfigs(prevConfigs => prevConfigs.map(c =>
         c.id === config.id ? { ...c, config_value: newValue, updated_at: new Date().toISOString() } : c
       ));
       addToast('success', 'Configuração atualizada com sucesso!');
+      return true;
     } catch (err) {
       console.error('Error updating config:', err);
       addToast('error', 'Erro ao atualizar configuração. Tente novamente.');
+      return false;
     }
   };
 
