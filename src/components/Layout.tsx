@@ -100,11 +100,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             label="Relatórios" 
             active={location.pathname === '/reports'} 
           />
-          <NavItem 
-            to="/settings" 
-            icon={<Settings size={20} />} 
-            label="Configurações" 
-            active={location.pathname === '/settings'} 
+          <NavItem
+            to="/settings"
+            icon={<Settings size={20} />}
+            label="Administração"
+            active={location.pathname === '/settings'}
           />
         </nav>
 

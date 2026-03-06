@@ -109,7 +109,6 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex-1">
           <h3 className="font-bold text-lg text-zinc-900 dark:text-zinc-100">{translateConfigKey(config.config_key)}</h3>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 font-mono mt-1">{config.config_key}</p>
         </div>
 
         <div className="flex-1 w-full md:w-auto flex justify-end">
