@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Settings, Loader2, RefreshCw, X, Check, ChevronLeft, ChevronRight, Mail, Phone, Calendar, Globe, Bell, CreditCard, Box, Link as LinkIcon, Shield } from 'lucide-react';
+import { Search, Settings, Loader2, RefreshCw, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { TenantConfig, PaginatedResponse } from '../types';
@@ -21,21 +21,34 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-// Icon mapping helper
-const getIconForConfig = (key: string) => {
-  const lowerKey = key.toLowerCase();
-  if (lowerKey.includes('email')) return <Mail className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
-  if (lowerKey.includes('phone') || lowerKey.includes('celular') || lowerKey.includes('whatsapp')) return <Phone className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
-  if (lowerKey.includes('date') || lowerKey.includes('time')) return <Calendar className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
-  if (lowerKey.includes('url') || lowerKey.includes('site') || lowerKey.includes('domain')) return <Globe className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
-  if (lowerKey.includes('notification') || lowerKey.includes('alert')) return <Bell className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
-  if (lowerKey.includes('payment') || lowerKey.includes('card') || lowerKey.includes('pagamento')) return <CreditCard className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
-  if (lowerKey.includes('stock') || lowerKey.includes('estoque')) return <Box className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
-  if (lowerKey.includes('api') || lowerKey.includes('token') || lowerKey.includes('key')) return <LinkIcon className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
-  if (lowerKey.includes('security') || lowerKey.includes('auth') || lowerKey.includes('password')) return <Shield className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
-  
-  return <Settings className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />;
+const translateConfigKey = (key: string): string => {
+  const translations: Record<string, string> = {
+    cnpj: 'CNPJ',
+    email: 'E-mail',
+    phone: 'Telefone',
+    timezone: 'Fuso Horário',
+    date_format: 'Formato de Data',
+    email_notifications_enabled: 'Notificações por E-mail',
+    api_integration_enabled: 'Integração via API',
+    webhook_url: 'URL do Webhook',
+    allow_user_post: 'Permitir Posts de Usuários',
+    primary_color: 'Cor Primária',
+    secondary_color: 'Cor Secundária',
+    path_logo: 'URL do Logo',
+    path_welcome: 'Tela de Boas-vindas',
+    coin_name: 'Nome da Moeda',
+    privacy_policy_url: 'URL da Política de Privacidade',
+    post_quantity: 'Quantidade de Posts',
+    user_profile: 'Perfil do Usuário'
+  };
+  return translations[key] || key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
+
+// Opções para o perfil do usuário
+const userProfileOptions = [
+  { value: 'corporate', label: 'Corporativo' },
+  { value: 'multiple_companies', label: 'Múltiplas Empresas' }
+];
 
 const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConfig, newValue: string) => Promise<void> }> = ({ config, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -43,6 +56,7 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
   const [updating, setUpdating] = useState(false);
 
   const isBoolean = config.config_value === 'true' || config.config_value === 'false';
+  const isUserProfile = config.config_key === 'user_profile';
   const hasChanged = value !== config.config_value;
 
   const handleSave = async () => {
@@ -61,14 +75,16 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
     setIsEditing(false);
   };
 
-  const formatKey = (key: string) => {
-    return key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-  };
-
   const formatDisplayValue = (key: string, val: string) => {
     if (val === 'true') return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md text-xs font-bold">ATIVO</span>;
     if (val === 'false') return <span className="px-2 py-1 bg-red-100 text-red-700 rounded-md text-xs font-bold">INATIVO</span>;
-    
+
+    // Mostra o label traduzido para user_profile
+    if (key === 'user_profile') {
+      const option = userProfileOptions.find(o => o.value === val);
+      return option?.label || val;
+    }
+
     // CNPJ Mask
     if (key.includes('cnpj') || key.includes('document')) {
       return val.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
@@ -85,36 +101,42 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-all duration-200"
     >
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start gap-4 flex-1">
-          <div className="bg-zinc-100 dark:bg-zinc-800 p-3 rounded-xl transition-colors duration-200">
-            {getIconForConfig(config.config_key)}
-          </div>
-          <div className="flex-1">
-            <h3 className="font-bold text-lg text-zinc-900 dark:text-zinc-100">{formatKey(config.config_key)}</h3>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 font-mono mt-1">{config.config_key}</p>
-          </div>
+        <div className="flex-1">
+          <h3 className="font-bold text-lg text-zinc-900 dark:text-zinc-100">{translateConfigKey(config.config_key)}</h3>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 font-mono mt-1">{config.config_key}</p>
         </div>
 
         <div className="flex-1 w-full md:w-auto flex justify-end">
-          {isEditing || isBoolean ? (
+          {isEditing || isBoolean || isUserProfile ? (
             <div className="flex items-center gap-2 w-full md:w-auto justify-end">
               {isBoolean ? (
                 <button
                   onClick={() => setValue(value === 'true' ? 'false' : 'true')}
                   className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
-                    value === 'true' 
-                      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50' 
+                    value === 'true'
+                      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50'
                       : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
                   }`}
                 >
                   {value === 'true' ? 'ATIVO' : 'INATIVO'}
                 </button>
+              ) : isUserProfile ? (
+                <select
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  autoFocus
+                >
+                  {userProfileOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
               ) : (
                 <input
                   type="text"
@@ -124,10 +146,10 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
                   autoFocus
                 />
               )}
-              
+
               {hasChanged && (
                 <>
-                  <button 
+                  <button
                     onClick={handleSave}
                     disabled={updating}
                     className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
@@ -135,7 +157,7 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
                   >
                     {updating ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
                   </button>
-                  <button 
+                  <button
                     onClick={handleCancel}
                     disabled={updating}
                     className="p-2 bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-lg hover:bg-zinc-300 dark:hover:bg-zinc-600 disabled:opacity-50 transition-colors"
@@ -147,7 +169,7 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
               )}
             </div>
           ) : (
-            <div 
+            <div
               className="flex flex-col md:items-end cursor-pointer group"
               onClick={() => setIsEditing(true)}
             >
@@ -289,7 +311,6 @@ export const SettingsPage: React.FC = () => {
 
               {configs.length === 0 && (
                 <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700 transition-colors duration-200">
-                  <Settings className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
                   <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">Nenhuma configuração encontrada</h3>
                   <p className="text-zinc-500 dark:text-zinc-400">Tente ajustar seus filtros de busca.</p>
                 </div>
