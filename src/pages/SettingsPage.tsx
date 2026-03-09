@@ -252,14 +252,14 @@ export const SettingsPage: React.FC = () => {
     setError(null);
     try {
       const data = await api.getTenantConfigs(token, page, search);
+      console.log('Configs API Response:', data);
       setConfigs(data.data);
-      setCurrentPage(data.meta.current_page);
-      setTotalPages(data.meta.last_page);
-      setTotalItems(data.meta.total);
-      setFromItem(data.meta.from);
-      setToItem(data.meta.to);
+      setCurrentPage(data.current_page);
+      setTotalPages(data.last_page);
+      setTotalItems(data.total);
+      setFromItem(data.from);
+      setToItem(data.to);
     } catch (err: any) {
-      console.error('Error fetching configs:', err);
       setError(err.message || 'Não foi possível carregar as configurações. Verifique sua conexão.');
     } finally {
       setLoading(false);
