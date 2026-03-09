@@ -362,7 +362,7 @@ export const api = {
     if (search) {
       queryParams.append('filter[name]', search);
     }
-    
+
     const response = await fetch(`${API_BASE_URL}/rewards?${queryParams.toString()}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -371,5 +371,44 @@ export const api = {
     });
     if (!response.ok) throw new Error('Falha ao carregar prêmios');
     return response.json() as Promise<PaginatedResponse<Reward>>;
+  },
+
+  createReward: async (token: string, formData: FormData) => {
+    const response = await fetch(`${API_BASE_URL}/rewards`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Falha ao criar prêmio');
+    return response.json();
+  },
+
+  updateReward: async (token: string, id: number, formData: FormData) => {
+    const response = await fetch(`${API_BASE_URL}/rewards/${id}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Falha ao atualizar prêmio');
+    return response.json();
+  },
+
+  deleteReward: async (token: string, id: number) => {
+    const response = await fetch(`${API_BASE_URL}/rewards/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao excluir prêmio');
+    if (response.status === 204) return;
+    return response.json();
   }
 };

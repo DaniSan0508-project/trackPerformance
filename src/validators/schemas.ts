@@ -123,7 +123,7 @@ export const tenantConfigValidations = {
   allow_user_post: z.enum(['true', 'false']),
 };
 
-// Schema para Recompensa
+// Schema para Recompensa (criação)
 export const rewardSchema = z.object({
   name: z
     .string()
@@ -133,12 +133,40 @@ export const rewardSchema = z.object({
     .string()
     .min(1, 'Descrição é obrigatória')
     .min(10, 'Descrição deve ter no mínimo 10 caracteres'),
-  cost_in_coins: z
+  price_coins: z
     .string()
-    .min(1, 'Custo é obrigatório')
+    .min(1, 'Preço é obrigatório')
     .regex(/^\d+$/, 'Deve ser um número válido'),
-  active: z.boolean(),
-  image: z.instanceof(File).optional().nullable(),
+  stock: z
+    .string()
+    .min(1, 'Estoque é obrigatório')
+    .regex(/^\d+$/, 'Deve ser um número válido'),
+  is_active: z.string(),
+  images: z.array(z.instanceof(File)).optional(),
+  primary_image_index: z.string().optional(),
+});
+
+// Schema para Recompensa (edição - campos opcionais)
+export const rewardUpdateSchema = z.object({
+  name: z
+    .string()
+    .min(1, 'Nome é obrigatório')
+    .min(3, 'Nome deve ter no mínimo 3 caracteres'),
+  description: z
+    .string()
+    .min(1, 'Descrição é obrigatória')
+    .min(10, 'Descrição deve ter no mínimo 10 caracteres'),
+  price_coins: z
+    .string()
+    .min(1, 'Preço é obrigatório')
+    .regex(/^\d+$/, 'Deve ser um número válido'),
+  stock: z
+    .string()
+    .min(1, 'Estoque é obrigatório')
+    .regex(/^\d+$/, 'Deve ser um número válido'),
+  is_active: z.string(),
+  images: z.array(z.instanceof(File)).optional(),
+  primary_image_index: z.string().optional(),
 });
 
 // Tipos inferidos dos schemas
@@ -149,3 +177,4 @@ export type StoreGroupFormData = z.infer<typeof storeGroupSchema>;
 export type FeedbackFormData = z.infer<typeof feedbackSchema>;
 export type PostFormData = z.infer<typeof postSchema>;
 export type RewardFormData = z.infer<typeof rewardSchema>;
+export type RewardUpdateFormData = z.infer<typeof rewardUpdateSchema>;
