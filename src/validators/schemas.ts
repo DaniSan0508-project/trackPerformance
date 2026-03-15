@@ -169,6 +169,28 @@ export const rewardUpdateSchema = z.object({
   primary_image_index: z.string().optional(),
 });
 
+// Schema para Campanha
+export const campaignSchema = z.object({
+  name: z
+    .string()
+    .min(1, 'Nome é obrigatório')
+    .min(3, 'Nome deve ter no mínimo 3 caracteres'),
+  type: z
+    .string()
+    .min(1, 'Tipo é obrigatório'),
+  goal: z
+    .string()
+    .min(1, 'Meta é obrigatória')
+    .regex(/^\d+(\.\d{1,2})?$/, 'Deve ser um número válido com até 2 casas decimais'),
+  start_date: z
+    .string()
+    .min(1, 'Data de início é obrigatória'),
+  end_date: z
+    .string()
+    .min(1, 'Data de término é obrigatória'),
+  is_active: z.string(),
+});
+
 // Tipos inferidos dos schemas
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type UserFormData = z.infer<typeof userSchema>;
@@ -178,3 +200,4 @@ export type FeedbackFormData = z.infer<typeof feedbackSchema>;
 export type PostFormData = z.infer<typeof postSchema>;
 export type RewardFormData = z.infer<typeof rewardSchema>;
 export type RewardUpdateFormData = z.infer<typeof rewardUpdateSchema>;
+export type CampaignFormData = z.infer<typeof campaignSchema>;

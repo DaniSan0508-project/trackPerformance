@@ -1,4 +1,4 @@
-import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward } from '../types';
+import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward, Campaign, CampaignAction, Product } from '../types';
 
 const API_BASE_URL = 'http://localhost:8012/api/v1';
 
@@ -410,5 +410,85 @@ export const api = {
     if (!response.ok) throw new Error('Falha ao excluir prêmio');
     if (response.status === 204) return;
     return response.json();
-  }
+  },
+
+  getCampaigns: async (token: string, page = 1, search = '') => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    if (search) {
+      queryParams.append('filter[name]', search);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/campaigns?${queryParams.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar campanhas');
+    return response.json() as Promise<PaginatedResponse<Campaign>>;
+  },
+
+  createCampaign: async (token: string, data: Partial<Campaign>) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Falha ao criar campanha');
+    return response.json();
+  },
+
+  updateCampaign: async (token: string, id: number, data: Partial<Campaign>) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Falha ao atualizar campanha');
+    return response.json();
+  },
+
+  deleteCampaign: async (token: string, id: number) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao excluir campanha');
+    if (response.status === 204) return;
+    return response.json();
+  },
+
+  getAllUsers: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/users?per_page=100`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar usuários');
+    return response.json();
+  },
+
+  getProducts: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/products?per_page=100`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar produtos');
+    return response.json();
+  },
 };

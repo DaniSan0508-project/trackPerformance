@@ -157,3 +157,55 @@ export interface Reward {
   images: RewardImage[];
   primary_image?: RewardImage;
 }
+
+export interface Campaign {
+  id: number;
+  tenant_id: number;
+  name: string;
+  type: string;
+  goal: string;
+  start_date: string;
+  end_date: string;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  users?: User[];
+  products?: CampaignProduct[];
+  actions?: CampaignAction[];
+}
+
+export interface CampaignProduct {
+  id: number;
+  product_id: number;
+  campaign_id: number;
+  created_at: string;
+  updated_at: string;
+  product?: Product;
+}
+
+export interface Product {
+  id: number;
+  name: string;
+  description?: string;
+  price?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CampaignAction {
+  id: number;
+  action_id: number;
+  campaign_id: number;
+  coins: number;
+  created_at: string;
+  updated_at: string;
+  action?: ActionEngagement;
+}
+
+export interface ActionEngagement {
+  id: number;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}

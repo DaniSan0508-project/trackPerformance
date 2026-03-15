@@ -2,13 +2,13 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Users, 
-  TrendingUp, 
-  Settings, 
-  LogOut, 
-  Bell, 
+import {
+  LayoutDashboard,
+  Users,
+  TrendingUp,
+  Settings,
+  LogOut,
+  Bell,
   Search,
   Menu,
   Store,
@@ -16,7 +16,8 @@ import {
   MessageSquarePlus,
   ShoppingBag,
   Sun,
-  Moon
+  Moon,
+  Target
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -88,17 +89,23 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             label="Equipe" 
             active={location.pathname === '/team'} 
           />
-          <NavItem 
-            to="/rewards" 
-            icon={<ShoppingBag size={20} />} 
-            label="Prêmios" 
-            active={location.pathname === '/rewards'} 
+          <NavItem
+            to="/rewards"
+            icon={<ShoppingBag size={20} />}
+            label="Prêmios"
+            active={location.pathname === '/rewards'}
           />
-          <NavItem 
-            to="/reports" 
-            icon={<TrendingUp size={20} />} 
-            label="Relatórios" 
-            active={location.pathname === '/reports'} 
+          <NavItem
+            to="/campaigns"
+            icon={<Target size={20} />}
+            label="Campanhas"
+            active={location.pathname === '/campaigns'}
+          />
+          <NavItem
+            to="/reports"
+            icon={<TrendingUp size={20} />}
+            label="Relatórios"
+            active={location.pathname === '/reports'}
           />
           <NavItem
             to="/settings"
@@ -191,15 +198,20 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             icon={<Users size={24} />} 
             active={location.pathname === '/team'} 
           />
-          <MobileNavItem 
-            to="/rewards" 
-            icon={<ShoppingBag size={24} />} 
-            active={location.pathname === '/rewards'} 
+          <MobileNavItem
+            to="/rewards"
+            icon={<ShoppingBag size={24} />}
+            active={location.pathname === '/rewards'}
           />
-          <MobileNavItem 
-            to="/reports" 
-            icon={<TrendingUp size={24} />} 
-            active={location.pathname === '/reports'} 
+          <MobileNavItem
+            to="/campaigns"
+            icon={<Target size={24} />}
+            active={location.pathname === '/campaigns'}
+          />
+          <MobileNavItem
+            to="/reports"
+            icon={<TrendingUp size={24} />}
+            active={location.pathname === '/reports'}
           />
           <MobileNavItem 
             to="/settings" 
