@@ -223,6 +223,54 @@ export const CampaignsPage: React.FC = () => {
     if (!token) return;
     setFormErrors({});
 
+    // Validações específicas para edição
+    if (editingCampaign) {
+      // Obrigatório ao menos 1 usuário (sempre)
+      if (selectedUsers.length === 0) {
+        addToast('error', 'É obrigatório manter pelo menos 1 usuário vinculado.');
+        setActiveTab('users');
+        return;
+      }
+
+      // Regras por tipo de campanha
+      if (editingCampaign.type === 'sales') {
+        // Sales: obrigatório produtos, não pode ter actions
+        if (selectedProducts.length === 0) {
+          addToast('error', 'Campanhas de vendas (sales) exigem pelo menos 1 produto vinculado.');
+          setActiveTab('products');
+          return;
+        }
+        if (selectedActions.length > 0) {
+          addToast('error', 'Campanhas de vendas não podem ter ações de engajamento. Remova as ações selecionadas.');
+          setActiveTab('actions');
+          return;
+        }
+      }
+
+      if (editingCampaign.type === 'engagement') {
+        // Engagement: obrigatório actions, não pode ter products
+        if (selectedActions.length === 0) {
+          addToast('error', 'Campanhas de engajamento exigem pelo menos 1 ação vinculada.');
+          setActiveTab('actions');
+          return;
+        }
+        if (selectedProducts.length > 0) {
+          addToast('error', 'Campanhas de engajamento não podem ter produtos. Remova os produtos selecionados.');
+          setActiveTab('products');
+          return;
+        }
+        // Valida user_type_id = 2 para engagement
+        const usersWithInvalidType = users.filter(
+          u => selectedUsers.includes(u.id) && u.user_type_id !== 2
+        );
+        if (usersWithInvalidType.length > 0) {
+          addToast('error', 'Apenas usuários comuns (user_type_id = 2) podem participar de campanhas de engajamento.');
+          setActiveTab('users');
+          return;
+        }
+      }
+    }
+
     const result = campaignSchema.safeParse(formData);
     if (!result.success) {
       const errors = result.error.flatten().fieldErrors;
@@ -237,8 +285,8 @@ export const CampaignsPage: React.FC = () => {
       return;
     }
 
-    // Validação adicional: end_date deve ser maior que start_date
-    if (formData.end_date < formData.start_date) {
+    // Validação adicional: end_date deve ser maior que start_date (somente criação)
+    if (!editingCampaign && formData.end_date < formData.start_date) {
       setFormErrors({ end_date: 'Data de término deve ser maior que data de início' });
       addToast('error', 'Data de término deve ser maior que data de início.');
       return;
@@ -248,15 +296,35 @@ export const CampaignsPage: React.FC = () => {
     try {
       const dataToSave: any = {
         name: formData.name,
-        type: formData.type,
-        goal: parseFloat(formData.goal),
-        start_date: formData.start_date,
-        end_date: formData.end_date,
         is_active: formData.is_active === '1',
         users: selectedUsers,
-        products: selectedProducts,
-        actions: selectedActions.map(a => ({ id: a.id, coins: a.coins })),
       };
+
+      // Na criação, envia todos os campos
+      if (!editingCampaign) {
+        dataToSave.type = formData.type;
+        dataToSave.goal = parseFloat(formData.goal);
+        dataToSave.start_date = formData.start_date;
+        dataToSave.end_date = formData.end_date;
+      }
+
+      // Adiciona apenas os campos permitidos por tipo
+      if (editingCampaign) {
+        if (editingCampaign.type === 'sales') {
+          // Sales: envia apenas products
+          dataToSave.products = selectedProducts;
+        } else if (editingCampaign.type === 'engagement') {
+          // Engagement: envia apenas actions
+          dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
+        }
+      } else {
+        // Na criação, envia ambos conforme o tipo
+        if (formData.type === 'sales') {
+          dataToSave.products = selectedProducts;
+        } else if (formData.type === 'engagement') {
+          dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
+        }
+      }
 
       if (editingCampaign) {
         await api.updateCampaign(token, editingCampaign.id, dataToSave);
@@ -554,9 +622,16 @@ export const CampaignsPage: React.FC = () => {
                 className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 max-h-[90vh] flex flex-col"
               >
                 <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
-                  <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
-                    {editingCampaign ? 'Editar Campanha' : 'Nova Campanha'}
-                  </h2>
+                  <div>
+                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+                      {editingCampaign ? 'Editar Campanha' : 'Nova Campanha'}
+                    </h2>
+                    {editingCampaign && (
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                        Altere nome, status e vínculos
+                      </p>
+                    )}
+                  </div>
                   <button onClick={handleCloseModal} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
                     <X size={24} />
                   </button>
@@ -591,8 +666,12 @@ export const CampaignsPage: React.FC = () => {
                         ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
+                    disabled={editingCampaign?.type === 'sales'}
                   >
                     Ações ({selectedActions.length})
+                    {editingCampaign?.type === 'sales' && (
+                      <span className="block text-xs opacity-70">Não disponível para sales</span>
+                    )}
                   </button>
                   <button
                     onClick={() => setActiveTab('products')}
@@ -601,8 +680,12 @@ export const CampaignsPage: React.FC = () => {
                         ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
+                    disabled={editingCampaign?.type === 'engagement'}
                   >
                     Produtos ({selectedProducts.length})
+                    {editingCampaign?.type === 'engagement' && (
+                      <span className="block text-xs opacity-70">Não disponível para engagement</span>
+                    )}
                   </button>
                 </div>
 
@@ -624,63 +707,102 @@ export const CampaignsPage: React.FC = () => {
                         {formErrors.name && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.name}</p>}
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tipo *</label>
-                        <select
-                          value={formData.type}
-                          onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                          className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                        >
-                          <option value="sales">Vendas</option>
-                          <option value="engagement">Engajamento</option>
-                          <option value="retention">Retenção</option>
-                          <option value="acquisition">Aquisição</option>
-                          <option value="loyalty">Fidelização</option>
-                        </select>
-                        {formErrors.type && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.type}</p>}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta (R$) *</label>
-                        <input
-                          type="text"
-                          value={formData.goal}
-                          onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
-                          className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
-                            formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                          }`}
-                          placeholder="Ex: 50000.00"
-                        />
-                        {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Data de Início *</label>
-                          <input
-                            type="date"
-                            value={formData.start_date}
-                            onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                            className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
-                              formErrors.start_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                            }`}
-                          />
-                          {formErrors.start_date && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.start_date}</p>}
+                      {/* Campos somente leitura na edição */}
+                      {editingCampaign && (
+                        <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+                            ℹ️ Os campos abaixo não podem ser alterados na edição
+                          </p>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Tipo</label>
+                              <p className="text-sm font-medium text-zinc-900 dark:text-white capitalize">
+                                {campaignTypeLabels[editingCampaign.type] || editingCampaign.type}
+                              </p>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta</label>
+                              <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                                {formatCurrency(editingCampaign.goal)}
+                              </p>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Início</label>
+                              <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                                {formatDate(editingCampaign.start_date)}
+                              </p>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Término</label>
+                              <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                                {formatDate(editingCampaign.end_date)}
+                              </p>
+                            </div>
+                          </div>
                         </div>
+                      )}
 
-                        <div>
-                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Data de Término *</label>
-                          <input
-                            type="date"
-                            value={formData.end_date}
-                            onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                            className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
-                              formErrors.end_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                            }`}
-                          />
-                          {formErrors.end_date && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.end_date}</p>}
-                        </div>
-                      </div>
+                      {!editingCampaign && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tipo *</label>
+                            <select
+                              value={formData.type}
+                              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                              className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                            >
+                              <option value="sales">Vendas</option>
+                              <option value="engagement">Engajamento</option>
+                              <option value="retention">Retenção</option>
+                              <option value="acquisition">Aquisição</option>
+                              <option value="loyalty">Fidelização</option>
+                            </select>
+                            {formErrors.type && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.type}</p>}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta (R$) *</label>
+                            <input
+                              type="text"
+                              value={formData.goal}
+                              onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
+                              className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                              }`}
+                              placeholder="Ex: 50000.00"
+                            />
+                            {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Data de Início *</label>
+                              <input
+                                type="date"
+                                value={formData.start_date}
+                                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
+                                  formErrors.start_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                }`}
+                              />
+                              {formErrors.start_date && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.start_date}</p>}
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Data de Término *</label>
+                              <input
+                                type="date"
+                                value={formData.end_date}
+                                onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
+                                  formErrors.end_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                }`}
+                              />
+                              {formErrors.end_date && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.end_date}</p>}
+                            </div>
+                          </div>
+                        </>
+                      )}
 
                       <div>
                         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Status</label>
@@ -714,7 +836,14 @@ export const CampaignsPage: React.FC = () => {
 
                   {activeTab === 'users' && (
                     <div className="space-y-3">
-                      <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+                      {editingCampaign?.type === 'engagement' && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-4">
+                          <p className="text-sm text-blue-700 dark:text-blue-400">
+                            ℹ️ Para campanhas de engajamento, apenas <strong>usuários comuns (user_type_id = 2)</strong> podem ser selecionados.
+                          </p>
+                        </div>
+                      )}
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400">
                         Selecione os usuários que participarão da campanha:
                       </p>
                       {loadingAux ? (
@@ -725,7 +854,10 @@ export const CampaignsPage: React.FC = () => {
                         <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum usuário encontrado.</p>
                       ) : (
                         <div className="grid gap-2 max-h-80 overflow-y-auto">
-                          {users.map((user) => (
+                          {(editingCampaign?.type === 'engagement' 
+                            ? users.filter(u => u.user_type_id === 2) 
+                            : users
+                          ).map((user) => (
                             <button
                               key={user.id}
                               onClick={() => toggleUser(user.id)}
@@ -756,98 +888,128 @@ export const CampaignsPage: React.FC = () => {
 
                   {activeTab === 'actions' && (
                     <div className="space-y-3">
-                      <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-                        Selecione as ações e defina quantas moedas serão ganhas:
-                      </p>
-                      <div className="grid gap-3 max-h-80 overflow-y-auto">
-                        {ENGAGEMENT_ACTIONS.map((action) => {
-                          const isSelected = selectedActions.find(a => a.id === action.id);
-                          return (
-                            <div
-                              key={action.id}
-                              className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
-                                isSelected
-                                  ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
-                                  : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
-                              }`}
-                            >
-                              <button
-                                onClick={() => toggleAction(action.id)}
-                                className="flex items-center gap-3 flex-1 text-left"
-                              >
-                                <div className={`w-5 h-5 rounded border flex items-center justify-center ${
-                                  isSelected
-                                    ? 'bg-amber-500 border-amber-500'
-                                    : 'border-zinc-300 dark:border-zinc-600'
-                                }`}>
-                                  {isSelected && <Check size={14} className="text-white" />}
+                      {editingCampaign?.type === 'sales' ? (
+                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                          <p className="text-sm text-amber-700 dark:text-amber-400">
+                            ⚠️ Campanhas do tipo <strong>sales</strong> não podem ter ações de engajamento.
+                          </p>
+                          <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
+                            Ações são utilizadas apenas em campanhas de engajamento.
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+                            {editingCampaign?.type === 'engagement' 
+                              ? 'Selecione as ações e defina quantas moedas serão ganhas (obrigatório para campanhas de engajamento):'
+                              : 'Selecione as ações e defina quantas moedas serão ganhas:'}
+                          </p>
+                          <div className="grid gap-3 max-h-80 overflow-y-auto">
+                            {ENGAGEMENT_ACTIONS.map((action) => {
+                              const isSelected = selectedActions.find(a => a.id === action.id);
+                              return (
+                                <div
+                                  key={action.id}
+                                  className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                                    isSelected
+                                      ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
+                                      : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
+                                  }`}
+                                >
+                                  <button
+                                    onClick={() => toggleAction(action.id)}
+                                    className="flex items-center gap-3 flex-1 text-left"
+                                  >
+                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+                                      isSelected
+                                        ? 'bg-amber-500 border-amber-500'
+                                        : 'border-zinc-300 dark:border-zinc-600'
+                                    }`}>
+                                      {isSelected && <Check size={14} className="text-white" />}
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-sm text-zinc-900 dark:text-white">
+                                        {actionLabels[action.name] || action.name.replace(/_/g, ' ')}
+                                      </p>
+                                    </div>
+                                  </button>
+                                  {isSelected && (
+                                    <div className="flex items-center gap-2">
+                                      <Coins size={16} className="text-amber-500" />
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={selectedActions.find(a => a.id === action.id)?.coins || 10}
+                                        onChange={(e) => updateActionCoins(action.id, parseInt(e.target.value) || 0)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
+                                      />
+                                    </div>
+                                  )}
                                 </div>
-                                <div>
-                                  <p className="font-medium text-sm text-zinc-900 dark:text-white">
-                                    {actionLabels[action.name] || action.name.replace(/_/g, ' ')}
-                                  </p>
-                                </div>
-                              </button>
-                              {isSelected && (
-                                <div className="flex items-center gap-2">
-                                  <Coins size={16} className="text-amber-500" />
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={selectedActions.find(a => a.id === action.id)?.coins || 10}
-                                    onChange={(e) => updateActionCoins(action.id, parseInt(e.target.value) || 0)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
 
                   {activeTab === 'products' && (
                     <div className="space-y-3">
-                      <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-                        Selecione os produtos relacionados à campanha:
-                      </p>
-                      {loadingAux ? (
-                        <div className="flex justify-center py-8">
-                          <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                      {editingCampaign?.type === 'engagement' ? (
+                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                          <p className="text-sm text-amber-700 dark:text-amber-400">
+                            ⚠️ Campanhas do tipo <strong>engagement</strong> não podem ter produtos.
+                          </p>
+                          <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
+                            Produtos são utilizados apenas em campanhas de vendas.
+                          </p>
                         </div>
-                      ) : products.length === 0 ? (
-                        <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum produto encontrado.</p>
                       ) : (
-                        <div className="grid gap-2 max-h-80 overflow-y-auto">
-                          {products.map((product) => (
-                            <button
-                              key={product.id}
-                              onClick={() => toggleProduct(product.id)}
-                              className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
-                                selectedProducts.includes(product.id)
-                                  ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500'
-                                  : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-blue-300'
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
-                                  <ShoppingBag size={20} />
-                                </div>
-                                <div className="text-left">
-                                  <p className="font-medium text-sm text-zinc-900 dark:text-white">{product.name}</p>
-                                  {product.description && (
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-xs">{product.description}</p>
+                        <>
+                          <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+                            {editingCampaign?.type === 'sales' 
+                              ? 'Selecione os produtos relacionados à campanha (obrigatório para campanhas de vendas):'
+                              : 'Selecione os produtos relacionados à campanha:'}
+                          </p>
+                          {loadingAux ? (
+                            <div className="flex justify-center py-8">
+                              <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                            </div>
+                          ) : products.length === 0 ? (
+                            <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum produto encontrado.</p>
+                          ) : (
+                            <div className="grid gap-2 max-h-80 overflow-y-auto">
+                              {products.map((product) => (
+                                <button
+                                  key={product.id}
+                                  onClick={() => toggleProduct(product.id)}
+                                  className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                                    selectedProducts.includes(product.id)
+                                      ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500'
+                                      : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-blue-300'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                      <ShoppingBag size={20} />
+                                    </div>
+                                    <div className="text-left">
+                                      <p className="font-medium text-sm text-zinc-900 dark:text-white">{product.name}</p>
+                                      {product.description && (
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-xs">{product.description}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {selectedProducts.includes(product.id) && (
+                                    <Check size={20} className="text-blue-600" />
                                   )}
-                                </div>
-                              </div>
-                              {selectedProducts.includes(product.id) && (
-                                <Check size={20} className="text-blue-600" />
-                              )}
-                            </button>
-                          ))}
-                        </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
