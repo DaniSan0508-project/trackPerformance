@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Coins, Check } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Campaign, User as UserType, ActionEngagement, Product, CampaignAction } from '../types';
+import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -22,30 +22,36 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-const campaignTypeLabels: Record<string, string> = {
+const campaignTypeLabels: Record<CampaignType, string> = {
   sales: 'Vendas',
   engagement: 'Engajamento',
-  retention: 'Retenção',
-  acquisition: 'Aquisição',
-  loyalty: 'Fidelização',
 };
 
-const campaignTypeColors: Record<string, string> = {
+const campaignTypeColors: Record<CampaignType, string> = {
   sales: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
   engagement: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  retention: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  acquisition: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-  loyalty: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400',
 };
 
-// Ações de engajamento hardcoded (já existem no banco)
-const ENGAGEMENT_ACTIONS: ActionEngagement[] = [
-  { id: 1, name: 'login_daily', created_at: '', updated_at: '' },
-  { id: 2, name: 'share_post', created_at: '', updated_at: '' },
-  { id: 3, name: 'comment_post', created_at: '', updated_at: '' },
-  { id: 4, name: 'like_post', created_at: '', updated_at: '' },
-  { id: 5, name: 'send_feedback', created_at: '', updated_at: '' },
-  { id: 6, name: 'answer_survey', created_at: '', updated_at: '' },
+const campaignStatusLabels: Record<CampaignStatus, string> = {
+  ativa: 'Ativa',
+  pausada: 'Pausada',
+  finalizada: 'Finalizada',
+};
+
+const campaignStatusColors: Record<CampaignStatus, string> = {
+  ativa: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
+  pausada: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
+  finalizada: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400',
+};
+
+// Ações de engajamento com valores de coins conforme especificação
+const ENGAGEMENT_ACTIONS = [
+  { id: 1, name: 'login_daily' },      // 10 coins
+  { id: 2, name: 'share_post' },       // 20 coins
+  { id: 3, name: 'comment_post' },     // 10 coins
+  { id: 4, name: 'like_post' },        // 20 coins
+  { id: 5, name: 'send_feedback' },    // 10 coins
+  { id: 6, name: 'answer_survey' },    // 5 coins
 ];
 
 const actionLabels: Record<string, string> = {
@@ -57,10 +63,14 @@ const actionLabels: Record<string, string> = {
   answer_survey: 'Responder Pesquisa',
 };
 
-interface SelectedAction {
-  id: number;
-  coins: number;
-}
+const defaultActionCoins: Record<string, number> = {
+  login_daily: 10,
+  share_post: 20,
+  comment_post: 10,
+  like_post: 20,
+  send_feedback: 10,
+  answer_survey: 5,
+};
 
 export const CampaignsPage: React.FC = () => {
   const { token, user: currentUser } = useAuth();
@@ -107,19 +117,46 @@ export const CampaignsPage: React.FC = () => {
 
   const [formData, setFormData] = useState({
     name: '',
-    type: 'sales',
+    type: 'sales' as CampaignType,
     goal: '',
     start_date: '',
     end_date: '',
-    is_active: '1',
+    status: 'ativa' as CampaignStatus,
   });
 
   // Seleções
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
-  const [selectedActions, setSelectedActions] = useState<SelectedAction[]>([]);
+  const [selectedActions, setSelectedActions] = useState<{ id: number; coins: number }[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
 
+  // Ranking
+  const [rankingModal, setRankingModal] = useState<{
+    isOpen: boolean;
+    campaign: Campaign | null;
+    ranking: CampaignRanking[];
+    loading: boolean;
+  }>({
+    isOpen: false,
+    campaign: null,
+    ranking: [],
+    loading: false,
+  });
+
   const isAdmin = currentUser?.user_type_id === 1;
+
+  // Limpa usuários inválidos quando muda o tipo de campanha para engagement
+  useEffect(() => {
+    if (formData.type === 'engagement' && selectedUsers.length > 0) {
+      const validUsers = selectedUsers.filter(userId => {
+        const user = users.find(u => u.id === userId);
+        return user?.user_type_id === 2;
+      });
+      if (validUsers.length !== selectedUsers.length) {
+        setSelectedUsers(validUsers);
+        addToast('warning', 'Usuários incompatíveis foram removidos automaticamente.');
+      }
+    }
+  }, [formData.type]);
 
   const fetchAuxiliaryData = useCallback(async () => {
     if (!token) return;
@@ -171,16 +208,21 @@ export const CampaignsPage: React.FC = () => {
     setActiveTab('basic');
     if (campaign) {
       setEditingCampaign(campaign);
+      // Fallback para campanhas antigas que usam is_active
+      const status = campaign.status || (campaign.is_active ? 'ativa' : 'pausada');
       setFormData({
         name: campaign.name,
         type: campaign.type,
-        goal: campaign.goal,
+        goal: campaign.type === 'sales' ? campaign.goal : '',
         start_date: campaign.start_date,
         end_date: campaign.end_date,
-        is_active: campaign.is_active ? '1' : '0',
+        status: status,
       });
-      // Carregar seleções existentes
-      setSelectedUsers(campaign.users?.map(u => u.id) || []);
+      // Carregar seleções existentes - filtrar usuários inválidos para engagement
+      const validUsers = campaign.type === 'engagement'
+        ? (campaign.users?.filter(u => u.user_type_id === 2).map(u => u.id) || [])
+        : (campaign.users?.map(u => u.id) || []);
+      setSelectedUsers(validUsers);
       setSelectedProducts(campaign.products?.map(p => p.product_id) || []);
       setSelectedActions(campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || []);
     } else {
@@ -191,7 +233,7 @@ export const CampaignsPage: React.FC = () => {
         goal: '',
         start_date: '',
         end_date: '',
-        is_active: '1',
+        status: 'ativa',
       });
       setSelectedUsers([]);
       setSelectedProducts([]);
@@ -211,7 +253,7 @@ export const CampaignsPage: React.FC = () => {
       goal: '',
       start_date: '',
       end_date: '',
-      is_active: '1',
+      status: 'ativa',
     });
     setSelectedUsers([]);
     setSelectedProducts([]);
@@ -234,15 +276,10 @@ export const CampaignsPage: React.FC = () => {
 
       // Regras por tipo de campanha
       if (editingCampaign.type === 'sales') {
-        // Sales: obrigatório produtos, não pode ter actions
+        // Sales: obrigatório produtos
         if (selectedProducts.length === 0) {
           addToast('error', 'Campanhas de vendas (sales) exigem pelo menos 1 produto vinculado.');
           setActiveTab('products');
-          return;
-        }
-        if (selectedActions.length > 0) {
-          addToast('error', 'Campanhas de vendas não podem ter ações de engajamento. Remova as ações selecionadas.');
-          setActiveTab('actions');
           return;
         }
       }
@@ -264,7 +301,7 @@ export const CampaignsPage: React.FC = () => {
           u => selectedUsers.includes(u.id) && u.user_type_id !== 2
         );
         if (usersWithInvalidType.length > 0) {
-          addToast('error', 'Apenas usuários comuns (user_type_id = 2) podem participar de campanhas de engajamento.');
+          addToast('error', `Existem ${usersWithInvalidType.length} usuário(s) incompatível(eis) selecionados. Apenas usuários comuns (user_type_id = 2) podem participar de campanhas de engajamento.`);
           setActiveTab('users');
           return;
         }
@@ -296,14 +333,17 @@ export const CampaignsPage: React.FC = () => {
     try {
       const dataToSave: any = {
         name: formData.name,
-        is_active: formData.is_active === '1',
+        is_active: formData.status === 'ativa',
         users: selectedUsers,
       };
 
       // Na criação, envia todos os campos
       if (!editingCampaign) {
         dataToSave.type = formData.type;
-        dataToSave.goal = parseFloat(formData.goal);
+        // Goal apenas para vendas
+        if (formData.type === 'sales') {
+          dataToSave.goal = parseFloat(formData.goal);
+        }
         dataToSave.start_date = formData.start_date;
         dataToSave.end_date = formData.end_date;
       }
@@ -311,14 +351,14 @@ export const CampaignsPage: React.FC = () => {
       // Adiciona apenas os campos permitidos por tipo
       if (editingCampaign) {
         if (editingCampaign.type === 'sales') {
-          // Sales: envia apenas products
+          // Sales: envia products
           dataToSave.products = selectedProducts;
         } else if (editingCampaign.type === 'engagement') {
-          // Engagement: envia apenas actions
+          // Engagement: envia actions
           dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
         }
       } else {
-        // Na criação, envia ambos conforme o tipo
+        // Na criação, envia conforme o tipo
         if (formData.type === 'sales') {
           dataToSave.products = selectedProducts;
         } else if (formData.type === 'engagement') {
@@ -380,6 +420,23 @@ export const CampaignsPage: React.FC = () => {
     }
   };
 
+  const handleOpenRanking = async (campaign: Campaign) => {
+    if (!token) return;
+    setRankingModal({ isOpen: true, campaign, ranking: [], loading: true });
+    try {
+      const data = await api.getCampaignRanking(token, campaign.id);
+      setRankingModal(prev => ({ ...prev, ranking: data.data, loading: false }));
+    } catch (error: any) {
+      console.error('Error fetching ranking:', error);
+      addToast('error', error.message || 'Erro ao carregar ranking.');
+      setRankingModal(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleCloseRanking = () => {
+    setRankingModal({ isOpen: false, campaign: null, ranking: [], loading: false });
+  };
+
   const formatCurrency = (value: string) => {
     return parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
@@ -390,13 +447,13 @@ export const CampaignsPage: React.FC = () => {
 
   // Handlers para seleção
   const toggleUser = (userId: number) => {
-    setSelectedUsers(prev => 
+    setSelectedUsers(prev =>
       prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
     );
   };
 
   const toggleProduct = (productId: number) => {
-    setSelectedProducts(prev => 
+    setSelectedProducts(prev =>
       prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId]
     );
   };
@@ -407,12 +464,14 @@ export const CampaignsPage: React.FC = () => {
       if (exists) {
         return prev.filter(a => a.id !== actionId);
       }
-      return [...prev, { id: actionId, coins: 10 }];
+      const action = ENGAGEMENT_ACTIONS.find(a => a.id === actionId);
+      const defaultCoins = action ? defaultActionCoins[action.name] || 10 : 10;
+      return [...prev, { id: actionId, coins: defaultCoins }];
     });
   };
 
   const updateActionCoins = (actionId: number, coins: number) => {
-    setSelectedActions(prev => 
+    setSelectedActions(prev =>
       prev.map(a => a.id === actionId ? { ...a, coins } : a)
     );
   };
@@ -485,6 +544,10 @@ export const CampaignsPage: React.FC = () => {
               {campaigns.map((campaign) => {
                 const typeLabel = campaignTypeLabels[campaign.type] || campaign.type;
                 const typeColor = campaignTypeColors[campaign.type] || 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300';
+                // Fallback para campanhas antigas que usam is_active
+                const statusFromCampaign = campaign.status || (campaign.is_active ? 'ativa' : 'pausada');
+                const statusLabel = campaignStatusLabels[statusFromCampaign] || statusFromCampaign;
+                const statusColor = campaignStatusColors[statusFromCampaign] || 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400';
 
                 return (
                   <motion.div
@@ -504,23 +567,20 @@ export const CampaignsPage: React.FC = () => {
                             <span className={`px-2 py-1 rounded-full text-xs font-bold ${typeColor}`}>
                               {typeLabel}
                             </span>
-                            {campaign.is_active ? (
-                              <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-bold">
-                                ATIVA
-                              </span>
-                            ) : (
-                              <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full text-xs font-bold">
-                                INATIVA
-                              </span>
-                            )}
+                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${statusColor}`}>
+                              {statusLabel.toUpperCase()}
+                            </span>
                           </div>
-                          
+
                           <div className="flex flex-wrap gap-4 mt-3 text-sm">
-                            <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                              <TrendingUp size={16} className="text-emerald-500" />
-                              <span className="text-zinc-500 dark:text-zinc-500">Meta:</span>
-                              <span className="font-semibold text-zinc-900 dark:text-white">{formatCurrency(campaign.goal)}</span>
-                            </div>
+                            {/* Meta apenas para campanhas de vendas */}
+                            {campaign.type === 'sales' && (
+                              <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                                <TrendingUp size={16} className="text-emerald-500" />
+                                <span className="text-zinc-500 dark:text-zinc-500">Meta:</span>
+                                <span className="font-semibold text-zinc-900 dark:text-white">{formatCurrency(campaign.goal)}</span>
+                              </div>
+                            )}
                             <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
                               <Calendar size={16} className="text-blue-500" />
                               <span className="text-zinc-500 dark:text-zinc-500">Período:</span>
@@ -547,6 +607,13 @@ export const CampaignsPage: React.FC = () => {
                       </div>
 
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleOpenRanking(campaign)}
+                          className="p-2 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+                          title="Ver Ranking"
+                        >
+                          <Trophy size={18} />
+                        </button>
                         {isAdmin && (
                           <>
                             <button
@@ -659,34 +726,32 @@ export const CampaignsPage: React.FC = () => {
                   >
                     Usuários ({selectedUsers.length})
                   </button>
-                  <button
-                    onClick={() => setActiveTab('actions')}
-                    className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                      activeTab === 'actions'
-                        ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
-                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
-                    }`}
-                    disabled={editingCampaign?.type === 'sales'}
-                  >
-                    Ações ({selectedActions.length})
-                    {editingCampaign?.type === 'sales' && (
-                      <span className="block text-xs opacity-70">Não disponível para sales</span>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('products')}
-                    className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                      activeTab === 'products'
-                        ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
-                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
-                    }`}
-                    disabled={editingCampaign?.type === 'engagement'}
-                  >
-                    Produtos ({selectedProducts.length})
-                    {editingCampaign?.type === 'engagement' && (
-                      <span className="block text-xs opacity-70">Não disponível para engagement</span>
-                    )}
-                  </button>
+                  {/* Aba de ações: apenas para engajamento (criação e update) */}
+                  {(!editingCampaign && formData.type === 'engagement') || (editingCampaign?.type === 'engagement') ? (
+                    <button
+                      onClick={() => setActiveTab('actions')}
+                      className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                        activeTab === 'actions'
+                          ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
+                          : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+                      }`}
+                    >
+                      Ações ({selectedActions.length})
+                    </button>
+                  ) : null}
+                  {/* Aba de produtos: apenas para vendas (criação e update) */}
+                  {(!editingCampaign && formData.type === 'sales') || (editingCampaign?.type === 'sales') ? (
+                    <button
+                      onClick={() => setActiveTab('products')}
+                      className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                        activeTab === 'products'
+                          ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
+                          : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+                      }`}
+                    >
+                      Produtos ({selectedProducts.length})
+                    </button>
+                  ) : null}
                 </div>
 
                 {/* Tab Content */}
@@ -748,31 +813,31 @@ export const CampaignsPage: React.FC = () => {
                             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tipo *</label>
                             <select
                               value={formData.type}
-                              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                              onChange={(e) => setFormData({ ...formData, type: e.target.value as CampaignType })}
                               className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                             >
                               <option value="sales">Vendas</option>
                               <option value="engagement">Engajamento</option>
-                              <option value="retention">Retenção</option>
-                              <option value="acquisition">Aquisição</option>
-                              <option value="loyalty">Fidelização</option>
                             </select>
                             {formErrors.type && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.type}</p>}
                           </div>
 
-                          <div>
-                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta (R$) *</label>
-                            <input
-                              type="text"
-                              value={formData.goal}
-                              onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
-                              className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
-                                formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                              }`}
-                              placeholder="Ex: 50000.00"
-                            />
-                            {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
-                          </div>
+                          {/* Meta apenas para campanhas de vendas */}
+                          {formData.type === 'sales' && (
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta (R$) *</label>
+                              <input
+                                type="text"
+                                value={formData.goal}
+                                onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
+                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                  formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                }`}
+                                placeholder="Ex: 50000.00"
+                              />
+                              {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
+                            </div>
+                          )}
 
                           <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -806,42 +871,55 @@ export const CampaignsPage: React.FC = () => {
 
                       <div>
                         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Status</label>
-                        <div className="flex gap-4">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="is_active"
-                              value="1"
-                              checked={formData.is_active === '1'}
-                              onChange={(e) => setFormData({ ...formData, is_active: e.target.value })}
-                              className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            <span className="text-sm text-zinc-700 dark:text-zinc-300">Ativa</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="is_active"
-                              value="0"
-                              checked={formData.is_active === '0'}
-                              onChange={(e) => setFormData({ ...formData, is_active: e.target.value })}
-                              className="w-4 h-4 text-red-600 focus:ring-red-500"
-                            />
-                            <span className="text-sm text-zinc-700 dark:text-zinc-300">Inativa</span>
-                          </label>
-                        </div>
+                        <select
+                          value={formData.status}
+                          onChange={(e) => setFormData({ ...formData, status: e.target.value as CampaignStatus })}
+                          className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                        >
+                          <option value="ativa">Ativa</option>
+                          <option value="pausada">Pausada</option>
+                          <option value="finalizada">Finalizada</option>
+                        </select>
                       </div>
                     </div>
                   )}
 
                   {activeTab === 'users' && (
                     <div className="space-y-3">
-                      {editingCampaign?.type === 'engagement' && (
-                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-4">
-                          <p className="text-sm text-blue-700 dark:text-blue-400">
-                            ℹ️ Para campanhas de engajamento, apenas <strong>usuários comuns (user_type_id = 2)</strong> podem ser selecionados.
-                          </p>
-                        </div>
+                      {/* Verifica se é campanha de engajamento (edição ou criação) */}
+                      {(editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement')) && (
+                        <>
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-4">
+                            <p className="text-sm text-blue-700 dark:text-blue-400">
+                              ℹ️ Para campanhas de engajamento, apenas <strong>usuários comuns (user_type_id = 2)</strong> podem ser selecionados.
+                            </p>
+                          </div>
+                          {/* Aviso de usuários incompatíveis selecionados */}
+                          {(() => {
+                            const invalidUsers = users.filter(u => selectedUsers.includes(u.id) && u.user_type_id !== 2);
+                            if (invalidUsers.length > 0) {
+                              return (
+                                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-4">
+                                  <p className="text-sm text-red-700 dark:text-red-400 font-semibold">
+                                    ⚠️ {invalidUsers.length} usuário(s) incompatível(eis) selecionado(s):
+                                  </p>
+                                  <ul className="text-xs text-red-600 dark:text-red-400 mt-2 list-disc list-inside">
+                                    {invalidUsers.map(u => (
+                                      <li key={u.id}>{u.name} ({u.user_type})</li>
+                                    ))}
+                                  </ul>
+                                  <button
+                                    onClick={() => setSelectedUsers(prev => prev.filter(id => !invalidUsers.find(u => u.id === id)))}
+                                    className="mt-3 text-xs font-medium text-red-700 dark:text-red-400 underline hover:no-underline"
+                                  >
+                                    Remover usuários incompatíveis
+                                  </button>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </>
                       )}
                       <p className="text-sm text-zinc-500 dark:text-zinc-400">
                         Selecione os usuários que participarão da campanha:
@@ -854,8 +932,9 @@ export const CampaignsPage: React.FC = () => {
                         <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum usuário encontrado.</p>
                       ) : (
                         <div className="grid gap-2 max-h-80 overflow-y-auto">
-                          {(editingCampaign?.type === 'engagement' 
-                            ? users.filter(u => u.user_type_id === 2) 
+                          {/* Filtra usuários: apenas user_type_id = 2 para engajamento */}
+                          {(editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement')
+                            ? users.filter(u => u.user_type_id === 2)
                             : users
                           ).map((user) => (
                             <button
@@ -888,128 +967,105 @@ export const CampaignsPage: React.FC = () => {
 
                   {activeTab === 'actions' && (
                     <div className="space-y-3">
-                      {editingCampaign?.type === 'sales' ? (
-                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
-                          <p className="text-sm text-amber-700 dark:text-amber-400">
-                            ⚠️ Campanhas do tipo <strong>sales</strong> não podem ter ações de engajamento.
-                          </p>
-                          <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
-                            Ações são utilizadas apenas em campanhas de engajamento.
-                          </p>
-                        </div>
-                      ) : (
-                        <>
-                          <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-                            {editingCampaign?.type === 'engagement' 
-                              ? 'Selecione as ações e defina quantas moedas serão ganhas (obrigatório para campanhas de engajamento):'
-                              : 'Selecione as ações e defina quantas moedas serão ganhas:'}
-                          </p>
-                          <div className="grid gap-3 max-h-80 overflow-y-auto">
-                            {ENGAGEMENT_ACTIONS.map((action) => {
-                              const isSelected = selectedActions.find(a => a.id === action.id);
-                              return (
-                                <div
-                                  key={action.id}
-                                  className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
-                                    isSelected
-                                      ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
-                                      : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
-                                  }`}
-                                >
-                                  <button
-                                    onClick={() => toggleAction(action.id)}
-                                    className="flex items-center gap-3 flex-1 text-left"
-                                  >
-                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${
-                                      isSelected
-                                        ? 'bg-amber-500 border-amber-500'
-                                        : 'border-zinc-300 dark:border-zinc-600'
-                                    }`}>
-                                      {isSelected && <Check size={14} className="text-white" />}
-                                    </div>
-                                    <div>
-                                      <p className="font-medium text-sm text-zinc-900 dark:text-white">
-                                        {actionLabels[action.name] || action.name.replace(/_/g, ' ')}
-                                      </p>
-                                    </div>
-                                  </button>
-                                  {isSelected && (
-                                    <div className="flex items-center gap-2">
-                                      <Coins size={16} className="text-amber-500" />
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        value={selectedActions.find(a => a.id === action.id)?.coins || 10}
-                                        onChange={(e) => updateActionCoins(action.id, parseInt(e.target.value) || 0)}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
-                                      />
-                                    </div>
-                                  )}
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+                        {editingCampaign?.type === 'engagement'
+                          ? 'Selecione as ações e defina quantas moedas serão ganhas (obrigatório para campanhas de engajamento):'
+                          : 'Selecione as ações e defina quantas moedas serão ganhas:'}
+                      </p>
+                      <div className="grid gap-3 max-h-80 overflow-y-auto">
+                        {ENGAGEMENT_ACTIONS.map((action) => {
+                          const isSelected = selectedActions.find(a => a.id === action.id);
+                          return (
+                            <div
+                              key={action.id}
+                              className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                                isSelected
+                                  ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
+                                  : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
+                              }`}
+                            >
+                              <button
+                                onClick={() => toggleAction(action.id)}
+                                className="flex items-center gap-3 flex-1 text-left"
+                              >
+                                <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+                                  isSelected
+                                    ? 'bg-amber-500 border-amber-500'
+                                    : 'border-zinc-300 dark:border-zinc-600'
+                                }`}>
+                                  {isSelected && <Check size={14} className="text-white" />}
                                 </div>
-                              );
-                            })}
-                          </div>
-                        </>
-                      )}
+                                <div>
+                                  <p className="font-medium text-sm text-zinc-900 dark:text-white">
+                                    {actionLabels[action.name]} ({defaultActionCoins[action.name]} coins)
+                                  </p>
+                                </div>
+                              </button>
+                              {isSelected && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">Coins:</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={selectedActions.find(a => a.id === action.id)?.coins || defaultActionCoins[action.name] || 10}
+                                    onChange={(e) => updateActionCoins(action.id, parseInt(e.target.value) || 0)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
                   {activeTab === 'products' && (
                     <div className="space-y-3">
-                      {editingCampaign?.type === 'engagement' ? (
-                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
-                          <p className="text-sm text-amber-700 dark:text-amber-400">
-                            ⚠️ Campanhas do tipo <strong>engagement</strong> não podem ter produtos.
-                          </p>
-                          <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
-                            Produtos são utilizados apenas em campanhas de vendas.
-                          </p>
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+                        {editingCampaign?.type === 'sales'
+                          ? 'Selecione os produtos relacionados à campanha (obrigatório para campanhas de vendas):'
+                          : 'Selecione os produtos relacionados à campanha:'}
+                      </p>
+                      {loadingAux ? (
+                        <div className="flex justify-center py-8">
+                          <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
                         </div>
+                      ) : products.length === 0 ? (
+                        <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum produto encontrado.</p>
                       ) : (
-                        <>
-                          <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-                            {editingCampaign?.type === 'sales' 
-                              ? 'Selecione os produtos relacionados à campanha (obrigatório para campanhas de vendas):'
-                              : 'Selecione os produtos relacionados à campanha:'}
-                          </p>
-                          {loadingAux ? (
-                            <div className="flex justify-center py-8">
-                              <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
-                            </div>
-                          ) : products.length === 0 ? (
-                            <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum produto encontrado.</p>
-                          ) : (
-                            <div className="grid gap-2 max-h-80 overflow-y-auto">
-                              {products.map((product) => (
-                                <button
-                                  key={product.id}
-                                  onClick={() => toggleProduct(product.id)}
-                                  className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
-                                    selectedProducts.includes(product.id)
-                                      ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500'
-                                      : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-blue-300'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
-                                      <ShoppingBag size={20} />
-                                    </div>
-                                    <div className="text-left">
-                                      <p className="font-medium text-sm text-zinc-900 dark:text-white">{product.name}</p>
-                                      {product.description && (
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-xs">{product.description}</p>
-                                      )}
-                                    </div>
-                                  </div>
-                                  {selectedProducts.includes(product.id) && (
-                                    <Check size={20} className="text-blue-600" />
+                        <div className="grid gap-2 max-h-80 overflow-y-auto">
+                          {products.map((product) => (
+                            <button
+                              key={product.id}
+                              onClick={() => toggleProduct(product.id)}
+                              className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                                selectedProducts.includes(product.id)
+                                  ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500'
+                                  : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-blue-300'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                  <ShoppingBag size={20} />
+                                </div>
+                                <div className="text-left">
+                                  <p className="font-medium text-sm text-zinc-900 dark:text-white">{product.name}</p>
+                                  {product.barcode && (
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">Cód: {product.barcode}</p>
                                   )}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </>
+                                  {product.description && !product.barcode && (
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-xs">{product.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                              {selectedProducts.includes(product.id) && (
+                                <Check size={20} className="text-blue-600" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
                       )}
                     </div>
                   )}
@@ -1053,6 +1109,97 @@ export const CampaignsPage: React.FC = () => {
                     >
                       {saving ? 'Salvando...' : 'Salvar'}
                     </button>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Ranking Modal */}
+        <AnimatePresence>
+          {rankingModal.isOpen && rankingModal.campaign && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 max-h-[80vh] flex flex-col"
+              >
+                <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
+                  <div>
+                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                      <Trophy className="w-6 h-6 text-amber-500" />
+                      Ranking da Campanha
+                    </h2>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                      {rankingModal.campaign.name}
+                    </p>
+                  </div>
+                  <button onClick={handleCloseRanking} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6">
+                  {rankingModal.loading ? (
+                    <div className="flex justify-center py-12">
+                      <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                    </div>
+                  ) : rankingModal.ranking.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Trophy className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+                      <p className="text-zinc-500 dark:text-zinc-400">Nenhum dado de ranking disponível.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {rankingModal.ranking.map((item, index) => {
+                        const isTop3 = index < 3;
+                        const medalColors = [
+                          'bg-amber-400 text-amber-900',  // 1º
+                          'bg-zinc-400 text-zinc-900',    // 2º
+                          'bg-amber-600 text-amber-100',  // 3º
+                        ];
+
+                        return (
+                          <div
+                            key={item.user_id}
+                            className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
+                              isTop3
+                                ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                                : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
+                            }`}
+                          >
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+                              isTop3 ? medalColors[index] : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
+                            }`}>
+                              {isTop3 ? (
+                                <Trophy size={20} />
+                              ) : (
+                                item.position
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-semibold text-zinc-900 dark:text-white">{item.user_name}</p>
+                              {item.user_email && (
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">{item.user_email}</p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                {rankingModal.campaign?.type === 'sales' ? 'Valor Vendido' : 'Coins Acumulados'}
+                              </p>
+                              <p className="font-bold text-lg text-zinc-900 dark:text-white">
+                                {rankingModal.campaign?.type === 'sales'
+                                  ? formatCurrency(String(item.value))
+                                  : `${item.value} coins`
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               </motion.div>

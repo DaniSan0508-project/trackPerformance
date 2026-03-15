@@ -176,19 +176,40 @@ export const campaignSchema = z.object({
     .min(1, 'Nome é obrigatório')
     .min(3, 'Nome deve ter no mínimo 3 caracteres'),
   type: z
-    .string()
-    .min(1, 'Tipo é obrigatório'),
+    .enum(['sales', 'engagement'], {
+      errorMap: () => ({ message: 'Tipo de campanha inválido' }),
+    }),
   goal: z
     .string()
-    .min(1, 'Meta é obrigatória')
-    .regex(/^\d+(\.\d{1,2})?$/, 'Deve ser um número válido com até 2 casas decimais'),
+    .optional(),
   start_date: z
     .string()
     .min(1, 'Data de início é obrigatória'),
   end_date: z
     .string()
     .min(1, 'Data de término é obrigatória'),
-  is_active: z.string(),
+  status: z
+    .enum(['ativa', 'pausada', 'finalizada'], {
+      errorMap: () => ({ message: 'Status inválido' }),
+    }),
+}).refine((data) => {
+  // Goal é obrigatório apenas para sales
+  if (data.type === 'sales' && (!data.goal || data.goal.trim() === '')) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Meta é obrigatória para campanhas de vendas',
+  path: ['goal'],
+}).refine((data) => {
+  // Valida formato numérico se goal estiver presente
+  if (data.goal && data.goal.trim() !== '') {
+    return /^\d+(\.\d{1,2})?$/.test(data.goal);
+  }
+  return true;
+}, {
+  message: 'Deve ser um número válido com até 2 casas decimais',
+  path: ['goal'],
 });
 
 // Tipos inferidos dos schemas

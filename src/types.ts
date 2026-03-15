@@ -158,21 +158,26 @@ export interface Reward {
   primary_image?: RewardImage;
 }
 
+export type CampaignType = 'sales' | 'engagement';
+export type CampaignStatus = 'ativa' | 'pausada' | 'finalizada';
+
 export interface Campaign {
   id: number;
   tenant_id: number;
   name: string;
-  type: string;
+  type: CampaignType;
   goal: string;
   start_date: string;
   end_date: string;
-  is_active: number;
+  status: CampaignStatus;
+  is_active?: number; // Manter para compatibilidade com dados antigos
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
   users?: User[];
   products?: CampaignProduct[];
   actions?: CampaignAction[];
+  ranking?: CampaignRanking[];
 }
 
 export interface CampaignProduct {
@@ -189,6 +194,7 @@ export interface Product {
   name: string;
   description?: string;
   price?: number;
+  barcode?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -208,4 +214,20 @@ export interface ActionEngagement {
   name: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface CampaignRanking {
+  position: number;
+  user_id: number;
+  user_name: string;
+  user_email?: string;
+  value: number; // valor vendido (sales) ou coins acumulados (engagement)
+}
+
+export interface SalesRanking extends CampaignRanking {
+  sales_amount: number;
+}
+
+export interface EngagementRanking extends CampaignRanking {
+  coins_earned: number;
 }

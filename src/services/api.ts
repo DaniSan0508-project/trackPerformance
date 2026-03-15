@@ -1,4 +1,4 @@
-import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward, Campaign, CampaignAction, Product } from '../types';
+import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward, Campaign, CampaignAction, Product, CampaignRanking } from '../types';
 
 const API_BASE_URL = 'http://localhost:8012/api/v1';
 
@@ -490,5 +490,16 @@ export const api = {
     });
     if (!response.ok) throw new Error('Falha ao carregar produtos');
     return response.json();
+  },
+
+  getCampaignRanking: async (token: string, campaignId: number) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/ranking`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar ranking');
+    return response.json() as Promise<{ data: CampaignRanking[] }>;
   },
 };
