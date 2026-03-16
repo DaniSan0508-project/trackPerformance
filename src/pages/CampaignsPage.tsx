@@ -317,32 +317,17 @@ export const CampaignsPage: React.FC = () => {
     if (!token) return;
     setFormErrors({});
 
-    // Validações específicas para edição
+    // Validações específicas para edição (apenas o essencial)
     if (editingCampaign) {
-      // Obrigatório ao menos 1 usuário (sempre)
-      if (selectedUsers.length === 0) {
-        addToast('error', 'É obrigatório manter pelo menos 1 usuário vinculado.');
-        setActiveTab('users');
-        return;
-      }
-
-      // Regras por tipo de campanha
-      if (editingCampaign.type === 'sales') {
-        // Sales: obrigatório produtos
-        if (selectedProducts.length === 0) {
-          addToast('error', 'Campanhas de vendas (sales) exigem pelo menos 1 produto vinculado.');
-          setActiveTab('products');
-          return;
-        }
-      }
-
+      // Validações apenas para campanhas de engajamento
       if (editingCampaign.type === 'engagement') {
-        // Engagement: obrigatório actions, não pode ter products
+        // Engagement: obrigatório actions
         if (selectedActions.length === 0) {
           addToast('error', 'Campanhas de engajamento exigem pelo menos 1 ação vinculada.');
           setActiveTab('actions');
           return;
         }
+        // Não pode ter products
         if (selectedProducts.length > 0) {
           addToast('error', 'Campanhas de engajamento não podem ter produtos. Remova os produtos selecionados.');
           setActiveTab('products');
@@ -354,6 +339,45 @@ export const CampaignsPage: React.FC = () => {
         );
         if (usersWithInvalidType.length > 0) {
           addToast('error', `Existem ${usersWithInvalidType.length} usuário(s) incompatível(eis) selecionados. Apenas usuários comuns (user_type_id = 2) podem participar de campanhas de engajamento.`);
+          setActiveTab('users');
+          return;
+        }
+      }
+      // Para sales na edição: permite atualizar qualquer campo sem validações obrigatórias
+    } else {
+      // Validações para CRIAÇÃO (mantém todas as regras)
+      // Obrigatório ao menos 1 usuário
+      if (selectedUsers.length === 0) {
+        addToast('error', 'É obrigatório selecionar pelo menos 1 usuário.');
+        setActiveTab('users');
+        return;
+      }
+
+      // Regras por tipo de campanha
+      if (formData.type === 'sales') {
+        if (selectedProducts.length === 0) {
+          addToast('error', 'Campanhas de vendas exigem pelo menos 1 produto vinculado.');
+          setActiveTab('products');
+          return;
+        }
+      }
+
+      if (formData.type === 'engagement') {
+        if (selectedActions.length === 0) {
+          addToast('error', 'Campanhas de engajamento exigem pelo menos 1 ação vinculada.');
+          setActiveTab('actions');
+          return;
+        }
+        if (selectedProducts.length > 0) {
+          addToast('error', 'Campanhas de engajamento não podem ter produtos.');
+          setActiveTab('products');
+          return;
+        }
+        const usersWithInvalidType = users.filter(
+          u => selectedUsers.includes(u.id) && u.user_type_id !== 2
+        );
+        if (usersWithInvalidType.length > 0) {
+          addToast('error', `Existem ${usersWithInvalidType.length} usuário(s) incompatível(eis). Apenas usuários comuns podem participar de campanhas de engajamento.`);
           setActiveTab('users');
           return;
         }
@@ -383,37 +407,51 @@ export const CampaignsPage: React.FC = () => {
 
     setSaving(true);
     try {
-      const dataToSave: any = {
-        name: formData.name,
-        is_active: formData.status === 'ativa',
-        users: selectedUsers,
-      };
+      const dataToSave: any = {};
 
-      // Na criação, envia todos os campos
-      if (!editingCampaign) {
+      // Na edição, envia apenas campos alterados
+      if (editingCampaign) {
+        // Envia apenas se houver valor (não vazio)
+        if (formData.name?.trim()) {
+          dataToSave.name = formData.name.trim();
+        }
+        
+        // Sempre envia is_active na edição (status pode ser alterado)
+        dataToSave.is_active = formData.status === 'ativa';
+        
+        // Envia users apenas se houver selecionados
+        if (selectedUsers.length > 0) {
+          dataToSave.users = selectedUsers;
+        }
+        
+        // Envia conforme o tipo da campanha
+        if (editingCampaign.type === 'sales') {
+          // Envia products apenas se houver selecionados
+          if (selectedProducts.length > 0) {
+            dataToSave.products = selectedProducts;
+          }
+        } else if (editingCampaign.type === 'engagement') {
+          // Envia actions apenas se houver selecionadas
+          if (selectedActions.length > 0) {
+            dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
+          }
+        }
+      } else {
+        // Na criação, envia todos os campos obrigatórios
+        dataToSave.name = formData.name;
         dataToSave.type = formData.type;
+        dataToSave.is_active = formData.status === 'ativa';
+        dataToSave.users = selectedUsers;
+        
         // Goal apenas para vendas
         if (formData.type === 'sales') {
           dataToSave.goal = parseFloat(formData.goal);
-        }
-        dataToSave.start_date = formData.start_date;
-        dataToSave.end_date = formData.end_date;
-      }
-
-      // Adiciona apenas os campos permitidos por tipo
-      if (editingCampaign) {
-        if (editingCampaign.type === 'sales') {
-          // Sales: envia products
-          dataToSave.products = selectedProducts;
-        } else if (editingCampaign.type === 'engagement') {
-          // Engagement: envia actions
-          dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
-        }
-      } else {
-        // Na criação, envia conforme o tipo
-        if (formData.type === 'sales') {
+          dataToSave.start_date = formData.start_date;
+          dataToSave.end_date = formData.end_date;
           dataToSave.products = selectedProducts;
         } else if (formData.type === 'engagement') {
+          dataToSave.start_date = formData.start_date;
+          dataToSave.end_date = formData.end_date;
           dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
         }
       }
@@ -1350,24 +1388,25 @@ export const CampaignsPage: React.FC = () => {
 
                 {/* Footer Actions */}
                 <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex gap-3">
+                  {/* Botão Voltar */}
                   {activeTab !== 'basic' && (
                     <button
                       type="button"
                       onClick={() => setActiveTab(prev => {
                         const isEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
-                        
+
                         if (prev === 'users') return 'basic';
-                        
+
                         // Para engajamento: actions → users
                         if (prev === 'actions') {
                           return 'users';
                         }
-                        
+
                         // Para vendas: products → users
                         if (prev === 'products') {
                           return 'users';
                         }
-                        
+
                         return 'basic';
                       })}
                       className="px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors font-medium"
@@ -1379,7 +1418,7 @@ export const CampaignsPage: React.FC = () => {
                   {(() => {
                     const isEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
                     const isSales = editingCampaign?.type === 'sales' || (!editingCampaign && formData.type === 'sales');
-                    
+
                     // Para engajamento: basic → users → actions → salvar
                     if (isEngagement) {
                       if (activeTab === 'basic') {
@@ -1404,7 +1443,7 @@ export const CampaignsPage: React.FC = () => {
                           </button>
                         );
                       }
-                      // activeTab === 'actions'
+                      // activeTab === 'actions' (última aba)
                       return (
                         <button
                           type="button"
@@ -1416,7 +1455,7 @@ export const CampaignsPage: React.FC = () => {
                         </button>
                       );
                     }
-                    
+
                     // Para vendas: basic → users → products → salvar
                     if (isSales) {
                       if (activeTab === 'basic') {
@@ -1441,7 +1480,7 @@ export const CampaignsPage: React.FC = () => {
                           </button>
                         );
                       }
-                      // activeTab === 'products'
+                      // activeTab === 'products' (última aba)
                       return (
                         <button
                           type="button"
@@ -1453,7 +1492,7 @@ export const CampaignsPage: React.FC = () => {
                         </button>
                       );
                     }
-                    
+
                     return null;
                   })()}
                 </div>
