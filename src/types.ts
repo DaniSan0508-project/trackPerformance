@@ -42,6 +42,8 @@ export interface User {
   created_at?: string;
   updated_at?: string;
   store_id?: number | null;
+  store?: Store | null;
+  last_login_at?: string | null;
 }
 
 export interface Tenant {

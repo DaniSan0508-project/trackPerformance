@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera, LogOut, Store as StoreIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { User as UserType, Store } from '../types';
+import { User as UserType } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -80,12 +80,12 @@ export const TeamPage: React.FC = () => {
       const data = await api.getUsers(token, page, search);
       console.log('Users API Response:', data);
       setUsers(data.data);
-      setCurrentPage(data.meta.current_page);
-      setTotalPages(data.meta.last_page);
-      setTotalItems(data.meta.total);
-      setFromItem(data.meta.from);
-      setToItem(data.meta.to);
-      console.log('Pagination:', { page: data.meta.current_page, totalPages: data.meta.last_page, total: data.meta.total });
+      setCurrentPage(data.meta?.current_page || data.current_page || 1);
+      setTotalPages(data.meta?.last_page || data.last_page || 1);
+      setTotalItems(data.meta?.total || data.total || 0);
+      setFromItem(data.meta?.from || data.from || 0);
+      setToItem(data.meta?.to || data.to || 0);
+      console.log('Pagination:', { page: data.meta?.current_page || data.current_page, totalPages: data.meta?.last_page || data.last_page, total: data.meta?.total || data.total });
     } catch (err: any) {
       console.error('Error fetching users:', err);
       setError(err.message || 'Não foi possível carregar a equipe.');
@@ -258,13 +258,27 @@ export const TeamPage: React.FC = () => {
   };
 
   const getUserTypeLabel = (typeId: number) => {
-    return typeId === 1 ? 'Administrador' : 'Usuário';
+    return typeId === 1 ? 'Administrador' : 'Colaborador';
   };
 
   const getUserTypeColor = (typeId: number) => {
-    return typeId === 1 
-      ? 'bg-emerald-100 text-emerald-800 border-emerald-200' 
+    return typeId === 1
+      ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
       : 'bg-teal-50 text-teal-700 border-teal-200';
+  };
+
+  const formatLastLogin = (lastLoginAt: string | null) => {
+    if (!lastLoginAt) return 'Nunca acessou';
+    const date = new Date(lastLoginAt);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    
+    if (diffHours < 1) return 'Agora mesmo';
+    if (diffHours < 24) return `Há ${diffHours}h`;
+    if (diffHours < 48) return 'Ontem';
+    if (diffHours < 168) return `Há ${Math.floor(diffHours / 24)} dias`;
+    return date.toLocaleDateString('pt-BR');
   };
 
   return (
@@ -340,35 +354,35 @@ export const TeamPage: React.FC = () => {
                   className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-all duration-200 flex flex-col"
                 >
                   <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-500 dark:text-zinc-400 overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-14 h-14 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 overflow-hidden border-2 border-emerald-200 dark:border-emerald-800 flex-shrink-0">
                         {user.profile_image_url ? (
                           <img src={user.profile_image_url} alt={user.name} className="w-full h-full object-cover" />
                         ) : (
-                          <User size={24} />
+                          <User size={28} />
                         )}
                       </div>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-zinc-900 dark:text-white line-clamp-1" title={user.name}>{user.name}</h3>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getUserTypeColor(user.user_type_id)}`}>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getUserTypeColor(user.user_type_id)}`}>
                           {getUserTypeLabel(user.user_type_id)}
                         </span>
                       </div>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-shrink-0">
                       {(isAdmin || currentUser?.id === user.id) && (
-                        <button 
+                        <button
                           onClick={() => handleOpenModal(user)}
-                          className="p-1.5 text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                          className="p-2 text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
                           title="Editar"
                         >
                           <Edit2 size={16} />
                         </button>
                       )}
                       {isAdmin && (
-                        <button 
+                        <button
                           onClick={() => handleDelete(user)}
-                          className="p-1.5 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          className="p-2 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                           title="Excluir"
                         >
                           {deletingId === user.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
@@ -382,25 +396,38 @@ export const TeamPage: React.FC = () => {
                       <Mail size={16} className="text-zinc-400 flex-shrink-0" />
                       <span className="truncate" title={user.email}>{user.email}</span>
                     </div>
-                    
-                    {user.role && (
-                      <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                        <Briefcase size={16} className="text-zinc-400 flex-shrink-0" />
-                        <span className="truncate">{user.role}</span>
-                      </div>
-                    )}
 
-                    <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                      <Coins size={16} className="text-amber-500 flex-shrink-0" />
-                      <span className="font-medium text-zinc-900 dark:text-white">{user.coin_balance || 0} moedas</span>
+                    <div className="grid grid-cols-2 gap-3">
+                      {user.role && (
+                        <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                          <Briefcase size={14} className="text-zinc-400 flex-shrink-0" />
+                          <span className="truncate text-xs">{user.role}</span>
+                        </div>
+                      )}
+
+                      {user.store && (
+                        <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                          <StoreIcon size={14} className="text-zinc-400 flex-shrink-0" />
+                          <span className="truncate text-xs">{user.store.name}</span>
+                        </div>
+                      )}
                     </div>
-                  </div>
 
-                  <div className="mt-4 pt-4 border-t border-zinc-50 dark:border-zinc-800 flex justify-between items-center text-xs text-zinc-400 dark:text-zinc-500">
-                    <span>ID: {user.id}</span>
-                    {user.created_at && (
-                      <span>Desde {new Date(user.created_at).toLocaleDateString()}</span>
-                    )}
+                    <div className="flex items-center justify-between gap-4 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <Coins size={14} className="text-amber-500 flex-shrink-0" />
+                        <span className="font-semibold text-zinc-900 dark:text-white text-xs">
+                          {user.coin_balance || 0}
+                        </span>
+                        <span className="text-zinc-500 dark:text-zinc-400 text-xs">moedas</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <LogOut size={14} className="text-zinc-400 flex-shrink-0" />
+                        <span className="text-zinc-600 dark:text-zinc-400 text-xs" title={user.last_login_at || 'Nunca'}>
+                          {formatLastLogin(user.last_login_at || null)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -553,7 +580,7 @@ export const TeamPage: React.FC = () => {
                         disabled={!isAdmin}
                         className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:bg-zinc-100 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500"
                       >
-                        <option value={2}>Usuário</option>
+                        <option value={2}>Colaborador</option>
                         <option value={1}>Administrador</option>
                       </select>
                     </div>

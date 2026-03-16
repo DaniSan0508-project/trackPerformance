@@ -43,6 +43,7 @@ export const api = {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
     queryParams.append('per_page', '10');
+    queryParams.append('include', 'store');
     if (search) {
       queryParams.append(`filter[${filterType}]`, search);
     }
