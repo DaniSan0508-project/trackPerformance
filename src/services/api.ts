@@ -539,17 +539,20 @@ export const api = {
     return response.json() as Promise<{ data: CampaignRanking[] }>;
   },
 
-  getCampaignWithPodium: async (token: string, campaignId: number) => {
-    const response = await fetch(`${API_BASE_URL}/app/campaigns`, {
+  createRedemption: async (token: string, data: { items: { reward_id: number; quantity: number }[] }) => {
+    const response = await fetch(`${API_BASE_URL}/redemptions`, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
+      body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Falha ao carregar campanha');
-    const result = await response.json() as { data: Campaign[] };
-    const campaign = result.data.find(c => c.id === campaignId);
-    if (!campaign) throw new Error('Campanha não encontrada');
-    return campaign;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Falha ao criar redenção');
+    }
+    return response.json();
   },
 };
