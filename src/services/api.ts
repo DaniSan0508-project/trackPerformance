@@ -42,6 +42,7 @@ export const api = {
   getUsers: async (token: string, page = 1, search = '', filterType: 'name' | 'email' = 'name') => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
+    queryParams.append('per_page', '10');
     if (search) {
       queryParams.append(`filter[${filterType}]`, search);
     }
@@ -59,6 +60,7 @@ export const api = {
   getProductsPaginated: async (token: string, page = 1, search = '', filterType: 'name' | 'barcode' = 'name') => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
+    queryParams.append('per_page', '10');
     if (search) {
       queryParams.append(`filter[${filterType}]`, search);
     }
