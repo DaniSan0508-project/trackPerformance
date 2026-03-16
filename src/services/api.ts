@@ -39,11 +39,11 @@ export const api = {
     return response.json();
   },
 
-  getUsers: async (token: string, page = 1, search = '') => {
+  getUsers: async (token: string, page = 1, search = '', filterType: 'name' | 'email' = 'name') => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
     if (search) {
-      queryParams.append('filter[name]', search);
+      queryParams.append(`filter[${filterType}]`, search);
     }
 
     const response = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`, {
@@ -54,6 +54,23 @@ export const api = {
     });
     if (!response.ok) throw new Error('Falha ao carregar usuários');
     return response.json() as Promise<PaginatedResponse<User>>;
+  },
+
+  getProductsPaginated: async (token: string, page = 1, search = '', filterType: 'name' | 'barcode' = 'name') => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    if (search) {
+      queryParams.append(`filter[${filterType}]`, search);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar produtos');
+    return response.json() as Promise<PaginatedResponse<Product>>;
   },
 
   sendFeedback: async (token: string, data: { recipient_id: number; content: string; is_anonymous: boolean }) => {
@@ -465,31 +482,47 @@ export const api = {
         'Accept': 'application/json',
       },
     });
-    if (!response.ok) throw new Error('Falha ao excluir campanha');
+    
+    if (!response.ok) {
+      // Tenta obter os dados de erro da resposta
+      const errorData = await response.json().catch(() => ({}));
+      const error = new Error(errorData.message || 'Falha ao excluir campanha');
+      error.response = { data: errorData, status: response.status };
+      throw error;
+    }
+    
     if (response.status === 204) return;
     return response.json();
   },
 
-  getAllUsers: async (token: string) => {
-    const response = await fetch(`${API_BASE_URL}/users?per_page=100`, {
+  getAllUsers: async (token: string, page = 1, perPage = 10) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    queryParams.append('per_page', perPage.toString());
+
+    const response = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json',
       },
     });
     if (!response.ok) throw new Error('Falha ao carregar usuários');
-    return response.json();
+    return response.json() as Promise<PaginatedResponse<User>>;
   },
 
-  getProducts: async (token: string) => {
-    const response = await fetch(`${API_BASE_URL}/products?per_page=100`, {
+  getProducts: async (token: string, page = 1, perPage = 10) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    queryParams.append('per_page', perPage.toString());
+
+    const response = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json',
       },
     });
     if (!response.ok) throw new Error('Falha ao carregar produtos');
-    return response.json();
+    return response.json() as Promise<PaginatedResponse<Product>>;
   },
 
   getCampaignRanking: async (token: string, campaignId: number) => {

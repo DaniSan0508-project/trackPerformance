@@ -129,6 +129,18 @@ export const CampaignsPage: React.FC = () => {
   const [selectedActions, setSelectedActions] = useState<{ id: number; coins: number }[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
 
+  // Paginação e filtros para usuários
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersTotalPages, setUsersTotalPages] = useState(1);
+  const [userSearch, setUserSearch] = useState('');
+  const [userFilterType, setUserFilterType] = useState<'name' | 'email'>('name');
+
+  // Paginação e filtros para produtos
+  const [productsPage, setProductsPage] = useState(1);
+  const [productsTotalPages, setProductsTotalPages] = useState(1);
+  const [productSearch, setProductSearch] = useState('');
+  const [productFilterType, setProductFilterType] = useState<'name' | 'barcode'>('name');
+
   // Ranking
   const [rankingModal, setRankingModal] = useState<{
     isOpen: boolean;
@@ -162,17 +174,52 @@ export const CampaignsPage: React.FC = () => {
     if (!token) return;
     setLoadingAux(true);
     try {
+      // Carregar primeira página de usuários e produtos (10 itens cada)
       const [usersData, productsData] = await Promise.all([
-        api.getAllUsers(token).catch(() => null),
-        api.getProducts(token).catch(() => null),
+        api.getAllUsers(token, 1, 10).catch(() => null),
+        api.getProducts(token, 1, 10).catch(() => null),
       ]);
 
-      if (usersData?.data) setUsers(usersData.data);
-      if (productsData?.data) setProducts(productsData.data);
+      if (usersData?.data) {
+        setUsers(usersData.data);
+        setUsersTotalPages(usersData.meta?.last_page || usersData.last_page || 1);
+        setUsersPage(usersData.meta?.current_page || usersData.current_page || 1);
+      }
+      if (productsData?.data) {
+        setProducts(productsData.data);
+        setProductsTotalPages(productsData.meta?.last_page || productsData.last_page || 1);
+        setProductsPage(productsData.meta?.current_page || productsData.current_page || 1);
+      }
     } catch (error) {
       console.error('Error fetching auxiliary data:', error);
     } finally {
       setLoadingAux(false);
+    }
+  }, [token]);
+
+  // Buscar usuários com paginação e filtro
+  const fetchUsers = useCallback(async (page = 1, search = '', filterType: 'name' | 'email' = 'name') => {
+    if (!token) return;
+    try {
+      const response = await api.getUsers(token, page, search, filterType);
+      setUsers(response.data || []);
+      setUsersTotalPages(response.meta?.last_page || response.last_page || 1);
+      setUsersPage(response.meta?.current_page || response.current_page || 1);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  }, [token]);
+
+  // Buscar produtos com paginação e filtro
+  const fetchProducts = useCallback(async (page = 1, search = '', filterType: 'name' | 'barcode' = 'name') => {
+    if (!token) return;
+    try {
+      const response = await api.getProductsPaginated(token, page, search, filterType);
+      setProducts(response.data || []);
+      setProductsTotalPages(response.meta?.last_page || response.last_page || 1);
+      setProductsPage(response.meta?.current_page || response.current_page || 1);
+    } catch (error) {
+      console.error('Error fetching products:', error);
     }
   }, [token]);
 
@@ -241,6 +288,11 @@ export const CampaignsPage: React.FC = () => {
     }
     setIsModalOpen(true);
     fetchAuxiliaryData();
+    // Inicializar paginação
+    setUsersPage(1);
+    setProductsPage(1);
+    setUserSearch('');
+    setProductSearch('');
   };
 
   const handleCloseModal = () => {
@@ -393,7 +445,30 @@ export const CampaignsPage: React.FC = () => {
       addToast('success', 'Campanha excluída com sucesso!');
     } catch (error: any) {
       console.error('Error deleting campaign:', error);
-      addToast('error', error.message || 'Erro ao excluir campanha.');
+      
+      // Tenta extrair a mensagem de erro da resposta
+      let errorMessage = 'Erro ao excluir campanha.';
+      
+      // Verifica diferentes formatos de erro
+      if (error.response?.data) {
+        const data = error.response.data;
+        // Formato: { errors: { campaign: [...] } }
+        if (data.errors?.campaign?.[0]?.includes('Active campaigns cannot be deleted')) {
+          errorMessage = 'Não é possível excluir uma campanha ativa. Desative a campanha primeiro.';
+        }
+        // Formato: { message: '...' }
+        else if (data.message?.includes('Active campaigns')) {
+          errorMessage = 'Não é possível excluir uma campanha ativa. Desative a campanha primeiro.';
+        }
+        // Usa mensagem da API se disponível
+        else if (data.message) {
+          errorMessage = data.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      addToast('error', errorMessage);
     } finally {
       setDeletingId(null);
     }
@@ -956,6 +1031,33 @@ export const CampaignsPage: React.FC = () => {
                       <p className="text-sm text-zinc-500 dark:text-zinc-400">
                         Selecione os usuários que participarão da campanha:
                       </p>
+
+                      {/* Filtros e busca de usuários */}
+                      <div className="flex gap-2 mb-4">
+                        <select
+                          value={userFilterType}
+                          onChange={(e) => setUserFilterType(e.target.value as 'name' | 'email')}
+                          className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
+                        >
+                          <option value="name">Nome</option>
+                          <option value="email">E-mail</option>
+                        </select>
+                        <input
+                          type="text"
+                          placeholder={`Buscar por ${userFilterType === 'name' ? 'nome' : 'e-mail'}...`}
+                          value={userSearch}
+                          onChange={(e) => setUserSearch(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && fetchUsers(usersPage, userSearch, userFilterType)}
+                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
+                        />
+                        <button
+                          onClick={() => fetchUsers(usersPage, userSearch, userFilterType)}
+                          className="p-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors"
+                        >
+                          <Search size={20} />
+                        </button>
+                      </div>
+
                       {loadingAux ? (
                         <div className="flex justify-center py-8">
                           <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
@@ -963,36 +1065,61 @@ export const CampaignsPage: React.FC = () => {
                       ) : users.length === 0 ? (
                         <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum usuário encontrado.</p>
                       ) : (
-                        <div className="grid gap-2 max-h-80 overflow-y-auto">
-                          {/* Filtra usuários: apenas user_type_id = 2 para engajamento */}
-                          {(editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement')
-                            ? users.filter(u => u.user_type_id === 2)
-                            : users
-                          ).map((user) => (
-                            <button
-                              key={user.id}
-                              onClick={() => toggleUser(user.id)}
-                              className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
-                                selectedUsers.includes(user.id)
-                                  ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500'
-                                  : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-emerald-300'
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-700 rounded-full flex items-center justify-center text-zinc-500 dark:text-zinc-400">
-                                  {user.name.charAt(0).toUpperCase()}
+                        <>
+                          <div className="grid gap-2 max-h-60 overflow-y-auto">
+                            {/* Filtra usuários: apenas user_type_id = 2 para engajamento */}
+                            {(editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement')
+                              ? users.filter(u => u.user_type_id === 2)
+                              : users
+                            ).map((user) => (
+                              <button
+                                key={user.id}
+                                onClick={() => toggleUser(user.id)}
+                                className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                                  selectedUsers.includes(user.id)
+                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500'
+                                    : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-emerald-300'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-700 rounded-full flex items-center justify-center text-zinc-500 dark:text-zinc-400">
+                                    {user.name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="text-left">
+                                    <p className="font-medium text-sm text-zinc-900 dark:text-white">{user.name}</p>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{user.email}</p>
+                                  </div>
                                 </div>
-                                <div className="text-left">
-                                  <p className="font-medium text-sm text-zinc-900 dark:text-white">{user.name}</p>
-                                  <p className="text-xs text-zinc-500 dark:text-zinc-400">{user.email}</p>
-                                </div>
-                              </div>
-                              {selectedUsers.includes(user.id) && (
-                                <Check size={20} className="text-emerald-600" />
-                              )}
-                            </button>
-                          ))}
-                        </div>
+                                {selectedUsers.includes(user.id) && (
+                                  <Check size={20} className="text-emerald-600" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Paginação de usuários */}
+                          {usersTotalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+                              <button
+                                onClick={() => fetchUsers(usersPage - 1, userSearch, userFilterType)}
+                                disabled={usersPage === 1}
+                                className="p-2 border border-zinc-300 dark:border-zinc-600 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 text-sm"
+                              >
+                                Anterior
+                              </button>
+                              <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                                Página {usersPage} de {usersTotalPages}
+                              </span>
+                              <button
+                                onClick={() => fetchUsers(usersPage + 1, userSearch, userFilterType)}
+                                disabled={usersPage === usersTotalPages}
+                                className="p-2 border border-zinc-300 dark:border-zinc-600 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 text-sm"
+                              >
+                                Próxima
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
@@ -1060,6 +1187,33 @@ export const CampaignsPage: React.FC = () => {
                           ? 'Selecione os produtos relacionados à campanha (obrigatório para campanhas de vendas):'
                           : 'Selecione os produtos relacionados à campanha:'}
                       </p>
+
+                      {/* Filtros e busca de produtos */}
+                      <div className="flex gap-2 mb-4">
+                        <select
+                          value={productFilterType}
+                          onChange={(e) => setProductFilterType(e.target.value as 'name' | 'barcode')}
+                          className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
+                        >
+                          <option value="name">Nome</option>
+                          <option value="barcode">Código de Barras</option>
+                        </select>
+                        <input
+                          type="text"
+                          placeholder={`Buscar por ${productFilterType === 'name' ? 'nome' : 'código de barras'}...`}
+                          value={productSearch}
+                          onChange={(e) => setProductSearch(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && fetchProducts(productsPage, productSearch, productFilterType)}
+                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
+                        />
+                        <button
+                          onClick={() => fetchProducts(productsPage, productSearch, productFilterType)}
+                          className="p-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors"
+                        >
+                          <Search size={20} />
+                        </button>
+                      </div>
+
                       {loadingAux ? (
                         <div className="flex justify-center py-8">
                           <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
@@ -1067,37 +1221,62 @@ export const CampaignsPage: React.FC = () => {
                       ) : products.length === 0 ? (
                         <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum produto encontrado.</p>
                       ) : (
-                        <div className="grid gap-2 max-h-80 overflow-y-auto">
-                          {products.map((product) => (
-                            <button
-                              key={product.id}
-                              onClick={() => toggleProduct(product.id)}
-                              className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
-                                selectedProducts.includes(product.id)
-                                  ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500'
-                                  : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-blue-300'
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
-                                  <ShoppingBag size={20} />
+                        <>
+                          <div className="grid gap-2 max-h-60 overflow-y-auto">
+                            {products.map((product) => (
+                              <button
+                                key={product.id}
+                                onClick={() => toggleProduct(product.id)}
+                                className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                                  selectedProducts.includes(product.id)
+                                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500'
+                                    : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-blue-300'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                    <ShoppingBag size={20} />
+                                  </div>
+                                  <div className="text-left">
+                                    <p className="font-medium text-sm text-zinc-900 dark:text-white">{product.name}</p>
+                                    {product.barcode && (
+                                      <p className="text-xs text-zinc-500 dark:text-zinc-400">Cód: {product.barcode}</p>
+                                    )}
+                                    {product.description && !product.barcode && (
+                                      <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-xs">{product.description}</p>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="text-left">
-                                  <p className="font-medium text-sm text-zinc-900 dark:text-white">{product.name}</p>
-                                  {product.barcode && (
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">Cód: {product.barcode}</p>
-                                  )}
-                                  {product.description && !product.barcode && (
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-xs">{product.description}</p>
-                                  )}
-                                </div>
-                              </div>
-                              {selectedProducts.includes(product.id) && (
-                                <Check size={20} className="text-blue-600" />
-                              )}
-                            </button>
-                          ))}
-                        </div>
+                                {selectedProducts.includes(product.id) && (
+                                  <Check size={20} className="text-blue-600" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Paginação de produtos */}
+                          {productsTotalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+                              <button
+                                onClick={() => fetchProducts(productsPage - 1, productSearch, productFilterType)}
+                                disabled={productsPage === 1}
+                                className="p-2 border border-zinc-300 dark:border-zinc-600 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 text-sm"
+                              >
+                                Anterior
+                              </button>
+                              <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                                Página {productsPage} de {productsTotalPages}
+                              </span>
+                              <button
+                                onClick={() => fetchProducts(productsPage + 1, productSearch, productFilterType)}
+                                disabled={productsPage === productsTotalPages}
+                                className="p-2 border border-zinc-300 dark:border-zinc-600 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 text-sm"
+                              >
+                                Próxima
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
