@@ -1077,9 +1077,20 @@ export const CampaignsPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setActiveTab(prev => {
+                        const isEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
+                        
                         if (prev === 'users') return 'basic';
-                        if (prev === 'actions') return 'users';
-                        if (prev === 'products') return 'actions';
+                        
+                        // Para engajamento: actions → users
+                        if (prev === 'actions') {
+                          return 'users';
+                        }
+                        
+                        // Para vendas: products → users
+                        if (prev === 'products') {
+                          return 'users';
+                        }
+                        
                         return 'basic';
                       })}
                       className="px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors font-medium"
@@ -1087,29 +1098,87 @@ export const CampaignsPage: React.FC = () => {
                       Voltar
                     </button>
                   )}
-                  {activeTab !== 'products' ? (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab(prev => {
-                        if (prev === 'basic') return 'users';
-                        if (prev === 'users') return 'actions';
-                        if (prev === 'actions') return 'products';
-                        return 'products';
-                      })}
-                      className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium"
-                    >
-                      Próximo
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSubmit}
-                      disabled={saving}
-                      className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-                    >
-                      {saving ? 'Salvando...' : 'Salvar'}
-                    </button>
-                  )}
+                  {/* Botão Próximo/Salvar */}
+                  {(() => {
+                    const isEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
+                    const isSales = editingCampaign?.type === 'sales' || (!editingCampaign && formData.type === 'sales');
+                    
+                    // Para engajamento: basic → users → actions → salvar
+                    if (isEngagement) {
+                      if (activeTab === 'basic') {
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('users')}
+                            className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium"
+                          >
+                            Próximo
+                          </button>
+                        );
+                      }
+                      if (activeTab === 'users') {
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('actions')}
+                            className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium"
+                          >
+                            Próximo
+                          </button>
+                        );
+                      }
+                      // activeTab === 'actions'
+                      return (
+                        <button
+                          type="button"
+                          onClick={handleSubmit}
+                          disabled={saving}
+                          className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                        >
+                          {saving ? 'Salvando...' : 'Salvar'}
+                        </button>
+                      );
+                    }
+                    
+                    // Para vendas: basic → users → products → salvar
+                    if (isSales) {
+                      if (activeTab === 'basic') {
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('users')}
+                            className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium"
+                          >
+                            Próximo
+                          </button>
+                        );
+                      }
+                      if (activeTab === 'users') {
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('products')}
+                            className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium"
+                          >
+                            Próximo
+                          </button>
+                        );
+                      }
+                      // activeTab === 'products'
+                      return (
+                        <button
+                          type="button"
+                          onClick={handleSubmit}
+                          disabled={saving}
+                          className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                        >
+                          {saving ? 'Salvando...' : 'Salvar'}
+                        </button>
+                      );
+                    }
+                    
+                    return null;
+                  })()}
                 </div>
               </motion.div>
             </div>
