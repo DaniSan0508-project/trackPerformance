@@ -321,13 +321,7 @@ export const CampaignsPage: React.FC = () => {
     if (editingCampaign) {
       // Validações apenas para campanhas de engajamento
       if (editingCampaign.type === 'engagement') {
-        // Engagement: obrigatório actions
-        if (selectedActions.length === 0) {
-          addToast('error', 'Campanhas de engajamento exigem pelo menos 1 ação vinculada.');
-          setActiveTab('actions');
-          return;
-        }
-        // Não pode ter products
+        // Não pode ter products (regra de negócio)
         if (selectedProducts.length > 0) {
           addToast('error', 'Campanhas de engajamento não podem ter produtos. Remova os produtos selecionados.');
           setActiveTab('products');
@@ -343,7 +337,7 @@ export const CampaignsPage: React.FC = () => {
           return;
         }
       }
-      // Para sales na edição: permite atualizar qualquer campo sem validações obrigatórias
+      // Para sales e engagement na edição: permite atualizar qualquer campo sem validações obrigatórias de quantidade
     } else {
       // Validações para CRIAÇÃO (mantém todas as regras)
       // Obrigatório ao menos 1 usuário
@@ -1100,11 +1094,6 @@ export const CampaignsPage: React.FC = () => {
                       {/* Verifica se é campanha de engajamento (edição ou criação) */}
                       {(editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement')) && (
                         <>
-                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-4">
-                            <p className="text-sm text-blue-700 dark:text-blue-400">
-                              ℹ️ Para campanhas de engajamento, apenas <strong>usuários comuns (user_type_id = 2)</strong> podem ser selecionados.
-                            </p>
-                          </div>
                           {/* Aviso de usuários incompatíveis selecionados */}
                           {(() => {
                             const invalidUsers = users.filter(u => selectedUsers.includes(u.id) && u.user_type_id !== 2);
