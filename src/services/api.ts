@@ -535,4 +535,18 @@ export const api = {
     if (!response.ok) throw new Error('Falha ao carregar ranking');
     return response.json() as Promise<{ data: CampaignRanking[] }>;
   },
+
+  getCampaignWithPodium: async (token: string, campaignId: number) => {
+    const response = await fetch(`${API_BASE_URL}/app/campaigns`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar campanha');
+    const result = await response.json() as { data: Campaign[] };
+    const campaign = result.data.find(c => c.id === campaignId);
+    if (!campaign) throw new Error('Campanha não encontrada');
+    return campaign;
+  },
 };

@@ -221,13 +221,33 @@ export interface CampaignRanking {
   user_id: number;
   user_name: string;
   user_email?: string;
-  value: number; // valor vendido (sales) ou coins acumulados (engagement)
+  value?: number; // valor vendido (sales) ou coins acumulados (engagement)
+  name: string;
+  profile_image_path: string | null;
+  store: {
+    id: number;
+    name: string;
+  } | null;
+  sales_amount: number | null;
+  coins_total: number | null;
 }
 
-export interface SalesRanking extends CampaignRanking {
-  sales_amount: number;
-}
-
-export interface EngagementRanking extends CampaignRanking {
-  coins_earned: number;
+export interface Campaign {
+  id: number;
+  tenant_id: number;
+  name: string;
+  type: CampaignType;
+  goal: string;
+  start_date: string;
+  end_date: string;
+  status: CampaignStatus;
+  is_active?: number; // Manter para compatibilidade com dados antigos
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  users?: User[];
+  products?: CampaignProduct[];
+  actions?: CampaignAction[];
+  ranking?: CampaignRanking[];
+  podium?: CampaignRanking[]; // Top 3 ranking retornado pela API
 }

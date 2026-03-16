@@ -499,8 +499,14 @@ export const CampaignsPage: React.FC = () => {
     if (!token) return;
     setRankingModal({ isOpen: true, campaign, ranking: [], loading: true });
     try {
-      const data = await api.getCampaignRanking(token, campaign.id);
-      setRankingModal(prev => ({ ...prev, ranking: data.data, loading: false }));
+      // Se a campanha já tem podium, usa ele diretamente
+      if (campaign.podium && campaign.podium.length > 0) {
+        setRankingModal(prev => ({ ...prev, ranking: campaign.podium, loading: false }));
+      } else {
+        // Caso contrário, busca da API
+        const campaignData = await api.getCampaignWithPodium(token, campaign.id);
+        setRankingModal(prev => ({ ...prev, ranking: campaignData.podium || [], loading: false }));
+      }
     } catch (error: any) {
       console.error('Error fetching ranking:', error);
       addToast('error', error.message || 'Erro ao carregar ranking.');
@@ -711,14 +717,74 @@ export const CampaignsPage: React.FC = () => {
                         </div>
                       </div>
 
+                      {/* Podium / Ranking Section */}
+                      {campaign.podium && campaign.podium.length > 0 && (
+                        <div className="w-full md:w-auto mt-4 md:mt-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Trophy className="w-4 h-4 text-amber-500" />
+                            <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+                              Top {campaign.podium.length}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            {campaign.podium.slice(0, 3).map((member, index) => {
+                              const medalColors = [
+                                'text-amber-500',  // 1º
+                                'text-zinc-400',   // 2º
+                                'text-amber-600',  // 3º
+                              ];
+                              const bgColors = [
+                                'bg-amber-50 dark:bg-amber-900/20',
+                                'bg-zinc-50 dark:bg-zinc-800/50',
+                                'bg-amber-50 dark:bg-amber-900/20',
+                              ];
+                              
+                              return (
+                                <div
+                                  key={member.user_id}
+                                  className={`flex items-center gap-2 p-2 rounded-lg ${bgColors[index]}`}
+                                >
+                                  <div className={`w-5 h-5 flex items-center justify-center font-bold text-xs ${medalColors[index]}`}>
+                                    {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium text-zinc-900 dark:text-white truncate">
+                                      {member.name}
+                                    </p>
+                                    {member.store && (
+                                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
+                                        {member.store.name}
+                                      </p>
+                                    )}
+                                  </div>
+                                  {campaign.type === 'sales' && member.sales_amount !== null && (
+                                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                      {formatCurrency(String(member.sales_amount))}
+                                    </span>
+                                  )}
+                                  {campaign.type === 'engagement' && member.coins_total !== null && (
+                                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                                      {member.coins_total} 🪙
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleOpenRanking(campaign)}
-                          className="p-2 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
-                          title="Ver Ranking"
-                        >
-                          <Trophy size={18} />
-                        </button>
+                        {/* Botão de ranking: apenas para campanhas ativas */}
+                        {statusFromCampaign === 'ativa' && (
+                          <button
+                            onClick={() => handleOpenRanking(campaign)}
+                            className="p-2 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+                            title="Ver Ranking Completo"
+                          >
+                            <Trophy size={18} />
+                          </button>
+                        )}
                         {isAdmin && (
                           <>
                             <button
@@ -1440,6 +1506,13 @@ export const CampaignsPage: React.FC = () => {
                           'bg-zinc-400 text-zinc-900',    // 2º
                           'bg-amber-600 text-amber-100',  // 3º
                         ];
+                        
+                        // Usa o nome do campo correto (user_name ou name)
+                        const userName = item.user_name || item.name;
+                        const userEmail = item.user_email;
+                        const store = (item as any).store;
+                        const salesAmount = (item as any).sales_amount;
+                        const coinsTotal = (item as any).coins_total;
 
                         return (
                           <div
@@ -1460,9 +1533,12 @@ export const CampaignsPage: React.FC = () => {
                               )}
                             </div>
                             <div className="flex-1">
-                              <p className="font-semibold text-zinc-900 dark:text-white">{item.user_name}</p>
-                              {item.user_email && (
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400">{item.user_email}</p>
+                              <p className="font-semibold text-zinc-900 dark:text-white">{userName}</p>
+                              {store && (
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">{store.name}</p>
+                              )}
+                              {userEmail && !store && (
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">{userEmail}</p>
                               )}
                             </div>
                             <div className="text-right">
@@ -1471,8 +1547,8 @@ export const CampaignsPage: React.FC = () => {
                               </p>
                               <p className="font-bold text-lg text-zinc-900 dark:text-white">
                                 {rankingModal.campaign?.type === 'sales'
-                                  ? formatCurrency(String(item.value))
-                                  : `${item.value} coins`
+                                  ? formatCurrency(String(salesAmount !== null ? salesAmount : item.value || 0))
+                                  : `${coins_total !== null ? coinsTotal : item.value || 0} coins`
                                 }
                               </p>
                             </div>
