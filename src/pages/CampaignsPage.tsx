@@ -476,6 +476,36 @@ export const CampaignsPage: React.FC = () => {
     );
   };
 
+  // Formata valor para moeda brasileira (BRL)
+  const formatCurrencyInput = (value: string) => {
+    // Remove tudo que não é dígito
+    const digits = value.replace(/\D/g, '');
+    // Converte para número e divide por 100 para ter os centavos
+    const numberValue = parseInt(digits) / 100;
+    // Formata como moeda brasileira
+    return numberValue.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const handleGoalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const formatted = formatCurrencyInput(value);
+    // Converte de volta para formato numérico com ponto decimal
+    const numericValue = formatted.replace(/\./g, '').replace(',', '.');
+    setFormData({ ...formData, goal: numericValue });
+  };
+
+  // Obtém data mínima (hoje) no formato YYYY-MM-DD
+  const getMinDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   return (
     <Layout>
       <ConfirmModal
@@ -828,12 +858,12 @@ export const CampaignsPage: React.FC = () => {
                               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta (R$) *</label>
                               <input
                                 type="text"
-                                value={formData.goal}
-                                onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
+                                value={formData.goal ? formatCurrencyInput(formData.goal.replace(/\./g, '').replace(',', '.')) : ''}
+                                onChange={handleGoalChange}
                                 className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                                   formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                 }`}
-                                placeholder="Ex: 50000.00"
+                                placeholder="R$ 0,00"
                               />
                               {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
                             </div>
@@ -846,6 +876,7 @@ export const CampaignsPage: React.FC = () => {
                                 type="date"
                                 value={formData.start_date}
                                 onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                                min={getMinDate()}
                                 className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
                                   formErrors.start_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                 }`}
@@ -859,6 +890,7 @@ export const CampaignsPage: React.FC = () => {
                                 type="date"
                                 value={formData.end_date}
                                 onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                                min={formData.start_date || getMinDate()}
                                 className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
                                   formErrors.end_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                 }`}
