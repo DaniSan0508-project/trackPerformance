@@ -1582,12 +1582,12 @@ export const CampaignsPage: React.FC = () => {
                             </div>
                             <div className="text-right">
                               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                {rankingModal.campaign?.type === 'sales' ? 'Valor Vendido' : 'Coins Acumulados'}
+                                {rankingModal.campaign?.type === 'sales' ? 'Valor Vendido' : 'Total de Coin(s)'}
                               </p>
                               <p className="font-bold text-lg text-zinc-900 dark:text-white">
                                 {rankingModal.campaign?.type === 'sales'
                                   ? formatCurrency(String(salesAmount !== null ? salesAmount : item.value || 0))
-                                  : `${coins_total !== null ? coinsTotal : item.value || 0} coins`
+                                  : `${coinsTotal !== null ? coinsTotal : item.value || 0} coins`
                                 }
                               </p>
                             </div>
