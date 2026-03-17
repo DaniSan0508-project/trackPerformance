@@ -535,9 +535,14 @@ export const CampaignsPage: React.FC = () => {
       if (campaign.podium && campaign.podium.length > 0) {
         setRankingModal(prev => ({ ...prev, ranking: campaign.podium, loading: false }));
       } else {
-        // Caso contrário, busca da API
-        const campaignData = await api.getCampaignWithPodium(token, campaign.id);
-        setRankingModal(prev => ({ ...prev, ranking: campaignData.podium || [], loading: false }));
+        // Busca todas as campanhas com podium e filtra pela ID
+        const response = await api.getCampaignsWithPodium(token);
+        const campaignWithData = response.data.find(c => c.id === campaign.id);
+        setRankingModal(prev => ({ 
+          ...prev, 
+          ranking: campaignWithData?.podium || [], 
+          loading: false 
+        }));
       }
     } catch (error: any) {
       console.error('Error fetching ranking:', error);

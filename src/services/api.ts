@@ -449,6 +449,17 @@ export const api = {
     return response.json() as Promise<PaginatedResponse<Campaign>>;
   },
 
+  getCampaignsWithPodium: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/app/campaigns`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar campanhas com podium');
+    return response.json() as Promise<{ data: Campaign[] }>;
+  },
+
   createCampaign: async (token: string, data: Partial<Campaign>) => {
     const response = await fetch(`${API_BASE_URL}/campaigns`, {
       method: 'POST',
