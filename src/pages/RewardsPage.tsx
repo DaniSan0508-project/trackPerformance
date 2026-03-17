@@ -713,9 +713,9 @@ export const RewardsPage: React.FC = () => {
                 >
                   <option value="">Todos</option>
                   <option value="pending">Pendente</option>
-                  <option value="approved">Aprovado</option>
-                  <option value="rejected">Rejeitado</option>
-                  <option value="completed">Concluído</option>
+                  <option value="approved">Disponível para Retirada</option>
+                  <option value="rejected">Cancelado</option>
+                  <option value="completed">Entregue</option>
                 </select>
               </div>
               <div className="flex gap-2 ml-auto">
@@ -772,19 +772,19 @@ export const RewardsPage: React.FC = () => {
                                 {redemption.status === 'approved' && (
                                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
                                     <CheckCircle size={14} />
-                                    Aprovado
+                                    Disponível para Retirada
                                   </span>
                                 )}
                                 {redemption.status === 'rejected' && (
                                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
                                     <XCircle size={14} />
-                                    Rejeitado
+                                    Cancelado
                                   </span>
                                 )}
                                 {redemption.status === 'completed' && (
                                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
                                     <CheckCircle size={14} />
-                                    Concluído
+                                    Entregue
                                   </span>
                                 )}
                               </div>
@@ -922,9 +922,9 @@ export const RewardsPage: React.FC = () => {
                           {!isAdmin && (
                             <div className="lg:w-auto text-sm text-zinc-500 dark:text-zinc-400">
                               {redemption.status === 'pending' && 'Aguardando aprovação'}
-                              {redemption.status === 'approved' && 'Resgate aprovado'}
-                              {redemption.status === 'rejected' && 'Resgate rejeitado'}
-                              {redemption.status === 'completed' && 'Resgate concluído'}
+                              {redemption.status === 'approved' && 'Disponível para retirada'}
+                              {redemption.status === 'rejected' && 'Resgate cancelado'}
+                              {redemption.status === 'completed' && 'Resgate entregue'}
                             </div>
                           )}
                         </div>
