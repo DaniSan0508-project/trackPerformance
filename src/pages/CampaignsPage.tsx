@@ -9,6 +9,8 @@ import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { campaignSchema } from '../validators/schemas';
 
+const API_BASE_URL = 'http://localhost:8012/api/v1';
+
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
   useEffect(() => {
@@ -140,6 +142,12 @@ export const CampaignsPage: React.FC = () => {
   const [productsTotalPages, setProductsTotalPages] = useState(1);
   const [productSearch, setProductSearch] = useState('');
   const [productFilterType, setProductFilterType] = useState<'name' | 'barcode'>('name');
+
+  // Loading para "Selecionar Todos"
+  const [loadingSelectAllUsers, setLoadingSelectAllUsers] = useState(false);
+  const [loadingSelectAllProducts, setLoadingSelectAllProducts] = useState(false);
+  const [selectAllUsersProgress, setSelectAllUsersProgress] = useState<{ current: number; total: number } | null>(null);
+  const [selectAllProductsProgress, setSelectAllProductsProgress] = useState<{ current: number; total: number } | null>(null);
 
   // Ranking
   const [rankingModal, setRankingModal] = useState<{
@@ -594,6 +602,180 @@ export const CampaignsPage: React.FC = () => {
     );
   };
 
+  // Handlers para "Selecionar Todos"
+  const handleSelectAllUsers = async () => {
+    if (!token) return;
+    
+    // Verifica se já selecionou todos os usuários da página atual
+    const isCampaignEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
+    const currentValidUsers = isCampaignEngagement
+      ? users.filter(u => u.user_type_id === 2)
+      : users;
+    const allCurrentSelected = currentValidUsers.every(u => selectedUsers.includes(u.id));
+    
+    if (allCurrentSelected) {
+      // Desmarcar todos da página atual
+      const userIdsToDeselect = currentValidUsers.map(u => u.id);
+      setSelectedUsers(prev => prev.filter(id => !userIdsToDeselect.includes(id)));
+      return;
+    }
+    
+    setLoadingSelectAllUsers(true);
+    setSelectAllUsersProgress(null);
+    try {
+      // Primeira requisição para descobrir o total de páginas
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', '1');
+      queryParams.append('per_page', '100');
+      queryParams.append('include', 'store');
+      if (userSearch) {
+        queryParams.append(`filter[${userFilterType}]`, userSearch);
+      }
+
+      const firstResponse = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+      if (!firstResponse.ok) throw new Error('Falha ao carregar usuários');
+      const firstData = await firstResponse.json() as PaginatedResponse<User>;
+      
+      const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
+      const allUsers: User[] = [...(firstData.data || [])];
+      
+      // Atualiza progresso após primeira página
+      if (totalPages > 1) {
+        setSelectAllUsersProgress({ current: 1, total: totalPages });
+      }
+      
+      // Busca as páginas restantes
+      for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
+        const nextPageParams = new URLSearchParams();
+        nextPageParams.append('page', currentPage.toString());
+        nextPageParams.append('per_page', '100');
+        nextPageParams.append('include', 'store');
+        if (userSearch) {
+          nextPageParams.append(`filter[${userFilterType}]`, userSearch);
+        }
+
+        const response = await fetch(`${API_BASE_URL}/users?${nextPageParams.toString()}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+        });
+        if (!response.ok) throw new Error('Falha ao carregar usuários');
+        const data = await response.json() as PaginatedResponse<User>;
+        
+        allUsers.push(...(data.data || []));
+        setSelectAllUsersProgress({ current: currentPage, total: totalPages });
+      }
+      
+      // Filtra apenas usuários válidos para campanha de engajamento
+      const validUserIds = isCampaignEngagement
+        ? allUsers.filter(u => u.user_type_id === 2).map(u => u.id)
+        : allUsers.map(u => u.id);
+      
+      // Adiciona todos os usuários válidos à seleção
+      setSelectedUsers(prev => {
+        const newIds = validUserIds.filter(id => !prev.includes(id));
+        return [...prev, ...newIds];
+      });
+      
+      addToast('success', `Todos os ${validUserIds.length} usuários foram selecionados!`);
+      setSelectAllUsersProgress(null);
+    } catch (error) {
+      console.error('Error fetching all users:', error);
+      addToast('error', 'Erro ao carregar todos os usuários.');
+      setSelectAllUsersProgress(null);
+    } finally {
+      setLoadingSelectAllUsers(false);
+    }
+  };
+
+  const handleSelectAllProducts = async () => {
+    if (!token) return;
+
+    // Verifica se já selecionou todos os produtos da página atual
+    const allCurrentSelected = products.every(p => selectedProducts.includes(p.id));
+
+    if (allCurrentSelected) {
+      // Desmarcar todos da página atual
+      const productIdsToDeselect = products.map(p => p.id);
+      setSelectedProducts(prev => prev.filter(id => !productIdsToDeselect.includes(id)));
+      return;
+    }
+
+    setLoadingSelectAllProducts(true);
+    setSelectAllProductsProgress(null);
+    try {
+      // Primeira requisição para descobrir o total de páginas
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', '1');
+      queryParams.append('per_page', '100');
+      if (productSearch) {
+        queryParams.append(`filter[${productFilterType}]`, productSearch);
+      }
+
+      const firstResponse = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+      if (!firstResponse.ok) throw new Error('Falha ao carregar produtos');
+      const firstData = await firstResponse.json() as PaginatedResponse<Product>;
+      
+      const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
+      const allProducts: Product[] = [...(firstData.data || [])];
+      
+      // Atualiza progresso após primeira página
+      if (totalPages > 1) {
+        setSelectAllProductsProgress({ current: 1, total: totalPages });
+      }
+      
+      // Busca as páginas restantes
+      for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
+        const nextPageParams = new URLSearchParams();
+        nextPageParams.append('page', currentPage.toString());
+        nextPageParams.append('per_page', '100');
+        if (productSearch) {
+          nextPageParams.append(`filter[${productFilterType}]`, productSearch);
+        }
+
+        const response = await fetch(`${API_BASE_URL}/products?${nextPageParams.toString()}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+        });
+        if (!response.ok) throw new Error('Falha ao carregar produtos');
+        const data = await response.json() as PaginatedResponse<Product>;
+        
+        allProducts.push(...(data.data || []));
+        setSelectAllProductsProgress({ current: currentPage, total: totalPages });
+      }
+      
+      const allProductIds = allProducts.map(p => p.id);
+
+      // Adiciona todos os produtos à seleção
+      setSelectedProducts(prev => {
+        const newIds = allProductIds.filter(id => !prev.includes(id));
+        return [...prev, ...newIds];
+      });
+
+      addToast('success', `Todos os ${allProductIds.length} produtos foram selecionados!`);
+      setSelectAllProductsProgress(null);
+    } catch (error) {
+      console.error('Error fetching all products:', error);
+      addToast('error', 'Erro ao carregar todos os produtos.');
+      setSelectAllProductsProgress(null);
+    } finally {
+      setLoadingSelectAllProducts(false);
+    }
+  };
+
   // Formata valor para moeda brasileira (BRL)
   const formatCurrencyInput = (value: string) => {
     // Remove tudo que não é dígito
@@ -894,7 +1076,7 @@ export const CampaignsPage: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 max-h-[90vh] flex flex-col"
+                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-7xl overflow-hidden border border-zinc-200 dark:border-zinc-800 max-h-[95vh] flex flex-col"
               >
                 <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
                   <div>
@@ -1164,6 +1346,57 @@ export const CampaignsPage: React.FC = () => {
                         <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum usuário encontrado.</p>
                       ) : (
                         <>
+                          {/* Botão Selecionar Todos */}
+                          <div className="flex justify-between items-center mb-3">
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                              {selectedUsers.length} usuário(s) selecionado(s)
+                            </p>
+                            <button
+                              onClick={handleSelectAllUsers}
+                              disabled={loadingSelectAllUsers}
+                              className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                            >
+                              {loadingSelectAllUsers ? (
+                                <>
+                                  <Loader2 size={14} className="animate-spin" />
+                                  {selectAllUsersProgress ? (
+                                    <span>Página {selectAllUsersProgress.current}/{selectAllUsersProgress.total}</span>
+                                  ) : (
+                                    <span>Carregando...</span>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <Users size={14} />
+                                  {(() => {
+                                    const isCampaignEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
+                                    const currentValidUsers = isCampaignEngagement
+                                      ? users.filter(u => u.user_type_id === 2)
+                                      : users;
+                                    const allCurrentSelected = currentValidUsers.every(u => selectedUsers.includes(u.id));
+                                    return allCurrentSelected ? 'Desmarcar Todos' : 'Selecionar Todos';
+                                  })()}
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          {/* Barra de progresso */}
+                          {loadingSelectAllUsers && selectAllUsersProgress && (
+                            <div className="mb-3">
+                              <div className="flex justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                                <span>Carregando usuários...</span>
+                                <span>{Math.round((selectAllUsersProgress.current / selectAllUsersProgress.total) * 100)}%</span>
+                              </div>
+                              <div className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-emerald-500 transition-all duration-300"
+                                  style={{ width: `${(selectAllUsersProgress.current / selectAllUsersProgress.total) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
                           <div className="grid gap-2 max-h-60 overflow-y-auto">
                             {/* Filtra usuários: apenas user_type_id = 2 para engajamento */}
                             {(editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement')
@@ -1320,6 +1553,53 @@ export const CampaignsPage: React.FC = () => {
                         <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum produto encontrado.</p>
                       ) : (
                         <>
+                          {/* Botão Selecionar Todos */}
+                          <div className="flex justify-between items-center mb-3">
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                              {selectedProducts.length} produto(s) selecionado(s)
+                            </p>
+                            <button
+                              onClick={handleSelectAllProducts}
+                              disabled={loadingSelectAllProducts}
+                              className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                            >
+                              {loadingSelectAllProducts ? (
+                                <>
+                                  <Loader2 size={14} className="animate-spin" />
+                                  {selectAllProductsProgress ? (
+                                    <span>Página {selectAllProductsProgress.current}/{selectAllProductsProgress.total}</span>
+                                  ) : (
+                                    <span>Carregando...</span>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <ShoppingBag size={14} />
+                                  {(() => {
+                                    const allCurrentSelected = products.every(p => selectedProducts.includes(p.id));
+                                    return allCurrentSelected ? 'Desmarcar Todos' : 'Selecionar Todos';
+                                  })()}
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          {/* Barra de progresso */}
+                          {loadingSelectAllProducts && selectAllProductsProgress && (
+                            <div className="mb-3">
+                              <div className="flex justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                                <span>Carregando produtos...</span>
+                                <span>{Math.round((selectAllProductsProgress.current / selectAllProductsProgress.total) * 100)}%</span>
+                              </div>
+                              <div className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-blue-500 transition-all duration-300"
+                                  style={{ width: `${(selectAllProductsProgress.current / selectAllProductsProgress.total) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
                           <div className="grid gap-2 max-h-60 overflow-y-auto">
                             {products.map((product) => (
                               <button

@@ -524,6 +524,41 @@ export const api = {
     return response.json() as Promise<PaginatedResponse<User>>;
   },
 
+  getAllUsersComplete: async (token: string, search = '', filterType: 'name' | 'email' = 'name') => {
+    const allUsers: User[] = [];
+    let currentPage = 1;
+    const perPage = 100; // Busca 100 por página para ser mais eficiente
+
+    while (true) {
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', currentPage.toString());
+      queryParams.append('per_page', perPage.toString());
+      queryParams.append('include', 'store');
+      if (search) {
+        queryParams.append(`filter[${filterType}]`, search);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+      if (!response.ok) throw new Error('Falha ao carregar usuários');
+      const data = await response.json() as PaginatedResponse<User>;
+      
+      allUsers.push(...(data.data || []));
+      
+      // Se não houver mais páginas, interrompe
+      if (currentPage >= (data.meta?.last_page || data.last_page || 1)) {
+        break;
+      }
+      currentPage++;
+    }
+
+    return allUsers;
+  },
+
   getProducts: async (token: string, page = 1, perPage = 10) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
@@ -537,6 +572,40 @@ export const api = {
     });
     if (!response.ok) throw new Error('Falha ao carregar produtos');
     return response.json() as Promise<PaginatedResponse<Product>>;
+  },
+
+  getAllProductsComplete: async (token: string, search = '', filterType: 'name' | 'barcode' = 'name') => {
+    const allProducts: Product[] = [];
+    let currentPage = 1;
+    const perPage = 100; // Busca 100 por página para ser mais eficiente
+
+    while (true) {
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', currentPage.toString());
+      queryParams.append('per_page', perPage.toString());
+      if (search) {
+        queryParams.append(`filter[${filterType}]`, search);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+      if (!response.ok) throw new Error('Falha ao carregar produtos');
+      const data = await response.json() as PaginatedResponse<Product>;
+      
+      allProducts.push(...(data.data || []));
+      
+      // Se não houver mais páginas, interrompe
+      if (currentPage >= (data.meta?.last_page || data.last_page || 1)) {
+        break;
+      }
+      currentPage++;
+    }
+
+    return allProducts;
   },
 
   getCampaignRanking: async (token: string, campaignId: number) => {
