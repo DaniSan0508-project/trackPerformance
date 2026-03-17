@@ -148,6 +148,7 @@ export const CampaignsPage: React.FC = () => {
   const [loadingSelectAllProducts, setLoadingSelectAllProducts] = useState(false);
   const [selectAllUsersProgress, setSelectAllUsersProgress] = useState<{ current: number; total: number } | null>(null);
   const [selectAllProductsProgress, setSelectAllProductsProgress] = useState<{ current: number; total: number } | null>(null);
+  const [selectByRoleLoading, setSelectByRoleLoading] = useState<string | null>(null);
 
   // Ranking
   const [rankingModal, setRankingModal] = useState<{
@@ -296,7 +297,7 @@ export const CampaignsPage: React.FC = () => {
     }
     setIsModalOpen(true);
     fetchAuxiliaryData();
-    // Inicializar paginação
+    // Inicializar paginação e filtros
     setUsersPage(1);
     setProductsPage(1);
     setUserSearch('');
@@ -640,15 +641,15 @@ export const CampaignsPage: React.FC = () => {
       });
       if (!firstResponse.ok) throw new Error('Falha ao carregar usuários');
       const firstData = await firstResponse.json() as PaginatedResponse<User>;
-      
+
       const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
-      const allUsers: User[] = [...(firstData.data || [])];
-      
+      let allUsers: User[] = [...(firstData.data || [])];
+
       // Atualiza progresso após primeira página
       if (totalPages > 1) {
         setSelectAllUsersProgress({ current: 1, total: totalPages });
       }
-      
+
       // Busca as páginas restantes
       for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
         const nextPageParams = new URLSearchParams();
@@ -667,22 +668,22 @@ export const CampaignsPage: React.FC = () => {
         });
         if (!response.ok) throw new Error('Falha ao carregar usuários');
         const data = await response.json() as PaginatedResponse<User>;
-        
+
         allUsers.push(...(data.data || []));
         setSelectAllUsersProgress({ current: currentPage, total: totalPages });
       }
-      
+
       // Filtra apenas usuários válidos para campanha de engajamento
       const validUserIds = isCampaignEngagement
         ? allUsers.filter(u => u.user_type_id === 2).map(u => u.id)
         : allUsers.map(u => u.id);
-      
+
       // Adiciona todos os usuários válidos à seleção
       setSelectedUsers(prev => {
         const newIds = validUserIds.filter(id => !prev.includes(id));
         return [...prev, ...newIds];
       });
-      
+
       addToast('success', `Todos os ${validUserIds.length} usuários foram selecionados!`);
       setSelectAllUsersProgress(null);
     } catch (error) {
@@ -692,6 +693,92 @@ export const CampaignsPage: React.FC = () => {
     } finally {
       setLoadingSelectAllUsers(false);
     }
+  };
+
+  // Handler para selecionar todos os usuários de um cargo específico
+  const handleSelectAllByRole = async (role: string) => {
+    if (!token) return;
+    
+    setSelectByRoleLoading(role);
+    try {
+      // Primeira requisição para descobrir o total de páginas
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', '1');
+      queryParams.append('per_page', '100');
+      queryParams.append('include', 'store');
+
+      const firstResponse = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+      if (!firstResponse.ok) throw new Error('Falha ao carregar usuários');
+      const firstData = await firstResponse.json() as PaginatedResponse<User>;
+
+      const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
+      let allUsers: User[] = [...(firstData.data || [])];
+
+      // Busca as páginas restantes
+      for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
+        const nextPageParams = new URLSearchParams();
+        nextPageParams.append('page', currentPage.toString());
+        nextPageParams.append('per_page', '100');
+        nextPageParams.append('include', 'store');
+
+        const response = await fetch(`${API_BASE_URL}/users?${nextPageParams.toString()}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+        });
+        if (!response.ok) throw new Error('Falha ao carregar usuários');
+        const data = await response.json() as PaginatedResponse<User>;
+
+        allUsers.push(...(data.data || []));
+      }
+
+      // Filtra apenas usuários do cargo selecionado
+      const roleUsers = allUsers.filter(u => u.role === role);
+      
+      // Filtra apenas usuários válidos para campanha de engajamento se necessário
+      const isCampaignEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
+      const validUserIds = isCampaignEngagement
+        ? roleUsers.filter(u => u.user_type_id === 2).map(u => u.id)
+        : roleUsers.map(u => u.id);
+
+      // Verifica se já estão todos selecionados para este cargo
+      const allRoleSelected = validUserIds.every(id => selectedUsers.includes(id));
+      
+      if (allRoleSelected) {
+        // Desmarcar todos deste cargo
+        setSelectedUsers(prev => prev.filter(id => !validUserIds.includes(id)));
+        addToast('success', `${role}(s) removido(s) da seleção!`);
+      } else {
+        // Adiciona os usuários à seleção (não remove os já selecionados)
+        setSelectedUsers(prev => {
+          const newIds = validUserIds.filter(id => !prev.includes(id));
+          return [...prev, ...newIds];
+        });
+        addToast('success', `${validUserIds.length} ${role}(s) adicionado(s) à seleção!`);
+      }
+    } catch (error) {
+      console.error('Error fetching users by role:', error);
+      addToast('error', `Erro ao carregar usuários com cargo ${role}.`);
+    } finally {
+      setSelectByRoleLoading(null);
+    }
+  };
+
+  // Verifica se todos os usuários de um cargo estão selecionados
+  const areAllUsersSelectedByRole = (role: string): boolean => {
+    const isCampaignEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
+    const roleUsers = isCampaignEngagement
+      ? users.filter(u => u.role === role && u.user_type_id === 2)
+      : users.filter(u => u.role === role);
+    
+    if (roleUsers.length === 0) return false;
+    return roleUsers.every(u => selectedUsers.includes(u.id));
   };
 
   const handleSelectAllProducts = async () => {
@@ -1314,6 +1401,7 @@ export const CampaignsPage: React.FC = () => {
 
                       {/* Filtros e busca de usuários */}
                       <div className="flex gap-2 mb-4">
+                        {/* Tipo de busca */}
                         <select
                           value={userFilterType}
                           onChange={(e) => setUserFilterType(e.target.value as 'name' | 'email')}
@@ -1322,6 +1410,8 @@ export const CampaignsPage: React.FC = () => {
                           <option value="name">Nome</option>
                           <option value="email">E-mail</option>
                         </select>
+
+                        {/* Busca */}
                         <input
                           type="text"
                           placeholder={`Buscar por ${userFilterType === 'name' ? 'nome' : 'e-mail'}...`}
@@ -1335,6 +1425,117 @@ export const CampaignsPage: React.FC = () => {
                           className="p-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors"
                         >
                           <Search size={20} />
+                        </button>
+                      </div>
+
+                      {/* Botões de seleção rápida por cargo */}
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <button
+                          onClick={handleSelectAllUsers}
+                          disabled={loadingSelectAllUsers}
+                          className="px-3 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                        >
+                          {loadingSelectAllUsers ? (
+                            <>
+                              <Loader2 size={12} className="animate-spin" />
+                              {selectAllUsersProgress ? `Página ${selectAllUsersProgress.current}/${selectAllUsersProgress.total}` : 'Carregando...'}
+                            </>
+                          ) : (
+                            <>
+                              <Users size={14} />
+                              Selecionar Todos
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleSelectAllByRole('Atendente')}
+                          disabled={selectByRoleLoading !== null}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+                            areAllUsersSelectedByRole('Atendente')
+                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {selectByRoleLoading === 'Atendente' ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <>
+                              <Check size={12} className={areAllUsersSelectedByRole('Atendente') ? '' : 'invisible'} />
+                              {areAllUsersSelectedByRole('Atendente') ? '✓ Atendente' : '+ Atendente'}
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleSelectAllByRole('Vendedor')}
+                          disabled={selectByRoleLoading !== null}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+                            areAllUsersSelectedByRole('Vendedor')
+                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {selectByRoleLoading === 'Vendedor' ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <>
+                              <Check size={12} className={areAllUsersSelectedByRole('Vendedor') ? '' : 'invisible'} />
+                              {areAllUsersSelectedByRole('Vendedor') ? '✓ Vendedor' : '+ Vendedor'}
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleSelectAllByRole('Representante')}
+                          disabled={selectByRoleLoading !== null}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+                            areAllUsersSelectedByRole('Representante')
+                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {selectByRoleLoading === 'Representante' ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <>
+                              <Check size={12} className={areAllUsersSelectedByRole('Representante') ? '' : 'invisible'} />
+                              {areAllUsersSelectedByRole('Representante') ? '✓ Representante' : '+ Representante'}
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleSelectAllByRole('Consultor')}
+                          disabled={selectByRoleLoading !== null}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+                            areAllUsersSelectedByRole('Consultor')
+                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {selectByRoleLoading === 'Consultor' ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <>
+                              <Check size={12} className={areAllUsersSelectedByRole('Consultor') ? '' : 'invisible'} />
+                              {areAllUsersSelectedByRole('Consultor') ? '✓ Consultor' : '+ Consultor'}
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleSelectAllByRole('Supervisor')}
+                          disabled={selectByRoleLoading !== null}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+                            areAllUsersSelectedByRole('Supervisor')
+                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {selectByRoleLoading === 'Supervisor' ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <>
+                              <Check size={12} className={areAllUsersSelectedByRole('Supervisor') ? '' : 'invisible'} />
+                              {areAllUsersSelectedByRole('Supervisor') ? '✓ Supervisor' : '+ Supervisor'}
+                            </>
+                          )}
                         </button>
                       </div>
 
