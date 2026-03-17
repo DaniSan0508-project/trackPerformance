@@ -608,6 +608,36 @@ export const api = {
     return allProducts;
   },
 
+  getAllManufacturers: async (token: string) => {
+    const allManufacturers: any[] = [];
+    let currentPage = 1;
+    const perPage = 100;
+
+    while (true) {
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', currentPage.toString());
+      queryParams.append('per_page', perPage.toString());
+
+      const response = await fetch(`${API_BASE_URL}/manufacturers?${queryParams.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+      if (!response.ok) throw new Error('Falha ao carregar fabricantes');
+      const data = await response.json() as PaginatedResponse<any>;
+      
+      allManufacturers.push(...(data.data || []));
+      
+      if (currentPage >= (data.meta?.last_page || data.last_page || 1)) {
+        break;
+      }
+      currentPage++;
+    }
+
+    return allManufacturers;
+  },
+
   getCampaignRanking: async (token: string, campaignId: number) => {
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/ranking`, {
       headers: {

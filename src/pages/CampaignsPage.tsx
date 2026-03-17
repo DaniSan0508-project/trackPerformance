@@ -149,6 +149,8 @@ export const CampaignsPage: React.FC = () => {
   const [selectAllUsersProgress, setSelectAllUsersProgress] = useState<{ current: number; total: number } | null>(null);
   const [selectAllProductsProgress, setSelectAllProductsProgress] = useState<{ current: number; total: number } | null>(null);
   const [selectByRoleLoading, setSelectByRoleLoading] = useState<string | null>(null);
+  const [selectByManufacturerLoading, setSelectByManufacturerLoading] = useState<string | null>(null);
+  const [manufacturers, setManufacturers] = useState<Array<{ id: number; name: string }>>([]);
 
   // Ranking
   const [rankingModal, setRankingModal] = useState<{
@@ -183,10 +185,11 @@ export const CampaignsPage: React.FC = () => {
     if (!token) return;
     setLoadingAux(true);
     try {
-      // Carregar primeira página de usuários e produtos (10 itens cada)
-      const [usersData, productsData] = await Promise.all([
+      // Carregar primeira página de usuários, produtos e fabricantes
+      const [usersData, productsData, manufacturersData] = await Promise.all([
         api.getAllUsers(token, 1, 10).catch(() => null),
         api.getProducts(token, 1, 10).catch(() => null),
+        api.getAllManufacturers(token).catch(() => null),
       ]);
 
       if (usersData?.data) {
@@ -198,6 +201,9 @@ export const CampaignsPage: React.FC = () => {
         setProducts(productsData.data);
         setProductsTotalPages(productsData.meta?.last_page || productsData.last_page || 1);
         setProductsPage(productsData.meta?.current_page || productsData.current_page || 1);
+      }
+      if (manufacturersData) {
+        setManufacturers(manufacturersData.map(m => ({ id: m.id, name: m.name })));
       }
     } catch (error) {
       console.error('Error fetching auxiliary data:', error);
@@ -776,9 +782,85 @@ export const CampaignsPage: React.FC = () => {
     const roleUsers = isCampaignEngagement
       ? users.filter(u => u.role === role && u.user_type_id === 2)
       : users.filter(u => u.role === role);
-    
+
     if (roleUsers.length === 0) return false;
     return roleUsers.every(u => selectedUsers.includes(u.id));
+  };
+
+  // Handler para selecionar todos os produtos de um fabricante específico
+  const handleSelectAllByManufacturer = async (manufacturerId: number, manufacturerName: string) => {
+    if (!token) return;
+    
+    setSelectByManufacturerLoading(manufacturerName);
+    try {
+      // Primeira requisição para descobrir o total de páginas
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', '1');
+      queryParams.append('per_page', '100');
+
+      const firstResponse = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+      if (!firstResponse.ok) throw new Error('Falha ao carregar produtos');
+      const firstData = await firstResponse.json() as PaginatedResponse<Product>;
+
+      const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
+      let allProducts: Product[] = [...(firstData.data || [])];
+
+      // Busca as páginas restantes
+      for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
+        const nextPageParams = new URLSearchParams();
+        nextPageParams.append('page', currentPage.toString());
+        nextPageParams.append('per_page', '100');
+
+        const response = await fetch(`${API_BASE_URL}/products?${nextPageParams.toString()}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+        });
+        if (!response.ok) throw new Error('Falha ao carregar produtos');
+        const data = await response.json() as PaginatedResponse<Product>;
+
+        allProducts.push(...(data.data || []));
+      }
+
+      // Filtra apenas produtos do fabricante selecionado
+      const manufacturerProducts = allProducts.filter(p => p.manufacturer_id === manufacturerId);
+      const validProductIds = manufacturerProducts.map(p => p.id);
+
+      // Verifica se já estão todos selecionados para este fabricante
+      const allManufacturerSelected = validProductIds.every(id => selectedProducts.includes(id));
+      
+      if (allManufacturerSelected) {
+        // Desmarcar todos deste fabricante
+        setSelectedProducts(prev => prev.filter(id => !validProductIds.includes(id)));
+        addToast('success', `Produtos de ${manufacturerName} removido(s) da seleção!`);
+      } else {
+        // Adiciona os produtos à seleção
+        setSelectedProducts(prev => {
+          const newIds = validProductIds.filter(id => !prev.includes(id));
+          return [...prev, ...newIds];
+        });
+        addToast('success', `${validProductIds.length} produto(s) de ${manufacturerName} adicionado(s)!`);
+      }
+    } catch (error) {
+      console.error('Error fetching products by manufacturer:', error);
+      addToast('error', `Erro ao carregar produtos do fabricante ${manufacturerName}.`);
+    } finally {
+      setSelectByManufacturerLoading(null);
+    }
+  };
+
+  // Verifica se todos os produtos de um fabricante estão selecionados
+  const areAllProductsSelectedByManufacturer = (manufacturerId: number): boolean => {
+    const manufacturerProducts = products.filter(p => p.manufacturer_id === manufacturerId);
+    
+    if (manufacturerProducts.length === 0) return false;
+    return manufacturerProducts.every(p => selectedProducts.includes(p.id));
   };
 
   const handleSelectAllProducts = async () => {
@@ -1798,6 +1880,35 @@ export const CampaignsPage: React.FC = () => {
                                   style={{ width: `${(selectAllProductsProgress.current / selectAllProductsProgress.total) * 100}%` }}
                                 />
                               </div>
+                            </div>
+                          )}
+
+                          {/* Botões de seleção rápida por fabricante */}
+                          {manufacturers.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-3">
+                              {manufacturers.map((manufacturer) => (
+                                <button
+                                  key={manufacturer.id}
+                                  onClick={() => handleSelectAllByManufacturer(manufacturer.id, manufacturer.name)}
+                                  disabled={selectByManufacturerLoading !== null}
+                                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+                                    areAllProductsSelectedByManufacturer(manufacturer.id)
+                                      ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                      : 'bg-purple-600 text-white hover:bg-purple-700'
+                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
+                                  {selectByManufacturerLoading === manufacturer.name ? (
+                                    <Loader2 size={12} className="animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Check size={12} className={areAllProductsSelectedByManufacturer(manufacturer.id) ? '' : 'invisible'} />
+                                      {areAllProductsSelectedByManufacturer(manufacturer.id)
+                                        ? `✓ ${manufacturer.name}`
+                                        : `+ ${manufacturer.name}`}
+                                    </>
+                                  )}
+                                </button>
+                              ))}
                             </div>
                           )}
 

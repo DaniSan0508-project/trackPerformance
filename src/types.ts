@@ -199,6 +199,17 @@ export interface Product {
   barcode?: string;
   created_at?: string;
   updated_at?: string;
+  manufacturer_id?: number | null;
+  manufacturer?: Manufacturer | null;
+}
+
+export interface Manufacturer {
+  id: number;
+  tenant_id: number;
+  name: string;
+  tax_id?: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface CampaignAction {
