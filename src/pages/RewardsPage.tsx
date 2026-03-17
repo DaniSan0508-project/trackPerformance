@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, ShoppingBag, Package, Coins, Images as ImagesIcon, X, Plus, Camera, Trash2, Edit2, Save, Gift } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, ShoppingBag, Package, Coins, Images as ImagesIcon, X, Plus, Camera, Trash2, Edit2, Save, Gift, ClipboardList, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Reward, RewardImage } from '../types';
+import { Reward, RewardImage, Redemption, RedemptionStatus } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -76,6 +76,18 @@ export const RewardsPage: React.FC = () => {
     isProcessing: false,
   });
 
+  // Redemptions states
+  const [activeTab, setActiveTab] = useState<'rewards' | 'redemptions'>('rewards');
+  const [redemptions, setRedemptions] = useState<Redemption[]>([]);
+  const [redemptionsLoading, setRedemptionsLoading] = useState(false);
+  const [redemptionsPage, setRedemptionsPage] = useState(1);
+  const [redemptionsTotalPages, setRedemptionsTotalPages] = useState(1);
+  const [redemptionsTotal, setRedemptionsTotal] = useState(0);
+  const [redemptionsFrom, setRedemptionsFrom] = useState(0);
+  const [redemptionsTo, setRedemptionsTo] = useState(0);
+  const [redemptionFilterStatus, setRedemptionFilterStatus] = useState<RedemptionStatus | ''>('');
+  const [updatingRedemptionId, setUpdatingRedemptionId] = useState<number | null>(null);
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -109,9 +121,92 @@ export const RewardsPage: React.FC = () => {
     }
   }, [token]);
 
+  const fetchRedemptions = useCallback(async (page = 1) => {
+    if (!token) return;
+    setRedemptionsLoading(true);
+    try {
+      const filters: any = {
+        per_page: 10,
+      };
+
+      // Admin vê todos, usuário comum vê apenas os seus
+      if (!isAdmin && currentUser?.id) {
+        filters.user_id = currentUser.id;
+      }
+
+      if (redemptionFilterStatus) {
+        filters.status = redemptionFilterStatus;
+      }
+
+      const data = await api.getRedemptions(token, page, filters);
+      setRedemptions(data.data);
+      setRedemptionsPage(data.current_page);
+      setRedemptionsTotalPages(data.last_page);
+      setRedemptionsTotal(data.total);
+      setRedemptionsFrom(data.from);
+      setRedemptionsTo(data.to);
+    } catch (err: any) {
+      console.error('Error fetching redemptions:', err);
+      addToast('error', err.message || 'Não foi possível carregar os resgates.');
+    } finally {
+      setRedemptionsLoading(false);
+    }
+  }, [token, isAdmin, currentUser?.id, redemptionFilterStatus, addToast]);
+
+  const handleApproveRedemption = async (id: number) => {
+    if (!token) return;
+    setUpdatingRedemptionId(id);
+    try {
+      await api.approveRedemption(token, id);
+      addToast('success', 'Resgate aprovado com sucesso!');
+      await fetchRedemptions(redemptionsPage, redemptionFilterStatus);
+    } catch (err: any) {
+      console.error('Error approving redemption:', err);
+      addToast('error', err.message || 'Não foi possível aprovar o resgate.');
+    } finally {
+      setUpdatingRedemptionId(null);
+    }
+  };
+
+  const handleRejectRedemption = async (id: number) => {
+    if (!token) return;
+    setUpdatingRedemptionId(id);
+    try {
+      await api.rejectRedemption(token, id);
+      addToast('success', 'Resgate rejeitado com sucesso!');
+      await fetchRedemptions(redemptionsPage, redemptionFilterStatus);
+    } catch (err: any) {
+      console.error('Error rejecting redemption:', err);
+      addToast('error', err.message || 'Não foi possível rejeitar o resgate.');
+    } finally {
+      setUpdatingRedemptionId(null);
+    }
+  };
+
+  const handleCompleteRedemption = async (id: number) => {
+    if (!token) return;
+    setUpdatingRedemptionId(id);
+    try {
+      await api.completeRedemption(token, id);
+      addToast('success', 'Resgate concluído com sucesso!');
+      await fetchRedemptions(redemptionsPage, redemptionFilterStatus);
+    } catch (err: any) {
+      console.error('Error completing redemption:', err);
+      addToast('error', err.message || 'Não foi possível concluir o resgate.');
+    } finally {
+      setUpdatingRedemptionId(null);
+    }
+  };
+
   useEffect(() => {
     fetchRewards(currentPage, debouncedSearchTerm);
   }, [fetchRewards, currentPage, debouncedSearchTerm]);
+
+  useEffect(() => {
+    if (activeTab === 'redemptions') {
+      fetchRedemptions(redemptionsPage);
+    }
+  }, [activeTab, redemptionsPage, redemptionFilterStatus, fetchRedemptions]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -409,7 +504,39 @@ export const RewardsPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="flex gap-2 border-b border-zinc-200 dark:border-zinc-700">
+          <button
+            onClick={() => setActiveTab('rewards')}
+            className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors ${
+              activeTab === 'rewards'
+                ? 'bg-emerald-600 text-white'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <ShoppingBag size={18} />
+              Prêmios
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('redemptions')}
+            className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors ${
+              activeTab === 'redemptions'
+                ? 'bg-emerald-600 text-white'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <ClipboardList size={18} />
+              Resgates
+            </div>
+          </button>
+        </div>
+
         {/* Filters */}
+        {activeTab === 'rewards' && (
+          <>
         <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 flex flex-col md:flex-row gap-4 items-center transition-colors duration-200">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={20} />
@@ -560,6 +687,293 @@ export const RewardsPage: React.FC = () => {
                     <ChevronRight size={20} />
                   </button>
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+        </>
+        )}
+
+        {/* Redemptions Tab */}
+        {activeTab === 'redemptions' && (
+          <div className="space-y-4">
+            {/* Redemptions Filters */}
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 flex flex-col md:flex-row gap-4 items-center transition-colors duration-200">
+              <div className="flex items-center gap-2 w-full">
+                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
+                  Status:
+                </label>
+                <select
+                  value={redemptionFilterStatus}
+                  onChange={(e) => {
+                    setRedemptionFilterStatus(e.target.value as RedemptionStatus | '');
+                    setRedemptionsPage(1);
+                  }}
+                  className="flex-1 md:flex-none md:w-48 p-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                >
+                  <option value="">Todos</option>
+                  <option value="pending">Pendente</option>
+                  <option value="approved">Aprovado</option>
+                  <option value="rejected">Rejeitado</option>
+                  <option value="completed">Concluído</option>
+                </select>
+              </div>
+              <div className="flex gap-2 ml-auto">
+                <button
+                  onClick={() => fetchRedemptions(redemptionsPage)}
+                  className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-2 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all"
+                  title="Atualizar"
+                >
+                  <RefreshCw size={20} className={redemptionsLoading ? "animate-spin" : ""} />
+                </button>
+              </div>
+            </div>
+
+            {/* Redemptions List */}
+            {redemptionsLoading && redemptions.length === 0 ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  {redemptions.map((redemption) => {
+                    const user = redemption.user;
+                    const items = redemption.items || [];
+                    const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+
+                    return (
+                      <motion.div
+                        key={redemption.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 p-4 md:p-6 transition-colors duration-200"
+                      >
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                          {/* Info Section */}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                                  #{redemption.id}
+                                </span>
+                                <span className="text-zinc-300 dark:text-zinc-600">•</span>
+                                <span className="text-sm text-zinc-500 dark:text-zinc-400">
+                                  {new Date(redemption.created_at).toLocaleDateString('pt-BR')}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {redemption.status === 'pending' && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                                    <Clock size={14} />
+                                    Pendente
+                                  </span>
+                                )}
+                                {redemption.status === 'approved' && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                                    <CheckCircle size={14} />
+                                    Aprovado
+                                  </span>
+                                )}
+                                {redemption.status === 'rejected' && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+                                    <XCircle size={14} />
+                                    Rejeitado
+                                  </span>
+                                )}
+                                {redemption.status === 'completed' && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                                    <CheckCircle size={14} />
+                                    Concluído
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* User Info (admin only) */}
+                            {isAdmin && user && (
+                              <div className="mb-3 flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                                <span className="font-medium">Usuário:</span>
+                                <span>{user.name}</span>
+                                <span className="text-zinc-400">({user.email})</span>
+                              </div>
+                            )}
+
+                            {/* Items */}
+                            <div className="space-y-2">
+                              <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                {totalItems} {totalItems === 1 ? 'item' : 'itens'} resgatado{totalItems === 1 ? 'o' : 's'}:
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {items.map((item) => (
+                                  <div
+                                    key={item.id}
+                                    className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
+                                  >
+                                    {item.reward?.primary_image?.image_full_url ? (
+                                      <img
+                                        src={item.reward.primary_image.image_full_url}
+                                        alt={item.reward.name}
+                                        className="w-8 h-8 object-cover rounded"
+                                      />
+                                    ) : (
+                                      <div className="w-8 h-8 bg-zinc-200 dark:bg-zinc-700 rounded flex items-center justify-center">
+                                        <Package size={16} className="text-zinc-400" />
+                                      </div>
+                                    )}
+                                    <div>
+                                      <div className="text-sm font-medium text-zinc-900 dark:text-white">
+                                        {item.reward?.name || 'Prêmio removido'}
+                                      </div>
+                                      <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                                        Qtd: {item.quantity}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Total */}
+                            <div className="mt-3 flex items-center gap-2 text-amber-500 font-bold">
+                              <Coins size={18} className="fill-current" />
+                              <span>{redemption.total_coins_spent.toLocaleString('pt-BR')} moedas gastas</span>
+                            </div>
+
+                            {/* Notes */}
+                            {redemption.notes && (
+                              <div className="mt-3 flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800 p-3 rounded-lg">
+                                <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                                <span>{redemption.notes}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Admin Actions */}
+                          {isAdmin && redemption.status !== 'completed' && redemption.status !== 'rejected' && (
+                            <div className="flex flex-col gap-2 lg:w-auto">
+                              <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                                Ações:
+                              </div>
+                              {redemption.status === 'pending' && (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleApproveRedemption(redemption.id)}
+                                    disabled={updatingRedemptionId === redemption.id}
+                                    className="flex-1 lg:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                                    title="Aprovar resgate"
+                                  >
+                                    {updatingRedemptionId === redemption.id ? (
+                                      <Loader2 size={16} className="animate-spin" />
+                                    ) : (
+                                      <CheckCircle size={16} />
+                                    )}
+                                    Aprovar
+                                  </button>
+                                  <button
+                                    onClick={() => handleRejectRedemption(redemption.id)}
+                                    disabled={updatingRedemptionId === redemption.id}
+                                    className="flex-1 lg:flex-none px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                                    title="Rejeitar resgate"
+                                  >
+                                    {updatingRedemptionId === redemption.id ? (
+                                      <Loader2 size={16} className="animate-spin" />
+                                    ) : (
+                                      <XCircle size={16} />
+                                    )}
+                                    Rejeitar
+                                  </button>
+                                </div>
+                              )}
+                              {redemption.status === 'approved' && (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleCompleteRedemption(redemption.id)}
+                                    disabled={updatingRedemptionId === redemption.id}
+                                    className="flex-1 lg:flex-none px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                                    title="Marcar como concluído"
+                                  >
+                                    {updatingRedemptionId === redemption.id ? (
+                                      <Loader2 size={16} className="animate-spin" />
+                                    ) : (
+                                      <CheckCircle size={16} />
+                                    )}
+                                    Concluir
+                                  </button>
+                                  <button
+                                    onClick={() => handleRejectRedemption(redemption.id)}
+                                    disabled={updatingRedemptionId === redemption.id}
+                                    className="flex-1 lg:flex-none px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                                    title="Rejeitar resgate (ainda não concluído)"
+                                  >
+                                    {updatingRedemptionId === redemption.id ? (
+                                      <Loader2 size={16} className="animate-spin" />
+                                    ) : (
+                                      <XCircle size={16} />
+                                    )}
+                                    Rejeitar
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* User View - Status Info */}
+                          {!isAdmin && (
+                            <div className="lg:w-auto text-sm text-zinc-500 dark:text-zinc-400">
+                              {redemption.status === 'pending' && 'Aguardando aprovação'}
+                              {redemption.status === 'approved' && 'Resgate aprovado'}
+                              {redemption.status === 'rejected' && 'Resgate rejeitado'}
+                              {redemption.status === 'completed' && 'Resgate concluído'}
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                {redemptions.length === 0 && (
+                  <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors duration-200">
+                    <ClipboardList className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+                    <h3 className="text-lg font-medium text-zinc-900 dark:text-white">Nenhum resgate encontrado</h3>
+                    <p className="text-zinc-500 dark:text-zinc-400">
+                      {redemptionFilterStatus
+                        ? 'Tente ajustar o filtro de status.'
+                        : isAdmin
+                          ? 'Não há resgates no momento.'
+                          : 'Você ainda não fez nenhum resgate.'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Pagination Controls */}
+                {redemptionsTotal > 0 && (
+                  <div className="flex items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
+                    <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                      Mostrando <span className="font-medium">{redemptionsFrom}</span> até <span className="font-medium">{redemptionsTo}</span> de <span className="font-medium">{redemptionsTotal}</span> resultados
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setRedemptionsPage(prev => Math.max(prev - 1, 1))}
+                        disabled={redemptionsPage === 1}
+                        className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                      <span className="text-sm font-medium px-2 text-zinc-700 dark:text-zinc-300">
+                        Página {redemptionsPage} de {redemptionsTotalPages}
+                      </span>
+                      <button
+                        onClick={() => setRedemptionsPage(prev => Math.min(prev + 1, redemptionsTotalPages))}
+                        disabled={redemptionsPage === redemptionsTotalPages}
+                        className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

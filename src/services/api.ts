@@ -1,4 +1,4 @@
-import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward, Campaign, CampaignAction, Product, CampaignRanking } from '../types';
+import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward, Campaign, CampaignAction, Product, CampaignRanking, Redemption, RedemptionStatus } from '../types';
 
 const API_BASE_URL = 'http://localhost:8012/api/v1';
 
@@ -564,6 +564,90 @@ export const api = {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || 'Falha ao criar redenção');
     }
+    return response.json();
+  },
+
+  getRedemptions: async (
+    token: string,
+    page = 1,
+    filters: {
+      status?: RedemptionStatus;
+      user_id?: number;
+      per_page?: number;
+    } = {}
+  ) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    
+    if (filters.status) {
+      queryParams.append('filter[status]', filters.status);
+    }
+    if (filters.user_id) {
+      queryParams.append('filter[user_id]', filters.user_id.toString());
+    }
+    if (filters.per_page) {
+      queryParams.append('per_page', filters.per_page.toString());
+    }
+    
+    queryParams.append('include', 'user,items,items.reward');
+
+    const response = await fetch(`${API_BASE_URL}/redemptions?${queryParams.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar resgates');
+    return response.json() as Promise<PaginatedResponse<Redemption>>;
+  },
+
+  updateRedemptionStatus: async (token: string, id: number, status: RedemptionStatus, notes?: string) => {
+    const response = await fetch(`${API_BASE_URL}/redemptions/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ status, notes }),
+    });
+    if (!response.ok) throw new Error('Falha ao atualizar resgate');
+    return response.json();
+  },
+
+  approveRedemption: async (token: string, id: number) => {
+    const response = await fetch(`${API_BASE_URL}/redemptions/${id}/approve`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao aprovar resgate');
+    return response.json();
+  },
+
+  rejectRedemption: async (token: string, id: number) => {
+    const response = await fetch(`${API_BASE_URL}/redemptions/${id}/reject`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao rejeitar resgate');
+    return response.json();
+  },
+
+  completeRedemption: async (token: string, id: number) => {
+    const response = await fetch(`${API_BASE_URL}/redemptions/${id}/complete`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao concluir resgate');
     return response.json();
   },
 };

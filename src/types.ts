@@ -253,3 +253,28 @@ export interface Campaign {
   ranking?: CampaignRanking[];
   podium?: CampaignRanking[]; // Top 3 ranking retornado pela API
 }
+
+export type RedemptionStatus = 'pending' | 'approved' | 'rejected' | 'completed';
+
+export interface Redemption {
+  id: number;
+  tenant_id: number;
+  user_id: number;
+  status: RedemptionStatus;
+  total_coins_spent: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  user?: User;
+  items?: RedemptionItem[];
+}
+
+export interface RedemptionItem {
+  id: number;
+  redemption_id: number;
+  reward_id: number;
+  quantity: number;
+  created_at: string;
+  updated_at: string;
+  reward?: Reward;
+}
