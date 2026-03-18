@@ -1307,7 +1307,7 @@ export const CampaignsPage: React.FC = () => {
                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
                   >
-                    Usuários ({selectedUsers.length})
+                    Equipe ({selectedUsers.length})
                   </button>
                   {/* Aba de ações: apenas para engajamento (criação e update) */}
                   {formData.type === 'engagement' || editingCampaign?.type === 'engagement' ? (
@@ -1533,13 +1533,6 @@ export const CampaignsPage: React.FC = () => {
                         >
                           <Search size={20} />
                         </button>
-                      </div>
-
-                      {/* Contador de selecionados */}
-                      <div className="flex justify-between items-center mb-3">
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                          {selectedUsers.length} usuário(s) selecionado(s)
-                        </p>
                       </div>
 
                       {/* Seleção Rápida por Cargo */}
@@ -1911,13 +1904,6 @@ export const CampaignsPage: React.FC = () => {
                         <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum produto encontrado.</p>
                       ) : (
                         <>
-                          {/* Contador de selecionados */}
-                          <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
-                            <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">
-                              🛒 {selectedProducts.length} produto(s) selecionado(s)
-                            </p>
-                          </div>
-
                           {/* Barra de progresso */}
                           {loadingSelectAllProducts && selectAllProductsProgress && (
                             <div className="mb-3">
@@ -1987,6 +1973,13 @@ export const CampaignsPage: React.FC = () => {
                               </div>
                             </div>
                           )}
+
+                          {/* Contador de selecionados */}
+                          <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                            <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                              🛒 {selectedProducts.length} produto(s) selecionado(s)
+                            </p>
+                          </div>
 
                           {/* Grid de Cards de Produtos */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-2">
