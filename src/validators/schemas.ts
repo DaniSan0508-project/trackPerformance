@@ -176,8 +176,10 @@ export const campaignSchema = z.object({
     .min(1, 'Nome é obrigatório')
     .min(3, 'Nome deve ter no mínimo 3 caracteres'),
   type: z
-    .enum(['sales', 'engagement'], {
-      errorMap: () => ({ message: 'Tipo de campanha inválido' }),
+    .string()
+    .min(1, 'Tipo de campanha é obrigatório')
+    .refine((val) => val === 'sales' || val === 'engagement', {
+      message: 'Tipo de campanha inválido',
     }),
   goal: z
     .string()
@@ -189,8 +191,10 @@ export const campaignSchema = z.object({
     .string()
     .min(1, 'Data de término é obrigatória'),
   status: z
-    .enum(['ativa', 'pausada', 'finalizada'], {
-      errorMap: () => ({ message: 'Status inválido' }),
+    .string()
+    .min(1, 'Status é obrigatório')
+    .refine((val) => val === 'ativa' || val === 'pausada' || val === 'finalizada', {
+      message: 'Status inválido',
     }),
 }).refine((data) => {
   // Goal é obrigatório apenas para sales

@@ -119,7 +119,7 @@ export const CampaignsPage: React.FC = () => {
 
   const [formData, setFormData] = useState({
     name: '',
-    type: 'sales' as CampaignType,
+    type: '' as CampaignType | '',
     goal: '',
     start_date: '',
     end_date: '',
@@ -297,7 +297,7 @@ export const CampaignsPage: React.FC = () => {
       setEditingCampaign(null);
       setFormData({
         name: '',
-        type: 'sales',
+        type: '',
         goal: '',
         start_date: '',
         end_date: '',
@@ -325,7 +325,7 @@ export const CampaignsPage: React.FC = () => {
     setActiveTab('basic');
     setFormData({
       name: '',
-      type: 'sales',
+      type: '',
       goal: '',
       start_date: '',
       end_date: '',
@@ -342,6 +342,13 @@ export const CampaignsPage: React.FC = () => {
   const handleSubmit = async () => {
     if (!token) return;
     setFormErrors({});
+
+    // Validação do tipo de campanha (obrigatório)
+    if (!formData.type) {
+      addToast('error', 'Selecione o tipo de campanha.');
+      setActiveTab('basic');
+      return;
+    }
 
     // Validações específicas para edição (apenas o essencial)
     if (editingCampaign) {
@@ -1303,7 +1310,7 @@ export const CampaignsPage: React.FC = () => {
                     Usuários ({selectedUsers.length})
                   </button>
                   {/* Aba de ações: apenas para engajamento (criação e update) */}
-                  {(!editingCampaign && formData.type === 'engagement') || (editingCampaign?.type === 'engagement') ? (
+                  {formData.type === 'engagement' || editingCampaign?.type === 'engagement' ? (
                     <button
                       onClick={() => setActiveTab('actions')}
                       className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
@@ -1316,7 +1323,7 @@ export const CampaignsPage: React.FC = () => {
                     </button>
                   ) : null}
                   {/* Aba de produtos: apenas para vendas (criação e update) */}
-                  {(!editingCampaign && formData.type === 'sales') || (editingCampaign?.type === 'sales') ? (
+                  {formData.type === 'sales' || editingCampaign?.type === 'sales' ? (
                     <button
                       onClick={() => setActiveTab('products')}
                       className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
@@ -1392,6 +1399,7 @@ export const CampaignsPage: React.FC = () => {
                               onChange={(e) => setFormData({ ...formData, type: e.target.value as CampaignType })}
                               className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                             >
+                              <option value="">Selecione o tipo de campanha</option>
                               <option value="sales">Vendas</option>
                               <option value="engagement">Engajamento</option>
                             </select>
@@ -1903,32 +1911,11 @@ export const CampaignsPage: React.FC = () => {
                         <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum produto encontrado.</p>
                       ) : (
                         <>
-                          {/* Botão Selecionar Todos */}
-                          <div className="flex justify-between items-center mb-3">
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                              {selectedProducts.length} produto(s) selecionado(s)
+                          {/* Contador de selecionados */}
+                          <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                            <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                              🛒 {selectedProducts.length} produto(s) selecionado(s)
                             </p>
-                            <button
-                              onClick={handleSelectAllProducts}
-                              disabled={loadingSelectAllProducts}
-                              className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                            >
-                              {loadingSelectAllProducts ? (
-                                <>
-                                  <Loader2 size={14} className="animate-spin" />
-                                  {selectAllProductsProgress ? (
-                                    <span>Página {selectAllProductsProgress.current}/{selectAllProductsProgress.total}</span>
-                                  ) : (
-                                    <span>Carregando...</span>
-                                  )}
-                                </>
-                              ) : (
-                                <>
-                                  <ShoppingBag size={14} />
-                                  {selectedProducts.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
-                                </>
-                              )}
-                            </button>
                           </div>
 
                           {/* Barra de progresso */}
@@ -2001,35 +1988,60 @@ export const CampaignsPage: React.FC = () => {
                             </div>
                           )}
 
-                          <div className="grid gap-2 max-h-60 overflow-y-auto">
+                          {/* Grid de Cards de Produtos */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-2">
                             {products.map((product) => (
-                              <button
+                              <motion.button
                                 key={product.id}
                                 onClick={() => toggleProduct(product.id)}
-                                className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className={`p-4 rounded-xl border-2 transition-all duration-200 text-left group ${
                                   selectedProducts.includes(product.id)
-                                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500'
-                                    : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-blue-300'
+                                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 shadow-md'
+                                    : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm'
                                 }`}
                               >
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
-                                    <ShoppingBag size={20} />
+                                <div className="flex items-start gap-3">
+                                  {/* Ícone do Produto */}
+                                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 border-2 border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 flex-shrink-0">
+                                    <ShoppingBag size={24} />
                                   </div>
-                                  <div className="text-left">
-                                    <p className="font-medium text-sm text-zinc-900 dark:text-white">{product.name}</p>
+
+                                  {/* Informações */}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm text-zinc-900 dark:text-white truncate">
+                                      {product.name}
+                                    </p>
                                     {product.barcode && (
-                                      <p className="text-xs text-zinc-500 dark:text-zinc-400">Cód: {product.barcode}</p>
+                                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                        📦 {product.barcode}
+                                      </p>
                                     )}
-                                    {product.description && !product.barcode && (
-                                      <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-xs">{product.description}</p>
+                                    {product.description && (
+                                      <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate mt-1">
+                                        {product.description}
+                                      </p>
+                                    )}
+                                    {product.manufacturer && (
+                                      <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">
+                                        🏭 {product.manufacturer.name}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Check de selecionado */}
+                                  <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                    selectedProducts.includes(product.id)
+                                      ? 'bg-blue-500 border-blue-500'
+                                      : 'border-zinc-300 dark:border-zinc-600 group-hover:border-blue-400'
+                                  }`}>
+                                    {selectedProducts.includes(product.id) && (
+                                      <Check size={14} className="text-white" />
                                     )}
                                   </div>
                                 </div>
-                                {selectedProducts.includes(product.id) && (
-                                  <Check size={20} className="text-blue-600" />
-                                )}
-                              </button>
+                              </motion.button>
                             ))}
                           </div>
 
