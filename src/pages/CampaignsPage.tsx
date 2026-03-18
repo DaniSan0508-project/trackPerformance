@@ -1527,6 +1527,13 @@ export const CampaignsPage: React.FC = () => {
                         </button>
                       </div>
 
+                      {/* Contador de selecionados */}
+                      <div className="flex justify-between items-center mb-3">
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                          {selectedUsers.length} usuário(s) selecionado(s)
+                        </p>
+                      </div>
+
                       {/* Seleção Rápida por Cargo */}
                       <div className="border-t border-zinc-200 dark:border-zinc-700 pt-4 mb-3">
                         <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">
@@ -1654,57 +1661,6 @@ export const CampaignsPage: React.FC = () => {
                         <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum usuário encontrado.</p>
                       ) : (
                         <>
-                          {/* Botão Selecionar Todos */}
-                          <div className="flex justify-between items-center mb-3">
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                              {selectedUsers.length} usuário(s) selecionado(s)
-                            </p>
-                            <button
-                              onClick={handleSelectAllUsers}
-                              disabled={loadingSelectAllUsers}
-                              className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                            >
-                              {loadingSelectAllUsers ? (
-                                <>
-                                  <Loader2 size={14} className="animate-spin" />
-                                  {selectAllUsersProgress ? (
-                                    <span>Página {selectAllUsersProgress.current}/{selectAllUsersProgress.total}</span>
-                                  ) : (
-                                    <span>Carregando...</span>
-                                  )}
-                                </>
-                              ) : (
-                                <>
-                                  <Users size={14} />
-                                  {(() => {
-                                    const isCampaignEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
-                                    const currentValidUsers = isCampaignEngagement
-                                      ? users.filter(u => u.user_type_id === 2)
-                                      : users;
-                                    const allCurrentSelected = currentValidUsers.every(u => selectedUsers.includes(u.id));
-                                    return allCurrentSelected ? 'Desmarcar Todos' : 'Selecionar Todos';
-                                  })()}
-                                </>
-                              )}
-                            </button>
-                          </div>
-
-                          {/* Barra de progresso */}
-                          {loadingSelectAllUsers && selectAllUsersProgress && (
-                            <div className="mb-3">
-                              <div className="flex justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-                                <span>Carregando usuários...</span>
-                                <span>{Math.round((selectAllUsersProgress.current / selectAllUsersProgress.total) * 100)}%</span>
-                              </div>
-                              <div className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-emerald-500 transition-all duration-300"
-                                  style={{ width: `${(selectAllUsersProgress.current / selectAllUsersProgress.total) * 100}%` }}
-                                />
-                              </div>
-                            </div>
-                          )}
-
                           <div className="grid gap-2 max-h-60 overflow-y-auto">
                             {/* Filtra usuários: apenas user_type_id = 2 para engajamento */}
                             {(editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement')
