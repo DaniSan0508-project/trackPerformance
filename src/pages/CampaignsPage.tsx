@@ -152,6 +152,10 @@ export const CampaignsPage: React.FC = () => {
   const [selectByRoleLoading, setSelectByRoleLoading] = useState<string | null>(null);
   const [selectByManufacturerLoading, setSelectByManufacturerLoading] = useState<string | null>(null);
   const [manufacturers, setManufacturers] = useState<Array<{ id: number; name: string }>>([]);
+  
+  // Controle de seleção por cargo/fabricante (independente da página)
+  const [fullySelectedRoles, setFullySelectedRoles] = useState<Set<string>>(new Set());
+  const [fullySelectedManufacturers, setFullySelectedManufacturers] = useState<Set<number>>(new Set());
 
   // Ranking
   const [rankingModal, setRankingModal] = useState<{
@@ -311,6 +315,8 @@ export const CampaignsPage: React.FC = () => {
     setUserSearch('');
     setProductSearch('');
     setProductManufacturerFilter('all');
+    setFullySelectedRoles(new Set());
+    setFullySelectedManufacturers(new Set());
   };
 
   const handleCloseModal = () => {
@@ -328,6 +334,8 @@ export const CampaignsPage: React.FC = () => {
     setSelectedUsers([]);
     setSelectedProducts([]);
     setSelectedActions([]);
+    setFullySelectedRoles(new Set());
+    setFullySelectedManufacturers(new Set());
     setFormErrors({});
   };
 
@@ -622,6 +630,7 @@ export const CampaignsPage: React.FC = () => {
     if (hasSelectedUsers) {
       // Desmarcar TODOS os usuários selecionados (não apenas da página atual)
       setSelectedUsers([]);
+      setFullySelectedRoles(new Set());
       addToast('success', 'Todos os usuários foram desmarcados!');
       return;
     }
@@ -757,10 +766,15 @@ export const CampaignsPage: React.FC = () => {
 
       // Verifica se já estão todos selecionados para este cargo
       const allRoleSelected = validUserIds.every(id => selectedUsers.includes(id));
-      
+
       if (allRoleSelected) {
         // Desmarcar todos deste cargo
         setSelectedUsers(prev => prev.filter(id => !validUserIds.includes(id)));
+        setFullySelectedRoles(prev => {
+          const next = new Set(prev);
+          next.delete(role);
+          return next;
+        });
         addToast('success', `${role}(s) removido(s) da seleção!`);
       } else {
         // Adiciona os usuários à seleção (não remove os já selecionados)
@@ -768,6 +782,8 @@ export const CampaignsPage: React.FC = () => {
           const newIds = validUserIds.filter(id => !prev.includes(id));
           return [...prev, ...newIds];
         });
+        // Marca o cargo como completamente selecionado
+        setFullySelectedRoles(prev => new Set(prev).add(role));
         addToast('success', `${validUserIds.length} ${role}(s) adicionado(s) à seleção!`);
       }
     } catch (error) {
@@ -780,13 +796,7 @@ export const CampaignsPage: React.FC = () => {
 
   // Verifica se todos os usuários de um cargo estão selecionados
   const areAllUsersSelectedByRole = (role: string): boolean => {
-    const isCampaignEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
-    const roleUsers = isCampaignEngagement
-      ? users.filter(u => u.role === role && u.user_type_id === 2)
-      : users.filter(u => u.role === role);
-
-    if (roleUsers.length === 0) return false;
-    return roleUsers.every(u => selectedUsers.includes(u.id));
+    return fullySelectedRoles.has(role);
   };
 
   // Handler para selecionar todos os produtos de um fabricante específico
@@ -836,10 +846,15 @@ export const CampaignsPage: React.FC = () => {
 
       // Verifica se já estão todos selecionados para este fabricante
       const allManufacturerSelected = validProductIds.every(id => selectedProducts.includes(id));
-      
+
       if (allManufacturerSelected) {
         // Desmarcar todos deste fabricante
         setSelectedProducts(prev => prev.filter(id => !validProductIds.includes(id)));
+        setFullySelectedManufacturers(prev => {
+          const next = new Set(prev);
+          next.delete(manufacturerId);
+          return next;
+        });
         addToast('success', `Produtos de ${manufacturerName} removido(s) da seleção!`);
       } else {
         // Adiciona os produtos à seleção
@@ -847,6 +862,8 @@ export const CampaignsPage: React.FC = () => {
           const newIds = validProductIds.filter(id => !prev.includes(id));
           return [...prev, ...newIds];
         });
+        // Marca o fabricante como completamente selecionado
+        setFullySelectedManufacturers(prev => new Set(prev).add(manufacturerId));
         addToast('success', `${validProductIds.length} produto(s) de ${manufacturerName} adicionado(s)!`);
       }
     } catch (error) {
@@ -859,10 +876,7 @@ export const CampaignsPage: React.FC = () => {
 
   // Verifica se todos os produtos de um fabricante estão selecionados
   const areAllProductsSelectedByManufacturer = (manufacturerId: number): boolean => {
-    const manufacturerProducts = products.filter(p => p.manufacturer_id === manufacturerId);
-    
-    if (manufacturerProducts.length === 0) return false;
-    return manufacturerProducts.every(p => selectedProducts.includes(p.id));
+    return fullySelectedManufacturers.has(manufacturerId);
   };
 
   const handleSelectAllProducts = async () => {
@@ -874,6 +888,7 @@ export const CampaignsPage: React.FC = () => {
     if (hasSelectedProducts) {
       // Desmarcar TODOS os produtos selecionados (não apenas da página atual)
       setSelectedProducts([]);
+      setFullySelectedManufacturers(new Set());
       addToast('success', 'Todos os produtos foram desmarcados!');
       return;
     }
@@ -1512,115 +1527,123 @@ export const CampaignsPage: React.FC = () => {
                         </button>
                       </div>
 
-                      {/* Botões de seleção rápida por cargo */}
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        <button
-                          onClick={handleSelectAllUsers}
-                          disabled={loadingSelectAllUsers}
-                          className="px-3 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
-                        >
-                          {loadingSelectAllUsers ? (
-                            <>
+                      {/* Seleção Rápida por Cargo */}
+                      <div className="border-t border-zinc-200 dark:border-zinc-700 pt-4 mb-3">
+                        <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">
+                          👥 Seleção Rápida por Cargo
+                        </p>
+                        <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-3">
+                          Clique para selecionar/desmarcar todos os usuários do cargo selecionado
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={handleSelectAllUsers}
+                            disabled={loadingSelectAllUsers}
+                            className="px-4 py-2 text-sm font-semibold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 shadow-sm"
+                          >
+                            {loadingSelectAllUsers ? (
+                              <>
+                                <Loader2 size={16} className="animate-spin" />
+                                {selectAllUsersProgress ? `Página ${selectAllUsersProgress.current}/${selectAllUsersProgress.total}` : 'Carregando...'}
+                              </>
+                            ) : (
+                              <>
+                                <Users size={16} />
+                                {selectedUsers.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleSelectAllByRole('Atendente')}
+                            disabled={selectByRoleLoading !== null}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
+                              areAllUsersSelectedByRole('Atendente')
+                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {selectByRoleLoading === 'Atendente' ? (
                               <Loader2 size={12} className="animate-spin" />
-                              {selectAllUsersProgress ? `Página ${selectAllUsersProgress.current}/${selectAllUsersProgress.total}` : 'Carregando...'}
-                            </>
-                          ) : (
-                            <>
-                              <Users size={14} />
-                              {selectedUsers.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleSelectAllByRole('Atendente')}
-                          disabled={selectByRoleLoading !== null}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
-                            areAllUsersSelectedByRole('Atendente')
-                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {selectByRoleLoading === 'Atendente' ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <>
-                              <Check size={12} className={areAllUsersSelectedByRole('Atendente') ? '' : 'invisible'} />
-                              {areAllUsersSelectedByRole('Atendente') ? '✓ Atendente' : '+ Atendente'}
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleSelectAllByRole('Vendedor')}
-                          disabled={selectByRoleLoading !== null}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
-                            areAllUsersSelectedByRole('Vendedor')
-                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {selectByRoleLoading === 'Vendedor' ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <>
-                              <Check size={12} className={areAllUsersSelectedByRole('Vendedor') ? '' : 'invisible'} />
-                              {areAllUsersSelectedByRole('Vendedor') ? '✓ Vendedor' : '+ Vendedor'}
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleSelectAllByRole('Representante')}
-                          disabled={selectByRoleLoading !== null}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
-                            areAllUsersSelectedByRole('Representante')
-                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {selectByRoleLoading === 'Representante' ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <>
-                              <Check size={12} className={areAllUsersSelectedByRole('Representante') ? '' : 'invisible'} />
-                              {areAllUsersSelectedByRole('Representante') ? '✓ Representante' : '+ Representante'}
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleSelectAllByRole('Consultor')}
-                          disabled={selectByRoleLoading !== null}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
-                            areAllUsersSelectedByRole('Consultor')
-                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {selectByRoleLoading === 'Consultor' ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <>
-                              <Check size={12} className={areAllUsersSelectedByRole('Consultor') ? '' : 'invisible'} />
-                              {areAllUsersSelectedByRole('Consultor') ? '✓ Consultor' : '+ Consultor'}
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleSelectAllByRole('Supervisor')}
-                          disabled={selectByRoleLoading !== null}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
-                            areAllUsersSelectedByRole('Supervisor')
-                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {selectByRoleLoading === 'Supervisor' ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <>
-                              <Check size={12} className={areAllUsersSelectedByRole('Supervisor') ? '' : 'invisible'} />
-                              {areAllUsersSelectedByRole('Supervisor') ? '✓ Supervisor' : '+ Supervisor'}
-                            </>
-                          )}
-                        </button>
+                            ) : (
+                              <>
+                                <Check size={14} className={areAllUsersSelectedByRole('Atendente') ? '' : 'invisible'} />
+                                {areAllUsersSelectedByRole('Atendente') ? '✓ Atendente' : '+ Atendente'}
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleSelectAllByRole('Vendedor')}
+                            disabled={selectByRoleLoading !== null}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
+                              areAllUsersSelectedByRole('Vendedor')
+                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {selectByRoleLoading === 'Vendedor' ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <>
+                                <Check size={14} className={areAllUsersSelectedByRole('Vendedor') ? '' : 'invisible'} />
+                                {areAllUsersSelectedByRole('Vendedor') ? '✓ Vendedor' : '+ Vendedor'}
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleSelectAllByRole('Representante')}
+                            disabled={selectByRoleLoading !== null}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
+                              areAllUsersSelectedByRole('Representante')
+                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {selectByRoleLoading === 'Representante' ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <>
+                                <Check size={14} className={areAllUsersSelectedByRole('Representante') ? '' : 'invisible'} />
+                                {areAllUsersSelectedByRole('Representante') ? '✓ Representante' : '+ Representante'}
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleSelectAllByRole('Consultor')}
+                            disabled={selectByRoleLoading !== null}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
+                              areAllUsersSelectedByRole('Consultor')
+                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {selectByRoleLoading === 'Consultor' ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <>
+                                <Check size={14} className={areAllUsersSelectedByRole('Consultor') ? '' : 'invisible'} />
+                                {areAllUsersSelectedByRole('Consultor') ? '✓ Consultor' : '+ Consultor'}
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleSelectAllByRole('Supervisor')}
+                            disabled={selectByRoleLoading !== null}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
+                              areAllUsersSelectedByRole('Supervisor')
+                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {selectByRoleLoading === 'Supervisor' ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <>
+                                <Check size={14} className={areAllUsersSelectedByRole('Supervisor') ? '' : 'invisible'} />
+                                {areAllUsersSelectedByRole('Supervisor') ? '✓ Supervisor' : '+ Supervisor'}
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
 
                       {loadingAux ? (
@@ -1904,32 +1927,57 @@ export const CampaignsPage: React.FC = () => {
                             </div>
                           )}
 
-                          {/* Botões de seleção rápida por fabricante */}
+                          {/* Seleção Rápida por Fabricante */}
                           {manufacturers.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mb-3">
-                              {manufacturers.map((manufacturer) => (
+                            <div className="border-t border-zinc-200 dark:border-zinc-700 pt-4 mb-3">
+                              <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">
+                                🏭 Seleção Rápida por Fabricante
+                              </p>
+                              <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-3">
+                                Clique para selecionar/desmarcar todos os produtos do fabricante selecionado
+                              </p>
+                              <div className="flex flex-wrap gap-2">
                                 <button
-                                  key={manufacturer.id}
-                                  onClick={() => handleSelectAllByManufacturer(manufacturer.id, manufacturer.name)}
-                                  disabled={selectByManufacturerLoading !== null}
-                                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
-                                    areAllProductsSelectedByManufacturer(manufacturer.id)
-                                      ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                      : 'bg-purple-600 text-white hover:bg-purple-700'
-                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                  onClick={handleSelectAllProducts}
+                                  disabled={loadingSelectAllProducts}
+                                  className="px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 shadow-sm"
                                 >
-                                  {selectByManufacturerLoading === manufacturer.name ? (
-                                    <Loader2 size={12} className="animate-spin" />
+                                  {loadingSelectAllProducts ? (
+                                    <>
+                                      <Loader2 size={16} className="animate-spin" />
+                                      {selectAllProductsProgress ? `Página ${selectAllProductsProgress.current}/${selectAllProductsProgress.total}` : 'Carregando...'}
+                                    </>
                                   ) : (
                                     <>
-                                      <Check size={12} className={areAllProductsSelectedByManufacturer(manufacturer.id) ? '' : 'invisible'} />
-                                      {areAllProductsSelectedByManufacturer(manufacturer.id)
-                                        ? `✓ ${manufacturer.name}`
-                                        : `+ ${manufacturer.name}`}
+                                      <ShoppingBag size={16} />
+                                      {selectedProducts.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
                                     </>
                                   )}
                                 </button>
-                              ))}
+                                {manufacturers.map((manufacturer) => (
+                                  <button
+                                    key={manufacturer.id}
+                                    onClick={() => handleSelectAllByManufacturer(manufacturer.id, manufacturer.name)}
+                                    disabled={selectByManufacturerLoading !== null}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
+                                      areAllProductsSelectedByManufacturer(manufacturer.id)
+                                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                        : 'bg-purple-600 text-white hover:bg-purple-700'
+                                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                  >
+                                    {selectByManufacturerLoading === manufacturer.name ? (
+                                      <Loader2 size={12} className="animate-spin" />
+                                    ) : (
+                                      <>
+                                        <Check size={14} className={areAllProductsSelectedByManufacturer(manufacturer.id) ? '' : 'invisible'} />
+                                        {areAllProductsSelectedByManufacturer(manufacturer.id)
+                                          ? `✓ ${manufacturer.name}`
+                                          : `+ ${manufacturer.name}`}
+                                      </>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
                           )}
 
