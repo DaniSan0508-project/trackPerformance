@@ -142,6 +142,7 @@ export const CampaignsPage: React.FC = () => {
   const [productsTotalPages, setProductsTotalPages] = useState(1);
   const [productSearch, setProductSearch] = useState('');
   const [productFilterType, setProductFilterType] = useState<'name' | 'barcode'>('name');
+  const [productManufacturerFilter, setProductManufacturerFilter] = useState<number | 'all'>('all');
 
   // Loading para "Selecionar Todos"
   const [loadingSelectAllUsers, setLoadingSelectAllUsers] = useState(false);
@@ -226,10 +227,11 @@ export const CampaignsPage: React.FC = () => {
   }, [token]);
 
   // Buscar produtos com paginação e filtro
-  const fetchProducts = useCallback(async (page = 1, search = '', filterType: 'name' | 'barcode' = 'name') => {
+  const fetchProducts = useCallback(async (page = 1, search = '', filterType: 'name' | 'barcode' = 'name', manufacturerId: number | 'all' = 'all') => {
     if (!token) return;
     try {
-      const response = await api.getProductsPaginated(token, page, search, filterType);
+      const manufacturerIdParam = manufacturerId === 'all' ? undefined : manufacturerId;
+      const response = await api.getProductsPaginated(token, page, search, filterType, manufacturerIdParam);
       setProducts(response.data || []);
       setProductsTotalPages(response.meta?.last_page || response.last_page || 1);
       setProductsPage(response.meta?.current_page || response.current_page || 1);
@@ -308,6 +310,7 @@ export const CampaignsPage: React.FC = () => {
     setProductsPage(1);
     setUserSearch('');
     setProductSearch('');
+    setProductManufacturerFilter('all');
   };
 
   const handleCloseModal = () => {
@@ -793,10 +796,11 @@ export const CampaignsPage: React.FC = () => {
     
     setSelectByManufacturerLoading(manufacturerName);
     try {
-      // Primeira requisição para descobrir o total de páginas
+      // Primeira requisição para descobrir o total de páginas com filtro de fabricante
       const queryParams = new URLSearchParams();
       queryParams.append('page', '1');
       queryParams.append('per_page', '100');
+      queryParams.append('filter[manufacturer_id]', manufacturerId.toString());
 
       const firstResponse = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
         headers: {
@@ -810,11 +814,12 @@ export const CampaignsPage: React.FC = () => {
       const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
       let allProducts: Product[] = [...(firstData.data || [])];
 
-      // Busca as páginas restantes
+      // Busca as páginas restantes mantendo o filtro de fabricante
       for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
         const nextPageParams = new URLSearchParams();
         nextPageParams.append('page', currentPage.toString());
         nextPageParams.append('per_page', '100');
+        nextPageParams.append('filter[manufacturer_id]', manufacturerId.toString());
 
         const response = await fetch(`${API_BASE_URL}/products?${nextPageParams.toString()}`, {
           headers: {
@@ -828,9 +833,7 @@ export const CampaignsPage: React.FC = () => {
         allProducts.push(...(data.data || []));
       }
 
-      // Filtra apenas produtos do fabricante selecionado
-      const manufacturerProducts = allProducts.filter(p => p.manufacturer_id === manufacturerId);
-      const validProductIds = manufacturerProducts.map(p => p.id);
+      const validProductIds = allProducts.map(p => p.id);
 
       // Verifica se já estão todos selecionados para este fabricante
       const allManufacturerSelected = validProductIds.every(id => selectedProducts.includes(id));
@@ -1804,6 +1807,26 @@ export const CampaignsPage: React.FC = () => {
 
                       {/* Filtros e busca de produtos */}
                       <div className="flex gap-2 mb-4">
+                        {/* Filtro de Fabricante */}
+                        <select
+                          value={productManufacturerFilter}
+                          onChange={(e) => {
+                            const value = e.target.value === 'all' ? 'all' : parseInt(e.target.value);
+                            setProductManufacturerFilter(value);
+                            setProductsPage(1);
+                            fetchProducts(1, productSearch, productFilterType, value);
+                          }}
+                          className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm whitespace-nowrap max-w-[200px]"
+                        >
+                          <option value="all">Todos fabricantes</option>
+                          {manufacturers.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                            </option>
+                          ))}
+                        </select>
+
+                        {/* Tipo de busca */}
                         <select
                           value={productFilterType}
                           onChange={(e) => setProductFilterType(e.target.value as 'name' | 'barcode')}
@@ -1812,16 +1835,18 @@ export const CampaignsPage: React.FC = () => {
                           <option value="name">Nome</option>
                           <option value="barcode">Código de Barras</option>
                         </select>
+
+                        {/* Busca */}
                         <input
                           type="text"
                           placeholder={`Buscar por ${productFilterType === 'name' ? 'nome' : 'código de barras'}...`}
                           value={productSearch}
                           onChange={(e) => setProductSearch(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && fetchProducts(productsPage, productSearch, productFilterType)}
+                          onKeyDown={(e) => e.key === 'Enter' && fetchProducts(productsPage, productSearch, productFilterType, productManufacturerFilter)}
                           className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
                         />
                         <button
-                          onClick={() => fetchProducts(productsPage, productSearch, productFilterType)}
+                          onClick={() => fetchProducts(productsPage, productSearch, productFilterType, productManufacturerFilter)}
                           className="p-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors"
                         >
                           <Search size={20} />
@@ -1948,7 +1973,7 @@ export const CampaignsPage: React.FC = () => {
                           {productsTotalPages > 1 && (
                             <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
                               <button
-                                onClick={() => fetchProducts(productsPage - 1, productSearch, productFilterType)}
+                                onClick={() => fetchProducts(productsPage - 1, productSearch, productFilterType, productManufacturerFilter)}
                                 disabled={productsPage === 1}
                                 className="p-2 border border-zinc-300 dark:border-zinc-600 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 text-sm"
                               >
@@ -1958,7 +1983,7 @@ export const CampaignsPage: React.FC = () => {
                                 Página {productsPage} de {productsTotalPages}
                               </span>
                               <button
-                                onClick={() => fetchProducts(productsPage + 1, productSearch, productFilterType)}
+                                onClick={() => fetchProducts(productsPage + 1, productSearch, productFilterType, productManufacturerFilter)}
                                 disabled={productsPage === productsTotalPages}
                                 className="p-2 border border-zinc-300 dark:border-zinc-600 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 text-sm"
                               >

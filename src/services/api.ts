@@ -58,12 +58,15 @@ export const api = {
     return response.json() as Promise<PaginatedResponse<User>>;
   },
 
-  getProductsPaginated: async (token: string, page = 1, search = '', filterType: 'name' | 'barcode' = 'name') => {
+  getProductsPaginated: async (token: string, page = 1, search = '', filterType: 'name' | 'barcode' = 'name', manufacturerId?: number) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
     queryParams.append('per_page', '10');
     if (search) {
       queryParams.append(`filter[${filterType}]`, search);
+    }
+    if (manufacturerId) {
+      queryParams.append('filter[manufacturer_id]', manufacturerId.toString());
     }
 
     const response = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
