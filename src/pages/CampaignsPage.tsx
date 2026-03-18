@@ -615,24 +615,23 @@ export const CampaignsPage: React.FC = () => {
   // Handlers para "Selecionar Todos"
   const handleSelectAllUsers = async () => {
     if (!token) return;
-    
-    // Verifica se já selecionou todos os usuários da página atual
-    const isCampaignEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
-    const currentValidUsers = isCampaignEngagement
-      ? users.filter(u => u.user_type_id === 2)
-      : users;
-    const allCurrentSelected = currentValidUsers.every(u => selectedUsers.includes(u.id));
-    
-    if (allCurrentSelected) {
-      // Desmarcar todos da página atual
-      const userIdsToDeselect = currentValidUsers.map(u => u.id);
-      setSelectedUsers(prev => prev.filter(id => !userIdsToDeselect.includes(id)));
+
+    // Verifica se já existem usuários selecionados
+    const hasSelectedUsers = selectedUsers.length > 0;
+
+    if (hasSelectedUsers) {
+      // Desmarcar TODOS os usuários selecionados (não apenas da página atual)
+      setSelectedUsers([]);
+      addToast('success', 'Todos os usuários foram desmarcados!');
       return;
     }
-    
+
     setLoadingSelectAllUsers(true);
     setSelectAllUsersProgress(null);
     try {
+      // Verifica se é campanha de engajamento
+      const isCampaignEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
+      
       // Primeira requisição para descobrir o total de páginas
       const queryParams = new URLSearchParams();
       queryParams.append('page', '1');
@@ -869,13 +868,13 @@ export const CampaignsPage: React.FC = () => {
   const handleSelectAllProducts = async () => {
     if (!token) return;
 
-    // Verifica se já selecionou todos os produtos da página atual
-    const allCurrentSelected = products.every(p => selectedProducts.includes(p.id));
+    // Verifica se já existem produtos selecionados
+    const hasSelectedProducts = selectedProducts.length > 0;
 
-    if (allCurrentSelected) {
-      // Desmarcar todos da página atual
-      const productIdsToDeselect = products.map(p => p.id);
-      setSelectedProducts(prev => prev.filter(id => !productIdsToDeselect.includes(id)));
+    if (hasSelectedProducts) {
+      // Desmarcar TODOS os produtos selecionados (não apenas da página atual)
+      setSelectedProducts([]);
+      addToast('success', 'Todos os produtos foram desmarcados!');
       return;
     }
 
@@ -1528,7 +1527,7 @@ export const CampaignsPage: React.FC = () => {
                           ) : (
                             <>
                               <Users size={14} />
-                              Selecionar Todos
+                              {selectedUsers.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
                             </>
                           )}
                         </button>
@@ -1883,10 +1882,7 @@ export const CampaignsPage: React.FC = () => {
                               ) : (
                                 <>
                                   <ShoppingBag size={14} />
-                                  {(() => {
-                                    const allCurrentSelected = products.every(p => selectedProducts.includes(p.id));
-                                    return allCurrentSelected ? 'Desmarcar Todos' : 'Selecionar Todos';
-                                  })()}
+                                  {selectedProducts.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
                                 </>
                               )}
                             </button>
