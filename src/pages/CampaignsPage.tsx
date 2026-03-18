@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Store as StoreIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus } from '../types';
@@ -1661,34 +1661,98 @@ export const CampaignsPage: React.FC = () => {
                         <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum usuário encontrado.</p>
                       ) : (
                         <>
-                          <div className="grid gap-2 max-h-60 overflow-y-auto">
+                          {/* Contador de selecionados */}
+                          <div className="mb-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl">
+                            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                              👥 {selectedUsers.length} usuário(s) selecionado(s)
+                            </p>
+                          </div>
+
+                          {/* Grid de Cards de Usuários */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-2">
                             {/* Filtra usuários: apenas user_type_id = 2 para engajamento */}
                             {(editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement')
                               ? users.filter(u => u.user_type_id === 2)
                               : users
                             ).map((user) => (
-                              <button
+                              <motion.button
                                 key={user.id}
                                 onClick={() => toggleUser(user.id)}
-                                className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className={`p-4 rounded-xl border-2 transition-all duration-200 text-left group ${
                                   selectedUsers.includes(user.id)
-                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500'
-                                    : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-emerald-300'
+                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 shadow-md'
+                                    : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm'
                                 }`}
                               >
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-700 rounded-full flex items-center justify-center text-zinc-500 dark:text-zinc-400">
-                                    {user.name.charAt(0).toUpperCase()}
+                                <div className="flex items-start gap-3">
+                                  {/* Avatar */}
+                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 border-2 border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 overflow-hidden flex-shrink-0">
+                                    {user.profile_image_url ? (
+                                      <img
+                                        src={user.profile_image_url}
+                                        alt={user.name}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <span className="text-lg font-bold">
+                                        {user.name.charAt(0).toUpperCase()}
+                                      </span>
+                                    )}
                                   </div>
-                                  <div className="text-left">
-                                    <p className="font-medium text-sm text-zinc-900 dark:text-white">{user.name}</p>
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{user.email}</p>
+
+                                  {/* Informações */}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm text-zinc-900 dark:text-white truncate">
+                                      {user.name}
+                                    </p>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                                      {user.email}
+                                    </p>
+                                    {user.store && (
+                                      <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate mt-1">
+                                        🏪 {user.store.name}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Check de selecionado */}
+                                  <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                    selectedUsers.includes(user.id)
+                                      ? 'bg-emerald-500 border-emerald-500'
+                                      : 'border-zinc-300 dark:border-zinc-600 group-hover:border-emerald-400'
+                                  }`}>
+                                    {selectedUsers.includes(user.id) && (
+                                      <Check size={14} className="text-white" />
+                                    )}
                                   </div>
                                 </div>
-                                {selectedUsers.includes(user.id) && (
-                                  <Check size={20} className="text-emerald-600" />
-                                )}
-                              </button>
+
+                                {/* Badges */}
+                                <div className="mt-3 flex items-center gap-2 flex-wrap">
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                                    user.user_type_id === 1
+                                      ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800'
+                                      : 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/20 dark:text-teal-400 dark:border-teal-800'
+                                  }`}>
+                                    <Shield size={10} className="mr-1" />
+                                    {user.user_type_id === 1 ? 'Administrador' : 'Colaborador'}
+                                  </span>
+                                  {user.coin_balance !== undefined && user.coin_balance > 0 && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
+                                      <Coins size={10} />
+                                      {user.coin_balance.toLocaleString('pt-BR')}
+                                    </span>
+                                  )}
+                                  {/* Badge de aviso para Admin em campanha de engajamento */}
+                                  {(editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement')) && user.user_type_id === 1 && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
+                                      ⚠️ Não elegível
+                                    </span>
+                                  )}
+                                </div>
+                              </motion.button>
                             ))}
                           </div>
 
