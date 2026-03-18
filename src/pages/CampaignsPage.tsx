@@ -83,6 +83,12 @@ export const CampaignsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
+  // Estados para busca no modal
+  const [userSearch, setUserSearch] = useState('');
+  const debouncedUserSearch = useDebounce(userSearch, 500);
+  const [productSearch, setProductSearch] = useState('');
+  const debouncedProductSearch = useDebounce(productSearch, 500);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -134,15 +140,16 @@ export const CampaignsPage: React.FC = () => {
   // Paginação e filtros para usuários
   const [usersPage, setUsersPage] = useState(1);
   const [usersTotalPages, setUsersTotalPages] = useState(1);
-  const [userSearch, setUserSearch] = useState('');
   const [userFilterType, setUserFilterType] = useState<'name' | 'email'>('name');
 
   // Paginação e filtros para produtos
   const [productsPage, setProductsPage] = useState(1);
   const [productsTotalPages, setProductsTotalPages] = useState(1);
-  const [productSearch, setProductSearch] = useState('');
   const [productFilterType, setProductFilterType] = useState<'name' | 'barcode'>('name');
   const [productManufacturerFilter, setProductManufacturerFilter] = useState<number | 'all'>('all');
+
+  // Filtro para ações
+  const [actionSearch, setActionSearch] = useState('');
 
   // Loading para "Selecionar Todos"
   const [loadingSelectAllUsers, setLoadingSelectAllUsers] = useState(false);
@@ -272,6 +279,20 @@ export const CampaignsPage: React.FC = () => {
     setCurrentPage(1);
   }, [debouncedSearchTerm]);
 
+  // Buscar usuários automaticamente quando a busca debounced mudar
+  useEffect(() => {
+    if (isModalOpen) {
+      fetchUsers(usersPage, debouncedUserSearch, userFilterType);
+    }
+  }, [debouncedUserSearch, userFilterType, isModalOpen]);
+
+  // Buscar produtos automaticamente quando a busca debounced mudar
+  useEffect(() => {
+    if (isModalOpen) {
+      fetchProducts(productsPage, debouncedProductSearch, productFilterType, productManufacturerFilter);
+    }
+  }, [debouncedProductSearch, productFilterType, productManufacturerFilter, isModalOpen]);
+
   const handleOpenModal = (campaign?: Campaign) => {
     setActiveTab('basic');
     if (campaign) {
@@ -315,6 +336,7 @@ export const CampaignsPage: React.FC = () => {
     setUserSearch('');
     setProductSearch('');
     setProductManufacturerFilter('all');
+    setActionSearch('');
     setFullySelectedRoles(new Set());
     setFullySelectedManufacturers(new Set());
   };
@@ -337,6 +359,7 @@ export const CampaignsPage: React.FC = () => {
     setFullySelectedRoles(new Set());
     setFullySelectedManufacturers(new Set());
     setFormErrors({});
+    setActionSearch('');
   };
 
   const handleSubmit = async () => {
@@ -1512,27 +1535,23 @@ export const CampaignsPage: React.FC = () => {
                         <select
                           value={userFilterType}
                           onChange={(e) => setUserFilterType(e.target.value as 'name' | 'email')}
-                          className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
+                          className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm whitespace-nowrap"
                         >
                           <option value="name">Nome</option>
                           <option value="email">E-mail</option>
                         </select>
 
                         {/* Busca */}
-                        <input
-                          type="text"
-                          placeholder={`Buscar por ${userFilterType === 'name' ? 'nome' : 'e-mail'}...`}
-                          value={userSearch}
-                          onChange={(e) => setUserSearch(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && fetchUsers(usersPage, userSearch, userFilterType)}
-                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
-                        />
-                        <button
-                          onClick={() => fetchUsers(usersPage, userSearch, userFilterType)}
-                          className="p-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors"
-                        >
-                          <Search size={20} />
-                        </button>
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={20} />
+                          <input
+                            type="text"
+                            placeholder={`Buscar por ${userFilterType === 'name' ? 'nome' : 'e-mail'}...`}
+                            value={userSearch}
+                            onChange={(e) => setUserSearch(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+                          />
+                        </div>
                       </div>
 
                       {/* Seleção Rápida por Cargo */}
@@ -1791,8 +1810,30 @@ export const CampaignsPage: React.FC = () => {
                           ? 'Selecione as ações e defina quantas moedas serão ganhas (obrigatório para campanhas de engajamento):'
                           : 'Selecione as ações e defina quantas moedas serão ganhas:'}
                       </p>
+
+                      {/* Filtro de busca de ações */}
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={20} />
+                        <input
+                          type="text"
+                          placeholder="Buscar por nome da ação..."
+                          className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+                          value={actionSearch}
+                          onChange={(e) => setActionSearch(e.target.value)}
+                        />
+                      </div>
+
+                      {/* Contador de selecionados */}
+                      <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+                        <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                          ⚡ {selectedActions.length} ação(ões) selecionada(s)
+                        </p>
+                      </div>
+
                       <div className="grid gap-3 max-h-80 overflow-y-auto">
-                        {ENGAGEMENT_ACTIONS.map((action) => {
+                        {ENGAGEMENT_ACTIONS.filter(action =>
+                          actionLabels[action.name].toLowerCase().includes(actionSearch.toLowerCase())
+                        ).map((action) => {
                           const isSelected = selectedActions.find(a => a.id === action.id);
                           return (
                             <div
@@ -1800,7 +1841,7 @@ export const CampaignsPage: React.FC = () => {
                               className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
                                 isSelected
                                   ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
-                                  : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
+                                  : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-amber-300 dark:hover:border-amber-700'
                               }`}
                             >
                               <button
@@ -1816,7 +1857,7 @@ export const CampaignsPage: React.FC = () => {
                                 </div>
                                 <div>
                                   <p className="font-medium text-sm text-zinc-900 dark:text-white">
-                                    {actionLabels[action.name]} ({defaultActionCoins[action.name]} coins)
+                                    {actionLabels[action.name]}
                                   </p>
                                 </div>
                               </button>
@@ -1857,7 +1898,6 @@ export const CampaignsPage: React.FC = () => {
                             const value = e.target.value === 'all' ? 'all' : parseInt(e.target.value);
                             setProductManufacturerFilter(value);
                             setProductsPage(1);
-                            fetchProducts(1, productSearch, productFilterType, value);
                           }}
                           className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm whitespace-nowrap max-w-[200px]"
                         >
@@ -1873,27 +1913,23 @@ export const CampaignsPage: React.FC = () => {
                         <select
                           value={productFilterType}
                           onChange={(e) => setProductFilterType(e.target.value as 'name' | 'barcode')}
-                          className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
+                          className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm whitespace-nowrap"
                         >
                           <option value="name">Nome</option>
                           <option value="barcode">Código de Barras</option>
                         </select>
 
                         {/* Busca */}
-                        <input
-                          type="text"
-                          placeholder={`Buscar por ${productFilterType === 'name' ? 'nome' : 'código de barras'}...`}
-                          value={productSearch}
-                          onChange={(e) => setProductSearch(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && fetchProducts(productsPage, productSearch, productFilterType, productManufacturerFilter)}
-                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
-                        />
-                        <button
-                          onClick={() => fetchProducts(productsPage, productSearch, productFilterType, productManufacturerFilter)}
-                          className="p-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors"
-                        >
-                          <Search size={20} />
-                        </button>
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={20} />
+                          <input
+                            type="text"
+                            placeholder={`Buscar por ${productFilterType === 'name' ? 'nome' : 'código de barras'}...`}
+                            value={productSearch}
+                            onChange={(e) => setProductSearch(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+                          />
+                        </div>
                       </div>
 
                       {loadingAux ? (
