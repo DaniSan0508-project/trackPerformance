@@ -371,7 +371,7 @@ export const CampaignsPage: React.FC = () => {
             setSelectedActions(actionsWithCoins);
             setSelectedProducts([]);
 
-            // Calcular meta como soma das moedas de todas as ações
+            // Calcular meta como soma das moedas de todas as ações (apenas para exibição informativa)
             const totalCoins = actionsWithCoins.reduce((sum, action) => sum + (action.coins || 0), 0);
             setFormData(prev => ({
               ...prev,
@@ -1491,8 +1491,8 @@ export const CampaignsPage: React.FC = () => {
                             <div>
                               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta</label>
                               <p className="text-sm font-medium text-zinc-900 dark:text-white">
-                                {editingCampaign.type === 'engagement' 
-                                  ? `${formData.goal || 0} moedas por participante`
+                                {editingCampaign.type === 'engagement'
+                                  ? `${formData.goal || 0} moedas (por membro do time)`
                                   : formatCurrency(formData.goal)
                                 }
                               </p>
@@ -1543,22 +1543,6 @@ export const CampaignsPage: React.FC = () => {
                                 placeholder="R$ 0,00"
                               />
                               {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
-                            </div>
-                          )}
-
-                          {/* Meta para campanhas de engajamento (apenas leitura - soma das moedas) */}
-                          {formData.type === 'engagement' && (
-                            <div>
-                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta (Total de Moedas)</label>
-                              <input
-                                type="text"
-                                value={formData.goal ? `${formData.goal} moedas` : '0 moedas'}
-                                readOnly
-                                className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 cursor-not-allowed"
-                              />
-                              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                A meta é calculada automaticamente com base nas ações selecionadas.
-                              </p>
                             </div>
                           )}
 
