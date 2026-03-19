@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: trackperformance
+    container_name: trackperformance_portal
     ports:
-      - "8080:80"
+      - "9010:80"
     restart: unless-stopped

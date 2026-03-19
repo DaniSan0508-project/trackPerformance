@@ -1,6 +1,6 @@
 import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward, Campaign, CampaignAction, Product, CampaignRanking, Redemption, RedemptionStatus } from '../types';
 
-const API_BASE_URL = 'http://localhost:8012/api/v1';
+const API_BASE_URL = 'https://trackperformance.sysfar.com.br/api/v1';
 
 export const api = {
   login: async (credentials: any) => {
