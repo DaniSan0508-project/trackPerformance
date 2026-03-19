@@ -120,6 +120,9 @@ export const CampaignsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingAux, setLoadingAux] = useState(false);
 
+  // Metas calculadas para campanhas de engajamento (por campaign_id)
+  const [campaignGoals, setCampaignGoals] = useState<{ [key: number]: number }>({});
+
   // Abas do modal
   const [activeTab, setActiveTab] = useState<'basic' | 'users' | 'actions' | 'products'>('basic');
 
@@ -263,6 +266,26 @@ export const CampaignsPage: React.FC = () => {
       setTotalItems(data.total);
       setFromItem(data.from);
       setToItem(data.to);
+
+      // Buscar ações para campanhas de engajamento e calcular metas
+      const engagementCampaigns = data.data.filter((c: Campaign) => c.type === 'engagement');
+      if (engagementCampaigns.length > 0) {
+        const goals: { [key: number]: number } = {};
+        await Promise.all(
+          engagementCampaigns.map(async (campaign: Campaign) => {
+            try {
+              const actionsResponse = await api.getCampaignActions(token, campaign.id);
+              const actions = actionsResponse.data || [];
+              const totalCoins = actions.reduce((sum, action) => sum + (parseInt(action.coins) || 0), 0);
+              goals[campaign.id] = totalCoins;
+            } catch (error) {
+              console.error(`Error fetching actions for campaign ${campaign.id}:`, error);
+              goals[campaign.id] = 0;
+            }
+          })
+        );
+        setCampaignGoals(goals);
+      }
     } catch (err: any) {
       console.error('Error fetching campaigns:', err);
       setError(err.message || 'Não foi possível carregar as campanhas.');
@@ -344,9 +367,17 @@ export const CampaignsPage: React.FC = () => {
             // Buscar ações da campanha
             const actionsResponse = await api.getCampaignActions(token, campaign.id);
             const campaignActions = actionsResponse.data || [];
-            setSelectedActions(campaignActions.map(a => ({ id: a.id, coins: a.coins })));
+            const actionsWithCoins = campaignActions.map(a => ({ id: a.id, coins: parseInt(a.coins) || 0 }));
+            setSelectedActions(actionsWithCoins);
             setSelectedProducts([]);
-            
+
+            // Calcular meta como soma das moedas de todas as ações
+            const totalCoins = actionsWithCoins.reduce((sum, action) => sum + (action.coins || 0), 0);
+            setFormData(prev => ({
+              ...prev,
+              goal: totalCoins > 0 ? totalCoins.toString() : '',
+            }));
+
             // Carregar TODOS os usuários para a lista auxiliar (engagement precisa de user_type_id = 2)
             const allUsersResponse = await api.getAllUsersComplete(token);
             setUsers(allUsersResponse);
@@ -1184,6 +1215,15 @@ export const CampaignsPage: React.FC = () => {
                                 <span className="font-semibold text-zinc-900 dark:text-white">{formatCurrency(campaign.goal)}</span>
                               </div>
                             )}
+                            {campaign.type === 'engagement' && (
+                              <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                                <Coins size={16} className="text-amber-500" />
+                                <span className="text-zinc-500 dark:text-zinc-500">Meta:</span>
+                                <span className="font-semibold text-zinc-900 dark:text-white">
+                                  {campaignGoals[campaign.id] || 0} moedas
+                                </span>
+                              </div>
+                            )}
                             <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
                               <Calendar size={16} className="text-blue-500" />
                               <span className="text-zinc-500 dark:text-zinc-500">Período:</span>
@@ -1451,7 +1491,10 @@ export const CampaignsPage: React.FC = () => {
                             <div>
                               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta</label>
                               <p className="text-sm font-medium text-zinc-900 dark:text-white">
-                                {formatCurrency(editingCampaign.goal)}
+                                {editingCampaign.type === 'engagement' 
+                                  ? `${formData.goal || 0} moedas por participante`
+                                  : formatCurrency(formData.goal)
+                                }
                               </p>
                             </div>
                             <div>
@@ -1486,7 +1529,7 @@ export const CampaignsPage: React.FC = () => {
                             {formErrors.type && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.type}</p>}
                           </div>
 
-                          {/* Meta apenas para campanhas de vendas */}
+                          {/* Meta para campanhas de vendas (editável) */}
                           {formData.type === 'sales' && (
                             <div>
                               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta (R$) *</label>
@@ -1500,6 +1543,22 @@ export const CampaignsPage: React.FC = () => {
                                 placeholder="R$ 0,00"
                               />
                               {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
+                            </div>
+                          )}
+
+                          {/* Meta para campanhas de engajamento (apenas leitura - soma das moedas) */}
+                          {formData.type === 'engagement' && (
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta (Total de Moedas)</label>
+                              <input
+                                type="text"
+                                value={formData.goal ? `${formData.goal} moedas` : '0 moedas'}
+                                readOnly
+                                className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 cursor-not-allowed"
+                              />
+                              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                A meta é calculada automaticamente com base nas ações selecionadas.
+                              </p>
                             </div>
                           )}
 
