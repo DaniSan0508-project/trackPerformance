@@ -9,7 +9,7 @@ import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { campaignSchema } from '../validators/schemas';
 
-const API_BASE_URL = 'http://localhost:8012/api/v1';
+const API_BASE_URL = 'http://localhost:8010/api/v1';
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -119,6 +119,9 @@ export const CampaignsPage: React.FC = () => {
   const [users, setUsers] = useState<UserType[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingAux, setLoadingAux] = useState(false);
+
+  // Metas calculadas para campanhas de engajamento (por campaign_id)
+  const [campaignGoals, setCampaignGoals] = useState<{ [key: number]: number }>({});
 
   // Abas do modal
   const [activeTab, setActiveTab] = useState<'basic' | 'users' | 'actions' | 'products'>('basic');
@@ -263,6 +266,26 @@ export const CampaignsPage: React.FC = () => {
       setTotalItems(data.total);
       setFromItem(data.from);
       setToItem(data.to);
+
+      // Buscar ações para campanhas de engajamento e calcular metas
+      const engagementCampaigns = data.data.filter((c: Campaign) => c.type === 'engagement');
+      if (engagementCampaigns.length > 0) {
+        const goals: { [key: number]: number } = {};
+        await Promise.all(
+          engagementCampaigns.map(async (campaign: Campaign) => {
+            try {
+              const actionsResponse = await api.getCampaignActions(token, campaign.id);
+              const actions = actionsResponse.data || [];
+              const totalCoins = actions.reduce((sum, action) => sum + (parseInt(action.coins) || 0), 0);
+              goals[campaign.id] = totalCoins;
+            } catch (error) {
+              console.error(`Error fetching actions for campaign ${campaign.id}:`, error);
+              goals[campaign.id] = 0;
+            }
+          })
+        );
+        setCampaignGoals(goals);
+      }
     } catch (err: any) {
       console.error('Error fetching campaigns:', err);
       setError(err.message || 'Não foi possível carregar as campanhas.');
@@ -293,7 +316,7 @@ export const CampaignsPage: React.FC = () => {
     }
   }, [debouncedProductSearch, productFilterType, productManufacturerFilter, isModalOpen]);
 
-  const handleOpenModal = (campaign?: Campaign) => {
+  const handleOpenModal = async (campaign?: Campaign) => {
     setActiveTab('basic');
     if (campaign) {
       setEditingCampaign(campaign);
@@ -307,13 +330,78 @@ export const CampaignsPage: React.FC = () => {
         end_date: campaign.end_date,
         status: status,
       });
-      // Carregar seleções existentes - filtrar usuários inválidos para engagement
-      const validUsers = campaign.type === 'engagement'
-        ? (campaign.users?.filter(u => u.user_type_id === 2).map(u => u.id) || [])
-        : (campaign.users?.map(u => u.id) || []);
-      setSelectedUsers(validUsers);
-      setSelectedProducts(campaign.products?.map(p => p.product_id) || []);
-      setSelectedActions(campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || []);
+
+      // Buscar usuários e produtos vinculados à campanha
+      if (token) {
+        try {
+          // Buscar usuários da campanha
+          const usersResponse = await api.getCampaignUsers(token, campaign.id);
+          const campaignUsers = usersResponse.data || [];
+          
+          // Para engagement: filtrar apenas user_type_id = 2 (se o campo existir)
+          // Para sales: todos os usuários
+          let validUsers;
+          if (campaign.type === 'engagement') {
+            // Tenta filtrar por user_type_id, se não existir usa todos
+            const filtered = campaignUsers.filter(u => u.user_type_id === 2);
+            validUsers = filtered.length > 0 
+              ? filtered.map(u => u.id)
+              : campaignUsers.map(u => u.id); // Fallback: usa todos se não tiver user_type_id
+          } else {
+            validUsers = campaignUsers.map(u => u.id);
+          }
+          setSelectedUsers(validUsers);
+
+          // Buscar dados específicos por tipo de campanha
+          if (campaign.type === 'sales') {
+            // Buscar produtos da campanha
+            const productsResponse = await api.getCampaignProducts(token, campaign.id);
+            const campaignProducts = productsResponse.data || [];
+            setSelectedProducts(campaignProducts.map(p => p.id));
+            setSelectedActions([]);
+            
+            // Carregar todos os usuários para a lista auxiliar (sales pode ter qualquer usuário)
+            const allUsersResponse = await api.getAllUsersComplete(token);
+            setUsers(allUsersResponse);
+          } else if (campaign.type === 'engagement') {
+            // Buscar ações da campanha
+            const actionsResponse = await api.getCampaignActions(token, campaign.id);
+            const campaignActions = actionsResponse.data || [];
+            const actionsWithCoins = campaignActions.map(a => ({ id: a.id, coins: parseInt(a.coins) || 0 }));
+            setSelectedActions(actionsWithCoins);
+            setSelectedProducts([]);
+
+            // Calcular meta como soma das moedas de todas as ações (apenas para exibição informativa)
+            const totalCoins = actionsWithCoins.reduce((sum, action) => sum + (action.coins || 0), 0);
+            setFormData(prev => ({
+              ...prev,
+              goal: totalCoins > 0 ? totalCoins.toString() : '',
+            }));
+
+            // Carregar TODOS os usuários para a lista auxiliar (engagement precisa de user_type_id = 2)
+            const allUsersResponse = await api.getAllUsersComplete(token);
+            setUsers(allUsersResponse);
+          }
+        } catch (error) {
+          console.error('Error fetching campaign data:', error);
+          addToast('error', 'Erro ao carregar dados da campanha.');
+          // Fallback para os dados locais se a API falhar
+          const validUsers = campaign.type === 'engagement'
+            ? (campaign.users?.filter(u => u.user_type_id === 2).map(u => u.id) || [])
+            : (campaign.users?.map(u => u.id) || []);
+          setSelectedUsers(validUsers);
+          setSelectedProducts(campaign.products?.map(p => p.product_id) || []);
+          setSelectedActions(campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || []);
+        }
+      } else {
+        // Fallback sem token
+        const validUsers = campaign.type === 'engagement'
+          ? (campaign.users?.filter(u => u.user_type_id === 2).map(u => u.id) || [])
+          : (campaign.users?.map(u => u.id) || []);
+        setSelectedUsers(validUsers);
+        setSelectedProducts(campaign.products?.map(p => p.product_id) || []);
+        setSelectedActions(campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || []);
+      }
     } else {
       setEditingCampaign(null);
       setFormData({
@@ -1127,6 +1215,15 @@ export const CampaignsPage: React.FC = () => {
                                 <span className="font-semibold text-zinc-900 dark:text-white">{formatCurrency(campaign.goal)}</span>
                               </div>
                             )}
+                            {campaign.type === 'engagement' && (
+                              <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                                <Coins size={16} className="text-amber-500" />
+                                <span className="text-zinc-500 dark:text-zinc-500">Meta:</span>
+                                <span className="font-semibold text-zinc-900 dark:text-white">
+                                  {campaignGoals[campaign.id] || 0} moedas
+                                </span>
+                              </div>
+                            )}
                             <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
                               <Calendar size={16} className="text-blue-500" />
                               <span className="text-zinc-500 dark:text-zinc-500">Período:</span>
@@ -1330,7 +1427,7 @@ export const CampaignsPage: React.FC = () => {
                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
                   >
-                    Equipe ({selectedUsers.length})
+                    Meu Time ({selectedUsers.length})
                   </button>
                   {/* Aba de ações: apenas para engajamento (criação e update) */}
                   {formData.type === 'engagement' || editingCampaign?.type === 'engagement' ? (
@@ -1394,7 +1491,10 @@ export const CampaignsPage: React.FC = () => {
                             <div>
                               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta</label>
                               <p className="text-sm font-medium text-zinc-900 dark:text-white">
-                                {formatCurrency(editingCampaign.goal)}
+                                {editingCampaign.type === 'engagement'
+                                  ? `${formData.goal || 0} moedas (por membro do time)`
+                                  : formatCurrency(formData.goal)
+                                }
                               </p>
                             </div>
                             <div>
@@ -1429,7 +1529,7 @@ export const CampaignsPage: React.FC = () => {
                             {formErrors.type && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.type}</p>}
                           </div>
 
-                          {/* Meta apenas para campanhas de vendas */}
+                          {/* Meta para campanhas de vendas (editável) */}
                           {formData.type === 'sales' && (
                             <div>
                               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta (R$) *</label>

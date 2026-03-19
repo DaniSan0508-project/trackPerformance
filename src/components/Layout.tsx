@@ -3,21 +3,23 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
-  LayoutDashboard,
+  Gamepad2,
   Users,
   TrendingUp,
-  Settings,
+  Shield,
   LogOut,
   Bell,
   Search,
   Menu,
-  Store,
-  MessageSquare,
-  MessageSquarePlus,
-  ShoppingBag,
+  Building2,
+  Megaphone,
+  ThumbsUp,
+  Gift,
+  Flag,
+  BarChart3,
   Sun,
   Moon,
-  Target
+  Trophy
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -43,7 +45,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     ) : (
       <div className="flex items-center gap-3">
         <div className="bg-emerald-600 p-2 rounded-lg">
-          <TrendingUp className="w-5 h-5 text-white" />
+          <Trophy className="w-5 h-5 text-white" />
         </div>
         <span className="font-bold text-xl text-zinc-900 dark:text-white">TrackPerf</span>
       </div>
@@ -59,57 +61,57 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
         
         <nav className="flex-1 p-4 space-y-1">
-          <NavItem 
-            to="/dashboard" 
-            icon={<LayoutDashboard size={20} />} 
-            label="Dashboard" 
-            active={location.pathname === '/dashboard'} 
+          <NavItem
+            to="/dashboard"
+            icon={<Gamepad2 size={20} />}
+            label="Dashboard"
+            active={location.pathname === '/dashboard'}
           />
-          <NavItem 
-            to="/stores" 
-            icon={<Store size={20} />} 
-            label="Lojas" 
-            active={location.pathname === '/stores'} 
+          <NavItem
+            to="/stores"
+            icon={<Building2 size={20} />}
+            label="Lojas"
+            active={location.pathname === '/stores'}
           />
-          <NavItem 
-            to="/posts" 
-            icon={<MessageSquare size={20} />} 
-            label="Posts" 
-            active={location.pathname === '/posts'} 
+          <NavItem
+            to="/posts"
+            icon={<Megaphone size={20} />}
+            label="Posts"
+            active={location.pathname === '/posts'}
           />
-          <NavItem 
-            to="/feedbacks" 
-            icon={<MessageSquarePlus size={20} />} 
-            label="Feedbacks" 
-            active={location.pathname === '/feedbacks'} 
+          <NavItem
+            to="/feedbacks"
+            icon={<ThumbsUp size={20} />}
+            label="Reconhecimentos"
+            active={location.pathname === '/feedbacks'}
           />
-          <NavItem 
-            to="/team" 
-            icon={<Users size={20} />} 
-            label="Equipe" 
-            active={location.pathname === '/team'} 
+          <NavItem
+            to="/team"
+            icon={<Users size={20} />}
+            label="Meu Time"
+            active={location.pathname === '/team'}
           />
           <NavItem
             to="/rewards"
-            icon={<ShoppingBag size={20} />}
-            label="Prêmios"
+            icon={<Gift size={20} />}
+            label="Recompensas"
             active={location.pathname === '/rewards'}
           />
           <NavItem
             to="/campaigns"
-            icon={<Target size={20} />}
+            icon={<Flag size={20} />}
             label="Campanhas"
             active={location.pathname === '/campaigns'}
           />
           <NavItem
             to="/reports"
-            icon={<TrendingUp size={20} />}
+            icon={<BarChart3 size={20} />}
             label="Relatórios"
             active={location.pathname === '/reports'}
           />
           <NavItem
             to="/settings"
-            icon={<Settings size={20} />}
+            icon={<Shield size={20} />}
             label="Administração"
             active={location.pathname === '/settings'}
           />
@@ -173,50 +175,50 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* Mobile Nav */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 px-6 py-3 flex justify-between items-center z-20 transition-colors duration-200">
-          <MobileNavItem 
-            to="/dashboard" 
-            icon={<LayoutDashboard size={24} />} 
-            active={location.pathname === '/dashboard'} 
+          <MobileNavItem
+            to="/dashboard"
+            icon={<Gamepad2 size={24} />}
+            active={location.pathname === '/dashboard'}
           />
-          <MobileNavItem 
-            to="/stores" 
-            icon={<Store size={24} />} 
-            active={location.pathname === '/stores'} 
+          <MobileNavItem
+            to="/stores"
+            icon={<Building2 size={24} />}
+            active={location.pathname === '/stores'}
           />
-          <MobileNavItem 
-            to="/posts" 
-            icon={<MessageSquare size={24} />} 
-            active={location.pathname === '/posts'} 
+          <MobileNavItem
+            to="/posts"
+            icon={<Megaphone size={24} />}
+            active={location.pathname === '/posts'}
           />
-          <MobileNavItem 
-            to="/feedbacks" 
-            icon={<MessageSquarePlus size={24} />} 
-            active={location.pathname === '/feedbacks'} 
+          <MobileNavItem
+            to="/feedbacks"
+            icon={<ThumbsUp size={24} />}
+            active={location.pathname === '/feedbacks'}
           />
-          <MobileNavItem 
-            to="/team" 
-            icon={<Users size={24} />} 
-            active={location.pathname === '/team'} 
+          <MobileNavItem
+            to="/team"
+            icon={<Users size={24} />}
+            active={location.pathname === '/team'}
           />
           <MobileNavItem
             to="/rewards"
-            icon={<ShoppingBag size={24} />}
+            icon={<Gift size={24} />}
             active={location.pathname === '/rewards'}
           />
           <MobileNavItem
             to="/campaigns"
-            icon={<Target size={24} />}
+            icon={<Flag size={24} />}
             active={location.pathname === '/campaigns'}
           />
           <MobileNavItem
             to="/reports"
-            icon={<TrendingUp size={24} />}
+            icon={<BarChart3 size={24} />}
             active={location.pathname === '/reports'}
           />
-          <MobileNavItem 
-            to="/settings" 
-            icon={<Settings size={24} />} 
-            active={location.pathname === '/settings'} 
+          <MobileNavItem
+            to="/settings"
+            icon={<Shield size={24} />}
+            active={location.pathname === '/settings'}
           />
           <button onClick={handleLogout} className="text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">
             <LogOut size={24} />
