@@ -392,7 +392,7 @@ export const api = {
         'Accept': 'application/json',
       },
     });
-    if (!response.ok) throw new Error('Falha ao carregar prêmios');
+    if (!response.ok) throw new Error('Falha ao carregar recompensas');
     return response.json() as Promise<PaginatedResponse<Reward>>;
   },
 
@@ -405,7 +405,7 @@ export const api = {
       },
       body: formData,
     });
-    if (!response.ok) throw new Error('Falha ao criar prêmio');
+    if (!response.ok) throw new Error('Falha ao criar recompensa');
     return response.json();
   },
 
@@ -418,7 +418,7 @@ export const api = {
       },
       body: formData,
     });
-    if (!response.ok) throw new Error('Falha ao atualizar prêmio');
+    if (!response.ok) throw new Error('Falha ao atualizar recompensa');
     return response.json();
   },
 
@@ -430,7 +430,7 @@ export const api = {
         'Accept': 'application/json',
       },
     });
-    if (!response.ok) throw new Error('Falha ao excluir prêmio');
+    if (!response.ok) throw new Error('Falha ao excluir recompensa');
     if (response.status === 204) return;
     return response.json();
   },

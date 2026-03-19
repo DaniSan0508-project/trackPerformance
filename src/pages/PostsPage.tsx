@@ -312,7 +312,7 @@ export const PostsPage: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Posts</h1>
-            <p className="text-zinc-500 dark:text-zinc-400">Gerencie e visualize as publicações dos usuários.</p>
+            <p className="text-zinc-500 dark:text-zinc-400">Gerencie e visualize as publicações do seu time.</p>
           </div>
           <div className="flex gap-2">
             <button 

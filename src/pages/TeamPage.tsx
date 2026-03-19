@@ -88,7 +88,7 @@ export const TeamPage: React.FC = () => {
       console.log('Pagination:', { page: data.meta?.current_page || data.current_page, totalPages: data.meta?.last_page || data.last_page, total: data.meta?.total || data.total });
     } catch (err: any) {
       console.error('Error fetching users:', err);
-      setError(err.message || 'Não foi possível carregar a equipe.');
+      setError(err.message || 'Não foi possível carregar o time.');
     } finally {
       setLoading(false);
     }
@@ -294,8 +294,8 @@ export const TeamPage: React.FC = () => {
       <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Equipe</h1>
-            <p className="text-zinc-500 dark:text-zinc-400">Gerencie os membros da sua equipe.</p>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Meu Time</h1>
+            <p className="text-zinc-500 dark:text-zinc-400">Gerencie os membros do seu time.</p>
           </div>
           <div className="flex gap-2">
             <button 

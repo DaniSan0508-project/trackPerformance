@@ -1427,7 +1427,7 @@ export const CampaignsPage: React.FC = () => {
                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
                   >
-                    Equipe ({selectedUsers.length})
+                    Meu Time ({selectedUsers.length})
                   </button>
                   {/* Aba de ações: apenas para engajamento (criação e update) */}
                   {formData.type === 'engagement' || editingCampaign?.type === 'engagement' ? (

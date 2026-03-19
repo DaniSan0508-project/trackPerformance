@@ -115,7 +115,7 @@ export const RewardsPage: React.FC = () => {
       setToItem(data.meta.to);
     } catch (err: any) {
       console.error('Error fetching rewards:', err);
-      setError(err.message || 'Não foi possível carregar a loja de prêmios.');
+      setError(err.message || 'Não foi possível carregar a loja de recompensas.');
     } finally {
       setLoading(false);
     }
@@ -307,17 +307,17 @@ export const RewardsPage: React.FC = () => {
 
       if (editingReward) {
         await api.updateReward(token, editingReward.id, data);
-        addToast('success', 'Prêmio atualizado com sucesso!');
+        addToast('success', 'Recompensa atualizada com sucesso!');
       } else {
         await api.createReward(token, data);
-        addToast('success', 'Prêmio criado com sucesso!');
+        addToast('success', 'Recompensa criada com sucesso!');
       }
 
       await fetchRewards(currentPage, searchTerm);
       handleCloseModal();
     } catch (error: any) {
       console.error('Error saving reward:', error);
-      addToast('error', error.message || 'Erro ao salvar prêmio.');
+      addToast('error', error.message || 'Erro ao salvar recompensa.');
     } finally {
       setSaving(false);
     }
@@ -329,10 +329,10 @@ export const RewardsPage: React.FC = () => {
     try {
       await api.deleteReward(token, reward.id);
       await fetchRewards(currentPage, searchTerm);
-      addToast('success', 'Prêmio excluído com sucesso!');
+      addToast('success', 'Recompensa excluída com sucesso!');
     } catch (error: any) {
       console.error('Error deleting reward:', error);
-      addToast('error', error.message || 'Erro ao excluir prêmio.');
+      addToast('error', error.message || 'Erro ao excluir recompensa.');
     } finally {
       setDeletingId(null);
     }
@@ -341,8 +341,8 @@ export const RewardsPage: React.FC = () => {
   const handleDelete = (reward: Reward) => {
     setConfirmModal({
       isOpen: true,
-      title: 'Excluir Prêmio',
-      message: `Tem certeza que deseja excluir o prêmio "${reward.name}"? Esta ação não pode ser desfeita.`,
+      title: 'Excluir Recompensa',
+      message: `Tem certeza que deseja excluir a recompensa "${reward.name}"? Esta ação não pode ser desfeita.`,
       onConfirm: async () => await executeDeleteReward(reward),
       isLoading: false,
     });
@@ -381,15 +381,15 @@ export const RewardsPage: React.FC = () => {
         ],
       });
       
-      addToast('success', 'Prêmio resgatado com sucesso!');
+      addToast('success', 'Recompensa resgatada com sucesso!');
       handleCloseRedemption();
-      // Recarrega a lista de prêmios para atualizar o estoque
+      // Recarrega a lista de recompensas para atualizar o estoque
       await fetchRewards(currentPage, searchTerm);
     } catch (error: any) {
       console.error('Error creating redemption:', error);
       
       // Tenta extrair dados do erro da API
-      let errorMessage = error.message || 'Erro ao resgatar prêmio.';
+      let errorMessage = error.message || 'Erro ao resgatar recompensa.';
       
       if (error.response?.data) {
         const data = error.response.data;
@@ -481,8 +481,8 @@ export const RewardsPage: React.FC = () => {
       <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Loja de Prêmios</h1>
-            <p className="text-zinc-500 dark:text-zinc-400">Troque suas moedas por prêmios incríveis.</p>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Loja de Recompensas</h1>
+            <p className="text-zinc-500 dark:text-zinc-400">Troque suas moedas por recompensas incríveis.</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -498,7 +498,7 @@ export const RewardsPage: React.FC = () => {
                 className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
               >
                 <Plus size={18} />
-                Novo Prêmio
+                Nova Recompensa
               </button>
             )}
           </div>
@@ -516,7 +516,7 @@ export const RewardsPage: React.FC = () => {
           >
             <div className="flex items-center gap-2">
               <ShoppingBag size={18} />
-              Prêmios
+              Recompensas
             </div>
           </button>
           <button
@@ -542,7 +542,7 @@ export const RewardsPage: React.FC = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={20} />
             <input
               type="text"
-              placeholder="Buscar prêmios..."
+              placeholder="Buscar recompensas..."
               className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -657,7 +657,7 @@ export const RewardsPage: React.FC = () => {
             {rewards.length === 0 && (
               <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors duration-200">
                 <ShoppingBag className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
-                <h3 className="text-lg font-medium text-zinc-900 dark:text-white">Nenhum prêmio encontrado</h3>
+                <h3 className="text-lg font-medium text-zinc-900 dark:text-white">Nenhuma recompensa encontrada</h3>
                 <p className="text-zinc-500 dark:text-zinc-400">Tente ajustar seus filtros de busca.</p>
               </div>
             )}
@@ -823,7 +823,7 @@ export const RewardsPage: React.FC = () => {
                                     )}
                                     <div>
                                       <div className="text-sm font-medium text-zinc-900 dark:text-white">
-                                        {item.reward?.name || 'Prêmio removido'}
+                                        {item.reward?.name || 'Recompensa removida'}
                                       </div>
                                       <div className="text-xs text-zinc-500 dark:text-zinc-400">
                                         Qtd: {item.quantity}
@@ -1096,7 +1096,7 @@ export const RewardsPage: React.FC = () => {
                       className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 dark:shadow-none disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                     >
                       <Gift size={20} />
-                      Resgatar Prêmio
+                      Resgatar Recompensa
                     </button>
                   </div>
                 </div>
@@ -1242,7 +1242,7 @@ export const RewardsPage: React.FC = () => {
               >
                 <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
                   <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
-                    {editingReward ? 'Editar Prêmio' : 'Novo Prêmio'}
+                    {editingReward ? 'Editar Recompensa' : 'Nova Recompensa'}
                   </h2>
                   <button onClick={handleCloseModal} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
                     <X size={24} />
