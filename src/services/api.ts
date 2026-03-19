@@ -499,7 +499,7 @@ export const api = {
         'Accept': 'application/json',
       },
     });
-    
+
     if (!response.ok) {
       // Tenta obter os dados de erro da resposta
       const errorData = await response.json().catch(() => ({}));
@@ -507,9 +507,31 @@ export const api = {
       error.response = { data: errorData, status: response.status };
       throw error;
     }
-    
+
     if (response.status === 204) return;
     return response.json();
+  },
+
+  getCampaignUsers: async (token: string, campaignId: number) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/users?per_page=99999999`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar usuários da campanha');
+    return response.json() as Promise<{ data: User[] }>;
+  },
+
+  getCampaignProducts: async (token: string, campaignId: number) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/products?per_page=9999`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar produtos da campanha');
+    return response.json() as Promise<{ data: Product[] }>;
   },
 
   getAllUsers: async (token: string, page = 1, perPage = 10) => {

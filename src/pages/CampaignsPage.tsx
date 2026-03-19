@@ -293,7 +293,7 @@ export const CampaignsPage: React.FC = () => {
     }
   }, [debouncedProductSearch, productFilterType, productManufacturerFilter, isModalOpen]);
 
-  const handleOpenModal = (campaign?: Campaign) => {
+  const handleOpenModal = async (campaign?: Campaign) => {
     setActiveTab('basic');
     if (campaign) {
       setEditingCampaign(campaign);
@@ -307,13 +307,49 @@ export const CampaignsPage: React.FC = () => {
         end_date: campaign.end_date,
         status: status,
       });
-      // Carregar seleções existentes - filtrar usuários inválidos para engagement
-      const validUsers = campaign.type === 'engagement'
-        ? (campaign.users?.filter(u => u.user_type_id === 2).map(u => u.id) || [])
-        : (campaign.users?.map(u => u.id) || []);
-      setSelectedUsers(validUsers);
-      setSelectedProducts(campaign.products?.map(p => p.product_id) || []);
-      setSelectedActions(campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || []);
+      
+      // Buscar usuários e produtos vinculados à campanha
+      if (token) {
+        try {
+          // Buscar usuários da campanha
+          const usersResponse = await api.getCampaignUsers(token, campaign.id);
+          const campaignUsers = usersResponse.data || [];
+          const validUsers = campaign.type === 'engagement'
+            ? campaignUsers.filter(u => u.user_type_id === 2).map(u => u.id)
+            : campaignUsers.map(u => u.id);
+          setSelectedUsers(validUsers);
+          
+          // Buscar produtos da campanha (apenas para sales)
+          if (campaign.type === 'sales') {
+            const productsResponse = await api.getCampaignProducts(token, campaign.id);
+            const campaignProducts = productsResponse.data || [];
+            setSelectedProducts(campaignProducts.map(p => p.id));
+          } else {
+            setSelectedProducts([]);
+          }
+          
+          // Carregar ações (já vem no objeto campaign)
+          setSelectedActions(campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || []);
+        } catch (error) {
+          console.error('Error fetching campaign data:', error);
+          addToast('error', 'Erro ao carregar dados da campanha.');
+          // Fallback para os dados locais se a API falhar
+          const validUsers = campaign.type === 'engagement'
+            ? (campaign.users?.filter(u => u.user_type_id === 2).map(u => u.id) || [])
+            : (campaign.users?.map(u => u.id) || []);
+          setSelectedUsers(validUsers);
+          setSelectedProducts(campaign.products?.map(p => p.product_id) || []);
+          setSelectedActions(campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || []);
+        }
+      } else {
+        // Fallback sem token
+        const validUsers = campaign.type === 'engagement'
+          ? (campaign.users?.filter(u => u.user_type_id === 2).map(u => u.id) || [])
+          : (campaign.users?.map(u => u.id) || []);
+        setSelectedUsers(validUsers);
+        setSelectedProducts(campaign.products?.map(p => p.product_id) || []);
+        setSelectedActions(campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || []);
+      }
     } else {
       setEditingCampaign(null);
       setFormData({
