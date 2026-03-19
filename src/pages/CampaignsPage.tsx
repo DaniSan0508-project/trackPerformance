@@ -307,29 +307,50 @@ export const CampaignsPage: React.FC = () => {
         end_date: campaign.end_date,
         status: status,
       });
-      
+
       // Buscar usuários e produtos vinculados à campanha
       if (token) {
         try {
           // Buscar usuários da campanha
           const usersResponse = await api.getCampaignUsers(token, campaign.id);
           const campaignUsers = usersResponse.data || [];
-          const validUsers = campaign.type === 'engagement'
-            ? campaignUsers.filter(u => u.user_type_id === 2).map(u => u.id)
-            : campaignUsers.map(u => u.id);
-          setSelectedUsers(validUsers);
           
-          // Buscar produtos da campanha (apenas para sales)
+          // Para engagement: filtrar apenas user_type_id = 2 (se o campo existir)
+          // Para sales: todos os usuários
+          let validUsers;
+          if (campaign.type === 'engagement') {
+            // Tenta filtrar por user_type_id, se não existir usa todos
+            const filtered = campaignUsers.filter(u => u.user_type_id === 2);
+            validUsers = filtered.length > 0 
+              ? filtered.map(u => u.id)
+              : campaignUsers.map(u => u.id); // Fallback: usa todos se não tiver user_type_id
+          } else {
+            validUsers = campaignUsers.map(u => u.id);
+          }
+          setSelectedUsers(validUsers);
+
+          // Buscar dados específicos por tipo de campanha
           if (campaign.type === 'sales') {
+            // Buscar produtos da campanha
             const productsResponse = await api.getCampaignProducts(token, campaign.id);
             const campaignProducts = productsResponse.data || [];
             setSelectedProducts(campaignProducts.map(p => p.id));
-          } else {
+            setSelectedActions([]);
+            
+            // Carregar todos os usuários para a lista auxiliar (sales pode ter qualquer usuário)
+            const allUsersResponse = await api.getAllUsersComplete(token);
+            setUsers(allUsersResponse);
+          } else if (campaign.type === 'engagement') {
+            // Buscar ações da campanha
+            const actionsResponse = await api.getCampaignActions(token, campaign.id);
+            const campaignActions = actionsResponse.data || [];
+            setSelectedActions(campaignActions.map(a => ({ id: a.id, coins: a.coins })));
             setSelectedProducts([]);
+            
+            // Carregar TODOS os usuários para a lista auxiliar (engagement precisa de user_type_id = 2)
+            const allUsersResponse = await api.getAllUsersComplete(token);
+            setUsers(allUsersResponse);
           }
-          
-          // Carregar ações (já vem no objeto campaign)
-          setSelectedActions(campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || []);
         } catch (error) {
           console.error('Error fetching campaign data:', error);
           addToast('error', 'Erro ao carregar dados da campanha.');

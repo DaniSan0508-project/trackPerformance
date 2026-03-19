@@ -534,6 +534,17 @@ export const api = {
     return response.json() as Promise<{ data: Product[] }>;
   },
 
+  getCampaignActions: async (token: string, campaignId: number) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/actions?per_page=9999`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar ações da campanha');
+    return response.json() as Promise<{ data: { id: number; description: string; coins: number }[] }>;
+  },
+
   getAllUsers: async (token: string, page = 1, perPage = 10) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
