@@ -9,7 +9,7 @@ import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { campaignSchema } from '../validators/schemas';
 
-const API_BASE_URL = 'http://localhost:8012/api/v1';
+const API_BASE_URL = 'http://localhost:8010/api/v1';
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);

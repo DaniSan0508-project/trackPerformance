@@ -41,7 +41,7 @@ export const LoginPage: React.FC = () => {
     } catch (err: any) {
       console.error('Login error:', err);
       if (err.message === 'Failed to fetch') {
-        setError('Não foi possível conectar ao servidor (http://localhost:8012). Verifique se o backend está rodando.');
+        setError('Não foi possível conectar ao servidor (http://localhost:8010). Verifique se o backend está rodando.');
       } else {
         setError(err.message || 'Ocorreu um erro ao tentar fazer login.');
       }
