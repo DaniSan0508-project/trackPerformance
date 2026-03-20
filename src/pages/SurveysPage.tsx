@@ -707,6 +707,11 @@ export const SurveysPage: React.FC = () => {
                               <span className="text-zinc-500 dark:text-zinc-500">Respostas:</span>
                               <span className="font-medium text-zinc-900 dark:text-white">{survey.responses_count}</span>
                             </div>
+                            <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                              <Eye size={16} className="text-amber-500" />
+                              <span className="text-zinc-500 dark:text-zinc-500">Visualizações:</span>
+                              <span className="font-medium text-zinc-900 dark:text-white">{survey.views_count}</span>
+                            </div>
                             {survey.coins_reward && (
                               <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
                                 <Coins size={16} className="text-emerald-500" />
