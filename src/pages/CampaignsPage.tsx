@@ -1908,7 +1908,8 @@ export const CampaignsPage: React.FC = () => {
                       <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
                         {editingCampaign?.type === 'engagement'
                           ? 'Selecione as ações e defina quantas moedas serão ganhas (obrigatório para campanhas de engajamento):'
-                          : 'Selecione as ações e defina quantas moedas serão ganhas:'}
+                          : 'Selecione as ações e defina quantas moedas serão concedidas por cada uma.\n' +
+                            'Observação: as recompensas pelas ações de curtir post, comentar post e enviar feedback serão concedidas apenas uma vez por dia para cada membro do time:'}
                       </p>
 
                       {/* Filtro de busca de ações */}

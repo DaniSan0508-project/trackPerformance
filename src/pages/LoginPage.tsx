@@ -5,6 +5,7 @@ import { LogIn, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { loginSchema } from '../validators/schemas';
+import loginBackgroundImage from '../resources/img-background-login.jpeg';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('admin@teste.com');
@@ -55,11 +56,11 @@ export const LoginPage: React.FC = () => {
       {/* Background Image & Overlay */}
       <div className="absolute inset-0 z-0">
         <img 
-          src="https://images.unsplash.com/photo-1553877616-1528023ee29a?q=80&w=2070&auto=format&fit=crop" 
+          src={loginBackgroundImage}
           alt="Background" 
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-zinc-900/40 dark:bg-zinc-950/70 backdrop-blur-sm"></div>
+        <div className="absolute inset-0 bg-zinc-900/40 dark:bg-zinc-950/50 backdrop-blur-sm"></div>z
       </div>
 
       <motion.div 
@@ -76,7 +77,7 @@ export const LoginPage: React.FC = () => {
           TrackPerformance
         </h2>
         <p className="mt-2 text-center text-sm text-zinc-200">
-          Entre na sua conta para gerenciar seu desempenho
+            Suba de nível na gestão da sua empresa!
         </p>
       </motion.div>
 
