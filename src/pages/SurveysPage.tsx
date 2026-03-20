@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, FileText, Calendar, Eye, Users, Coins, CheckCircle, XCircle, Clock, EyeOff, Plus, Edit2, Trash2, X, Save, Check, User as UserIcon, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Survey, SurveyStatus, User } from '../types';
+import { Survey, SurveyStatus, User, SurveyResults } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -108,6 +108,19 @@ export const SurveysPage: React.FC = () => {
     message: '',
     onConfirm: async () => {},
     isLoading: false,
+  });
+
+  // Results modal
+  const [resultsModal, setResultsModal] = useState<{
+    isOpen: boolean;
+    survey: Survey | null;
+    results: SurveyResults | null;
+    loading: boolean;
+  }>({
+    isOpen: false,
+    survey: null,
+    results: null,
+    loading: false,
   });
 
   const fetchSurveys = useCallback(async (page = 1, search = '') => {
@@ -518,14 +531,32 @@ export const SurveysPage: React.FC = () => {
           await api.deleteSurvey(token, survey.id);
           addToast('success', 'Pesquisa excluída com sucesso!');
           fetchSurveys(currentPage, debouncedSearchTerm);
-        } catch (err: any) {
-          addToast('error', err.message || 'Erro ao excluir pesquisa.');
+        } catch (error: any) {
+          console.error('Error deleting survey:', error);
+          addToast('error', error.message || 'Erro ao excluir pesquisa.');
         } finally {
-          setConfirmModal(prev => ({ ...prev, isLoading: false, isOpen: false }));
+          setConfirmModal(prev => ({ ...prev, isLoading: false }));
         }
       },
       isLoading: false,
     });
+  };
+
+  const handleViewResults = async (survey: Survey) => {
+    if (!token) return;
+    setResultsModal({ isOpen: true, survey, results: null, loading: true });
+    try {
+      const data = await api.getSurveyResults(token, survey.id);
+      setResultsModal(prev => ({ ...prev, results: data, loading: false }));
+    } catch (error: any) {
+      console.error('Error fetching survey results:', error);
+      addToast('error', error.message || 'Erro ao carregar resultados.');
+      setResultsModal(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleCloseResults = () => {
+    setResultsModal({ isOpen: false, survey: null, results: null, loading: false });
   };
 
   return (
@@ -689,6 +720,13 @@ export const SurveysPage: React.FC = () => {
 
                       {/* Ações */}
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleViewResults(survey)}
+                          className="p-2 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                          title="Ver Resultados"
+                        >
+                          <Eye size={18} />
+                        </button>
                         <button
                           onClick={() => handleOpenModal(survey)}
                           className="p-2 text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
@@ -1354,6 +1392,124 @@ export const SurveysPage: React.FC = () => {
         isLoading={confirmModal.isLoading}
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
       />
+
+      {/* Results Modal */}
+      <AnimatePresence>
+        {resultsModal.isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={handleCloseResults}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-start sticky top-0 bg-white dark:bg-zinc-900 rounded-t-2xl">
+                <div>
+                  <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+                    {resultsModal.survey?.title || 'Resultados'}
+                  </h2>
+                  {resultsModal.results && (
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                      {resultsModal.results.total_responses} {resultsModal.results.total_responses === 1 ? 'resposta' : 'respostas'} • {resultsModal.results.is_anonymous ? 'Anônimo' : 'Não anônimo'}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={handleCloseResults}
+                  className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                {resultsModal.loading && (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 size={32} className="animate-spin text-emerald-600" />
+                  </div>
+                )}
+
+                {resultsModal.results && !resultsModal.loading && (
+                  <div className="space-y-6">
+                    {resultsModal.results.questions.length === 0 ? (
+                      <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">
+                        Nenhuma questão nesta pesquisa.
+                      </p>
+                    ) : (
+                      resultsModal.results.questions.map((question, index) => (
+                        <div key={question.question_id} className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-4">
+                          <div className="flex items-start gap-3 mb-4">
+                            <span className="flex-shrink-0 w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-lg flex items-center justify-center font-bold text-sm">
+                              {index + 1}
+                            </span>
+                            <div className="flex-1">
+                              <p className="font-medium text-zinc-900 dark:text-white">
+                                {question.question}
+                              </p>
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 capitalize">
+                                Tipo: {question.type === 'choice' ? 'Múltipla escolha' : 'Texto aberto'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {question.type === 'choice' && question.results.length > 0 && (
+                            <div className="space-y-3">
+                              {question.results.map((result) => {
+                                const percentage = resultsModal.results!.total_responses > 0
+                                  ? Math.round((result.count / resultsModal.results!.total_responses) * 100)
+                                  : 0;
+                                return (
+                                  <div key={result.option_id}>
+                                    <div className="flex justify-between items-center mb-1">
+                                      <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                                        {result.option_text}
+                                      </span>
+                                      <span className="text-sm font-medium text-zinc-900 dark:text-white">
+                                        {result.count} ({percentage}%)
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2.5 overflow-hidden">
+                                      <div
+                                        className="bg-emerald-600 h-2.5 rounded-full transition-all duration-500"
+                                        style={{ width: `${percentage}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {question.type === 'text' && (
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400 italic">
+                              Respostas de texto não são exibidas neste resumo.
+                            </p>
+                          )}
+
+                          {question.type === 'choice' && question.results.length === 0 && (
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400 italic">
+                              Nenhuma resposta ainda.
+                            </p>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Layout>
   );
 };

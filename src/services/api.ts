@@ -860,4 +860,15 @@ export const api = {
     if (response.status === 204) return;
     return response.json();
   },
+
+  getSurveyResults: async (token: string, surveyId: number) => {
+    const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/results`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar resultados da pesquisa');
+    return response.json();
+  },
 };

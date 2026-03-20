@@ -307,3 +307,24 @@ export interface Survey {
   created_at: string;
   updated_at: string;
 }
+
+export interface SurveyResultOption {
+  option_id: number;
+  option_text: string;
+  count: number;
+}
+
+export interface SurveyResultQuestion {
+  question_id: number;
+  question: string;
+  type: 'choice' | 'text';
+  results: SurveyResultOption[];
+}
+
+export interface SurveyResults {
+  survey_id: number;
+  title: string;
+  is_anonymous: boolean;
+  total_responses: number;
+  questions: SurveyResultQuestion[];
+}
