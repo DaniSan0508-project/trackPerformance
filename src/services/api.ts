@@ -1,4 +1,4 @@
-import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward, Campaign, CampaignAction, Product, CampaignRanking, Redemption, RedemptionStatus } from '../types';
+import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward, Campaign, CampaignAction, Product, CampaignRanking, Redemption, RedemptionStatus, Survey } from '../types';
 
 const API_BASE_URL = 'http://localhost:8010/api/v1';
 
@@ -783,6 +783,81 @@ export const api = {
       },
     });
     if (!response.ok) throw new Error('Falha ao concluir resgate');
+    return response.json();
+  },
+
+  getSurveys: async (token: string, page = 1, search = '', status?: SurveyStatus | 'all', published?: 'all' | 'true' | 'false') => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    if (search) {
+      queryParams.append('filter[title]', search);
+    }
+    if (status && status !== 'all') {
+      queryParams.append('filter[status]', status);
+    }
+    if (published && published !== 'all') {
+      queryParams.append('filter[is_published]', published);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/surveys?${queryParams.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar pesquisas');
+    return response.json() as Promise<PaginatedResponse<Survey>>;
+  },
+
+  getSurvey: async (token: string, id: number) => {
+    const response = await fetch(`${API_BASE_URL}/surveys/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar pesquisa');
+    return response.json();
+  },
+
+  createSurvey: async (token: string, data: any) => {
+    const response = await fetch(`${API_BASE_URL}/surveys`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Falha ao criar pesquisa');
+    return response.json();
+  },
+
+  updateSurvey: async (token: string, id: number, data: any) => {
+    const response = await fetch(`${API_BASE_URL}/surveys/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Falha ao atualizar pesquisa');
+    return response.json();
+  },
+
+  deleteSurvey: async (token: string, id: number) => {
+    const response = await fetch(`${API_BASE_URL}/surveys/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao excluir pesquisa');
+    if (response.status === 204) return;
     return response.json();
   },
 };

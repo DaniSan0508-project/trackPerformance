@@ -289,3 +289,21 @@ export interface RedemptionItem {
   updated_at: string;
   reward?: Reward;
 }
+
+export type SurveyStatus = 'draft' | 'active' | 'closed';
+
+export interface Survey {
+  id: number;
+  title: string;
+  status: SurveyStatus;
+  starts_at: string;
+  ends_at: string;
+  is_anonymous: boolean;
+  is_published: boolean;
+  coins_reward: boolean;
+  views_count: number;
+  questions_count: number;
+  responses_count: number;
+  created_at: string;
+  updated_at: string;
+}

@@ -17,6 +17,7 @@ import {
   Gift,
   Flag,
   BarChart3,
+  FileText,
   Sun,
   Moon,
   Trophy
@@ -102,6 +103,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             icon={<Flag size={20} />}
             label="Campanhas"
             active={location.pathname === '/campaigns'}
+          />
+          <NavItem
+            to="/surveys"
+            icon={<FileText size={20} />}
+            label="Pesquisas"
+            active={location.pathname === '/surveys'}
           />
           <NavItem
             to="/reports"
@@ -209,6 +216,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             to="/campaigns"
             icon={<Flag size={24} />}
             active={location.pathname === '/campaigns'}
+          />
+          <MobileNavItem
+            to="/surveys"
+            icon={<FileText size={24} />}
+            active={location.pathname === '/surveys'}
           />
           <MobileNavItem
             to="/reports"
