@@ -308,17 +308,32 @@ export interface Survey {
   updated_at: string;
 }
 
-export interface SurveyResultOption {
+export interface SurveyResultTextOption {
+  text_answer: string;
+  user_id: number;
+  user: {
+    id: number;
+    name: string;
+    profile_image_path: string | null;
+  };
+}
+
+export interface SurveyResultChoiceOption {
   option_id: number;
   option_text: string;
   count: number;
+  users: Array<{
+    id: number;
+    name: string;
+    profile_image_path: string | null;
+  }>;
 }
 
 export interface SurveyResultQuestion {
   question_id: number;
   question: string;
   type: 'choice' | 'text';
-  results: SurveyResultOption[];
+  results: SurveyResultTextOption[] | SurveyResultChoiceOption[];
 }
 
 export interface SurveyResults {

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, FileText, Calendar, Eye, Users, Coins, CheckCircle, XCircle, Clock, EyeOff, Plus, Edit2, Trash2, X, Save, Check, User as UserIcon, Shield } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, FileText, Calendar, Eye, Users, Coins, CheckCircle, XCircle, Clock, EyeOff, Plus, Edit2, Trash2, X, Save, Check, User as UserIcon, Shield, User, BarChart3, PlusCircle, GripVertical, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Survey, SurveyStatus, User, SurveyResults } from '../types';
+import { Survey, SurveyStatus, User as UserType, SurveyResults, SurveyResultTextOption, SurveyResultChoiceOption } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -23,23 +23,12 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-const surveyStatusLabels: Record<SurveyStatus, string> = {
-  draft: 'Rascunho',
-  active: 'Ativa',
-  closed: 'Encerrada',
-};
-
-const surveyStatusColors: Record<SurveyStatus, string> = {
-  draft: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400',
-  active: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
-  closed: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
-};
-
 interface Question {
   question: string;
   type: 'choice' | 'text';
   order: number;
   options?: Array<{ option_text: string }>;
+  required?: boolean;
 }
 
 export const SurveysPage: React.FC = () => {
@@ -52,7 +41,6 @@ export const SurveysPage: React.FC = () => {
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   // Filtros
-  const [statusFilter, setStatusFilter] = useState<SurveyStatus | 'all'>('all');
   const [publishedFilter, setPublishedFilter] = useState<'all' | 'true' | 'false'>('all');
 
   // Paginação
@@ -77,7 +65,19 @@ export const SurveysPage: React.FC = () => {
     is_anonymous: false,
     is_published: false,
     coins_reward: false,
+    survey_type: '' as 'choice' | 'text' | '',
   });
+
+  // Valida se Dados Básicos estão completos
+  const isBasicDataComplete = () => {
+    const hasTitle = formData.title.trim();
+    const hasType = formData.survey_type;
+    const hasStartDate = formData.starts_at;
+    const hasEndDate = formData.ends_at;
+    const hasAtLeastOneOption = formData.is_anonymous || formData.is_published || formData.coins_reward;
+    
+    return hasTitle && hasType && hasStartDate && hasEndDate && hasAtLeastOneOption;
+  };
 
   // Usuários
   const [users, setUsers] = useState<User[]>([]);
@@ -123,15 +123,22 @@ export const SurveysPage: React.FC = () => {
     loading: false,
   });
 
+  // Filtros e paginação para respostas
+  const [textResponseFilter, setTextResponseFilter] = useState('');
+  const [textResponsePage, setTextResponsePage] = useState(1);
+  const [choiceResponseFilter, setChoiceResponseFilter] = useState('');
+  const [choiceResponsePage, setChoiceResponsePage] = useState(1);
+  const TEXT_RESPONSES_PER_PAGE = 10;
+  const CHOICE_USERS_PER_PAGE = 10;
+
   const fetchSurveys = useCallback(async (page = 1, search = '') => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const statusParam = statusFilter !== 'all' ? statusFilter : undefined;
       const publishedParam = publishedFilter !== 'all' ? publishedFilter : undefined;
 
-      const data = await api.getSurveys(token, page, search, statusParam, publishedParam);
+      const data = await api.getSurveys(token, page, search, undefined, publishedParam);
       setSurveys(data.data);
       setCurrentPage(data.meta?.current_page || data.current_page);
       setTotalPages(data.meta?.last_page || data.last_page);
@@ -144,7 +151,7 @@ export const SurveysPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, statusFilter, publishedFilter]);
+  }, [token, publishedFilter]);
 
   useEffect(() => {
     fetchSurveys(currentPage, debouncedSearchTerm);
@@ -152,7 +159,7 @@ export const SurveysPage: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm, statusFilter, publishedFilter]);
+  }, [debouncedSearchTerm, publishedFilter]);
 
   // Buscar usuários
   const fetchUsers = useCallback(async (page = 1, search = '', filterType: 'name' | 'email' = 'name') => {
@@ -203,6 +210,7 @@ export const SurveysPage: React.FC = () => {
         is_anonymous: survey.is_anonymous,
         is_published: survey.is_published,
         coins_reward: survey.coins_reward,
+        survey_type: '',
       });
       // TODO: Carregar usuários e questões da pesquisa existente
     } else {
@@ -214,6 +222,7 @@ export const SurveysPage: React.FC = () => {
         is_anonymous: false,
         is_published: false,
         coins_reward: false,
+        survey_type: '',
       });
       setSelectedUsers([]);
       setQuestions([]);
@@ -225,6 +234,7 @@ export const SurveysPage: React.FC = () => {
     setIsModalOpen(false);
     setEditingSurvey(null);
     setActiveTab('basic');
+    setFormData(prev => ({ ...prev, survey_type: '' }));
   };
 
   const handleSelectAllUsers = async () => {
@@ -389,7 +399,14 @@ export const SurveysPage: React.FC = () => {
 
   const addQuestion = () => {
     const newOrder = questions.length + 1;
-    setQuestions([...questions, { question: '', type: 'text', order: newOrder }]);
+    // Usa o tipo definido no survey_type
+    const questionType = formData.survey_type || 'text';
+    setQuestions([...questions, { 
+      question: '', 
+      type: questionType, 
+      order: newOrder,
+      options: questionType === 'choice' ? [{ option_text: '' }, { option_text: '' }] : []
+    }]);
   };
 
   const removeQuestion = (index: number) => {
@@ -400,22 +417,40 @@ export const SurveysPage: React.FC = () => {
 
   const updateQuestion = (index: number, field: keyof Question, value: any) => {
     const newQuestions = [...questions];
-    newQuestions[index] = { ...newQuestions[index], [field]: value };
+    newQuestions[index][field] = value;
     setQuestions(newQuestions);
   };
 
   const addOption = (questionIndex: number) => {
     const newQuestions = [...questions];
-    if (!newQuestions[questionIndex].options) {
-      newQuestions[questionIndex].options = [];
+    const question = newQuestions[questionIndex];
+    
+    if (!question.options) {
+      question.options = [];
     }
-    newQuestions[questionIndex].options!.push({ option_text: '' });
+    
+    // Só adiciona nova opção se a última não estiver vazia
+    const lastOption = question.options[question.options.length - 1];
+    if (lastOption && !lastOption.option_text.trim()) {
+      addToast('warning', 'Preencha a opção anterior antes de adicionar outra.');
+      return;
+    }
+    
+    question.options.push({ option_text: '' });
     setQuestions(newQuestions);
   };
 
   const removeOption = (questionIndex: number, optionIndex: number) => {
     const newQuestions = [...questions];
-    newQuestions[questionIndex].options!.splice(optionIndex, 1);
+    const question = newQuestions[questionIndex];
+    
+    // Não permite excluir se tiver apenas 2 opções
+    if (question.options && question.options.length <= 2) {
+      addToast('warning', 'Mínimo de 2 opções necessárias.');
+      return;
+    }
+
+    question.options!.splice(optionIndex, 1);
     setQuestions(newQuestions);
   };
 
@@ -431,6 +466,11 @@ export const SurveysPage: React.FC = () => {
     // Validações
     if (!formData.title.trim()) {
       addToast('error', 'Título é obrigatório.');
+      setActiveTab('basic');
+      return;
+    }
+    if (!formData.survey_type) {
+      addToast('error', 'Selecione o tipo de pesquisa (múltipla escolha ou texto aberto).');
       setActiveTab('basic');
       return;
     }
@@ -463,12 +503,18 @@ export const SurveysPage: React.FC = () => {
         setActiveTab('questions');
         return;
       }
-      if (q.type === 'choice' && (!q.options || q.options.length === 0)) {
-        addToast('error', `Questão ${i + 1} é do tipo escolha e precisa de opções.`);
-        setActiveTab('questions');
-        return;
-      }
-      if (q.type === 'choice') {
+      // Valida baseado no survey_type
+      if (formData.survey_type === 'choice') {
+        if (!q.options || q.options.length === 0) {
+          addToast('error', `Questão ${i + 1} precisa de pelo menos 2 opções.`);
+          setActiveTab('questions');
+          return;
+        }
+        if (q.options.length < 2) {
+          addToast('error', `Questão ${i + 1} precisa de pelo menos 2 opções.`);
+          setActiveTab('questions');
+          return;
+        }
         for (let j = 0; j < q.options!.length; j++) {
           if (!q.options![j].option_text.trim()) {
             addToast('error', `Opção ${j + 1} da questão ${i + 1} está vazia.`);
@@ -481,13 +527,14 @@ export const SurveysPage: React.FC = () => {
 
     setSaving(true);
     try {
-      // Prepara as questões: remove 'options' das questões do tipo 'text'
+      // Prepara as questões: remove 'options' para texto e remove campos desnecessários
       const questionsToSave = questions.map(q => {
-        if (q.type === 'text') {
-          const { options, ...rest } = q;
-          return rest;
+        const { required, ...rest } = q; // Remove campo required
+        if (formData.survey_type === 'text') {
+          const { options, ...restWithoutOptions } = rest;
+          return restWithoutOptions;
         }
-        return q;
+        return rest;
       });
 
       const dataToSave = {
@@ -557,6 +604,11 @@ export const SurveysPage: React.FC = () => {
 
   const handleCloseResults = () => {
     setResultsModal({ isOpen: false, survey: null, results: null, loading: false });
+    // Resetar filtros e paginação
+    setTextResponseFilter('');
+    setTextResponsePage(1);
+    setChoiceResponseFilter('');
+    setChoiceResponsePage(1);
   };
 
   return (
@@ -590,7 +642,7 @@ export const SurveysPage: React.FC = () => {
         <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Busca */}
-            <div className="md:col-span-2 relative">
+            <div className="md:col-span-3 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
               <input
                 type="text"
@@ -600,18 +652,6 @@ export const SurveysPage: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-
-            {/* Filtro de Status */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as SurveyStatus | 'all')}
-              className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-            >
-              <option value="all">Todos os status</option>
-              <option value="draft">Rascunho</option>
-              <option value="active">Ativa</option>
-              <option value="closed">Encerrada</option>
-            </select>
 
             {/* Filtro de Publicação */}
             <select
@@ -646,7 +686,7 @@ export const SurveysPage: React.FC = () => {
             <FileText className="w-16 h-16 text-zinc-300 dark:text-zinc-600 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Nenhuma pesquisa encontrada</h3>
             <p className="text-zinc-500 dark:text-zinc-400">
-              {searchTerm || statusFilter !== 'all' || publishedFilter !== 'all'
+              {searchTerm || publishedFilter !== 'all'
                 ? 'Tente ajustar os filtros para encontrar o que procura.'
                 : 'Comece criando uma nova pesquisa.'}
             </p>
@@ -655,9 +695,6 @@ export const SurveysPage: React.FC = () => {
           <>
             <div className="grid grid-cols-1 gap-4">
               {surveys.map((survey) => {
-                const statusLabel = surveyStatusLabels[survey.status] || survey.status;
-                const statusColor = surveyStatusColors[survey.status] || 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400';
-
                 return (
                   <motion.div
                     key={survey.id}
@@ -673,9 +710,6 @@ export const SurveysPage: React.FC = () => {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-bold text-lg text-zinc-900 dark:text-white">{survey.title}</h3>
-                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${statusColor}`}>
-                              {statusLabel.toUpperCase()}
-                            </span>
                             {survey.is_published ? (
                               <span className="px-2 py-1 rounded-full text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 flex items-center gap-1">
                                 <CheckCircle size={12} />
@@ -825,8 +859,15 @@ export const SurveysPage: React.FC = () => {
                   Dados Básicos
                 </button>
                 <button
-                  onClick={() => setActiveTab('users')}
-                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  onClick={() => {
+                    if (!isBasicDataComplete()) {
+                      addToast('warning', 'Preencha todos os campos de Dados Básicos para continuar.');
+                      return;
+                    }
+                    setActiveTab('users');
+                  }}
+                  disabled={!isBasicDataComplete()}
+                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                     activeTab === 'users'
                       ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
                       : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
@@ -835,8 +876,19 @@ export const SurveysPage: React.FC = () => {
                   Participantes ({selectedUsers.length})
                 </button>
                 <button
-                  onClick={() => setActiveTab('questions')}
-                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  onClick={() => {
+                    if (!isBasicDataComplete()) {
+                      addToast('warning', 'Preencha todos os campos de Dados Básicos primeiro.');
+                      return;
+                    }
+                    if (selectedUsers.length === 0) {
+                      addToast('warning', 'Selecione pelo menos 1 participante.');
+                      return;
+                    }
+                    setActiveTab('questions');
+                  }}
+                  disabled={!isBasicDataComplete() || selectedUsers.length === 0}
+                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                     activeTab === 'questions'
                       ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
                       : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
@@ -862,6 +914,120 @@ export const SurveysPage: React.FC = () => {
                         placeholder="Ex: Pesquisa de Clima Organizacional 2026"
                         className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                       />
+                    </div>
+
+                    {/* Tipo de Pesquisa */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                        Tipo de Pesquisa *
+                      </label>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+                        Escolha o formato das questões. Todas as questões seguirão este padrão.
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, survey_type: 'choice' });
+                            // Limpa questões existentes se mudar o tipo
+                            setQuestions([]);
+                          }}
+                          className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-3 ${
+                            formData.survey_type === 'choice'
+                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md'
+                              : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
+                          }`}
+                        >
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                            formData.survey_type === 'choice'
+                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                          }`}>
+                            <BarChart3 size={24} />
+                          </div>
+                          <div className="text-center">
+                            <p className="font-semibold text-sm text-zinc-900 dark:text-white">Múltipla Escolha</p>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Opções de resposta</p>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, survey_type: 'text' });
+                            // Limpa questões existentes se mudar o tipo
+                            setQuestions([]);
+                          }}
+                          className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-3 ${
+                            formData.survey_type === 'text'
+                              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-md'
+                              : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
+                          }`}
+                        >
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                            formData.survey_type === 'text'
+                              ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                          }`}>
+                            <FileText size={24} />
+                          </div>
+                          <div className="text-center">
+                            <p className="font-semibold text-sm text-zinc-900 dark:text-white">Texto Aberto</p>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Respostas livres</p>
+                          </div>
+                        </button>
+                      </div>
+                      {formData.survey_type ? (
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
+                          <CheckCircle size={12} />
+                          Tipo selecionado: {formData.survey_type === 'choice' ? 'Múltipla Escolha' : 'Texto Aberto'}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+                          <Shield size={12} />
+                          Selecione um tipo para continuar
+                        </p>
+                      )}
+                      
+                      {/* Checklist do que falta preencher */}
+                      {!isBasicDataComplete() && (
+                        <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+                          <p className="text-xs font-semibold text-amber-800 dark:text-amber-400 mb-2">
+                            📋 Preencha os campos obrigatórios:
+                          </p>
+                          <div className="space-y-1">
+                            {!formData.title.trim() && (
+                              <p className="text-xs text-amber-700 dark:text-amber-500 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                Título da pesquisa
+                              </p>
+                            )}
+                            {!formData.survey_type && (
+                              <p className="text-xs text-amber-700 dark:text-amber-500 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                Tipo de pesquisa
+                              </p>
+                            )}
+                            {!formData.starts_at && (
+                              <p className="text-xs text-amber-700 dark:text-amber-500 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                Data de início
+                              </p>
+                            )}
+                            {!formData.ends_at && (
+                              <p className="text-xs text-amber-700 dark:text-amber-500 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                Data de término
+                              </p>
+                            )}
+                            {(!formData.is_anonymous && !formData.is_published && !formData.coins_reward) && (
+                              <p className="text-xs text-amber-700 dark:text-amber-500 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                Pelo menos uma opção (Anônima, Publicar ou Recompensa)
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -1248,98 +1414,185 @@ export const SurveysPage: React.FC = () => {
                 {/* Tab Questões */}
                 {activeTab === 'questions' && (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                        Adicione as questões da pesquisa:
-                      </p>
-                      <button
-                        onClick={addQuestion}
-                        className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
-                      >
-                        <Plus size={14} />
-                        Adicionar Questão
-                      </button>
+                    {/* Header com instruções */}
+                    <div className={`rounded-xl p-4 border ${
+                      formData.survey_type === 'choice'
+                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800'
+                        : 'bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-emerald-200 dark:border-emerald-800'
+                    }`}>
+                      <div className="flex items-start gap-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          formData.survey_type === 'choice'
+                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                            : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                        }`}>
+                          {formData.survey_type === 'choice' ? <BarChart3 size={20} /> : <FileText size={20} />}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-zinc-900 dark:text-white">
+                            {formData.survey_type === 'choice' ? 'Questões de Múltipla Escolha' : 'Questões de Texto Aberto'}
+                          </h3>
+                          <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                            {formData.survey_type === 'choice'
+                              ? 'Adicione questões com opções de resposta. Os participantes selecionarão uma alternativa.'
+                              : 'Adicione questões com respostas livres. Os participantes digitarão suas respostas.'}
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
+                    {/* Botão adicionar questão */}
+                    <button
+                      onClick={addQuestion}
+                      className="w-full border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-xl p-4 text-zinc-500 dark:text-zinc-400 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center justify-center gap-2 font-medium"
+                    >
+                      <PlusCircle size={20} />
+                      Adicionar Nova Questão
+                    </button>
+
                     {questions.length === 0 ? (
-                      <div className="text-center py-12 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl">
-                        <FileText className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
-                        <p className="text-zinc-500 dark:text-zinc-400">Nenhuma questão adicionada</p>
-                        <button
-                          onClick={addQuestion}
-                          className="mt-2 text-emerald-600 dark:text-emerald-400 font-medium hover:underline"
-                        >
-                          Adicionar primeira questão
-                        </button>
+                      <div className="text-center py-12 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl bg-zinc-50 dark:bg-zinc-800/30">
+                        <FileText className="w-16 h-16 text-zinc-300 dark:text-zinc-600 mx-auto mb-4" />
+                        <p className="text-zinc-500 dark:text-zinc-400 font-medium">Nenhuma questão adicionada</p>
+                        <p className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
+                          Clique em "Adicionar Nova Questão" para começar
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-4">
                         {questions.map((question, qIndex) => (
-                          <div key={qIndex} className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-4 bg-white dark:bg-zinc-900">
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                                Questão {question.order}
-                              </span>
-                              <button
-                                onClick={() => removeQuestion(qIndex)}
-                                className="text-zinc-400 hover:text-red-500 transition-colors"
-                              >
-                                <Trash2 size={18} />
-                              </button>
+                          <motion.div
+                            key={qIndex}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-5 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md transition-all"
+                          >
+                            {/* Header da questão */}
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                  formData.survey_type === 'choice'
+                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                                    : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                                }`}>
+                                  {formData.survey_type === 'choice' ? <BarChart3 size={16} /> : <FileText size={16} />}
+                                </div>
+                                <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                                  Questão {question.order}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    const newQuestion = { ...question, order: questions.length + 1 };
+                                    setQuestions([...questions, newQuestion]);
+                                    addToast('success', 'Questão duplicada!');
+                                  }}
+                                  className="p-2 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                                  title="Duplicar questão"
+                                >
+                                  <Copy size={16} />
+                                </button>
+                                <button
+                                  onClick={() => removeQuestion(qIndex)}
+                                  className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                  title="Excluir questão"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              </div>
                             </div>
 
-                            <div className="space-y-3">
-                              <input
-                                type="text"
-                                value={question.question}
-                                onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
-                                placeholder="Digite a pergunta..."
-                                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                              />
-
-                              <div className="flex gap-2">
-                                <select
-                                  value={question.type}
-                                  onChange={(e) => updateQuestion(qIndex, 'type', e.target.value)}
-                                  className="px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
-                                >
-                                  <option value="choice">Múltipla Escolha</option>
-                                  <option value="text">Texto Aberto</option>
-                                </select>
+                            <div className="space-y-4">
+                              {/* Input da pergunta */}
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                                  Pergunta <span className="text-red-500">*</span>
+                                </label>
+                                <textarea
+                                  value={question.question}
+                                  onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
+                                  placeholder="Digite sua pergunta aqui..."
+                                  rows={2}
+                                  className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white resize-none"
+                                />
                               </div>
 
-                              {question.type === 'choice' && (
-                                <div className="space-y-2">
-                                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Opções:</p>
+                              {/* Opções para múltipla escolha */}
+                              {formData.survey_type === 'choice' && (
+                                <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                      Opções de Resposta
+                                    </label>
+                                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                      {question.options?.length || 0} opção(ões)
+                                    </span>
+                                  </div>
+
                                   {question.options?.map((option, oIndex) => (
-                                    <div key={oIndex} className="flex gap-2">
+                                    <div key={oIndex} className="flex gap-2 items-center">
+                                      <div className="w-6 h-6 rounded-full border-2 border-zinc-300 dark:border-zinc-600 flex items-center justify-center flex-shrink-0">
+                                        <div className="w-3 h-3 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+                                      </div>
                                       <input
                                         type="text"
                                         value={option.option_text}
                                         onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
                                         placeholder={`Opção ${oIndex + 1}`}
-                                        className="flex-1 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
+                                        className="flex-1 px-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
                                       />
                                       <button
                                         onClick={() => removeOption(qIndex, oIndex)}
-                                        className="p-2 text-zinc-400 hover:text-red-500 transition-colors"
+                                        className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                        title="Remover opção"
                                       >
                                         <X size={18} />
                                       </button>
                                     </div>
                                   ))}
+
                                   <button
                                     onClick={() => addOption(qIndex)}
-                                    className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                                    className="w-full py-2.5 border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-500 dark:text-zinc-400 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center justify-center gap-2 text-sm font-medium"
                                   >
-                                    <Plus size={14} />
+                                    <Plus size={16} />
                                     Adicionar Opção
                                   </button>
                                 </div>
                               )}
+
+                              {/* Info para texto aberto */}
+                              {formData.survey_type === 'text' && (
+                                <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-3">
+                                  <p className="text-sm text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                                    <CheckCircle size={16} />
+                                    Os participantes poderão digitar uma resposta livre para esta questão
+                                  </p>
+                                </div>
+                              )}
                             </div>
-                          </div>
+                          </motion.div>
                         ))}
+                      </div>
+                    )}
+
+                    {/* Resumo */}
+                    {questions.length > 0 && (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                            <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-blue-900 dark:text-blue-300">
+                              {questions.length} {questions.length === 1 ? 'questão adicionada' : 'questões adicionadas'}
+                            </p>
+                            <p className="text-sm text-blue-700 dark:text-blue-400">
+                              Tipo: {formData.survey_type === 'choice' ? 'Múltipla Escolha' : 'Texto Aberto'}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1351,33 +1604,48 @@ export const SurveysPage: React.FC = () => {
                 {activeTab !== 'basic' && (
                   <button
                     type="button"
-                    onClick={() => setActiveTab(prev => {
-                      if (prev === 'users') return 'basic';
-                      if (prev === 'questions') return 'users';
-                      return 'basic';
-                    })}
+                    onClick={() => {
+                      if (activeTab === 'users') setActiveTab('basic');
+                      if (activeTab === 'questions') setActiveTab('users');
+                    }}
                     className="px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors font-medium"
                   >
                     Voltar
                   </button>
                 )}
                 {activeTab !== 'questions' ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (activeTab === 'basic') setActiveTab('users');
-                      else if (activeTab === 'users') setActiveTab('questions');
-                    }}
-                    className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium"
-                  >
-                    Próximo
-                  </button>
+                  <div className="flex-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (activeTab === 'basic' && !isBasicDataComplete()) {
+                          addToast('warning', 'Preencha todos os campos de Dados Básicos para continuar.');
+                          return;
+                        }
+                        if (activeTab === 'basic') setActiveTab('users');
+                        else if (activeTab === 'users') setActiveTab('questions');
+                      }}
+                      disabled={
+                        (activeTab === 'basic' && !isBasicDataComplete()) ||
+                        (activeTab === 'users' && selectedUsers.length === 0)
+                      }
+                      className="w-full px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium disabled:hover:bg-emerald-600"
+                    >
+                      Próximo
+                    </button>
+                    {activeTab === 'basic' && !isBasicDataComplete() && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5 text-center flex items-center justify-center gap-1">
+                        <Shield size={12} />
+                        Preencha todos os campos acima para continuar
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={saving}
-                    className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                    disabled={saving || questions.length === 0}
+                    className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium disabled:hover:bg-emerald-600"
                   >
                     {saving ? 'Salvando...' : 'Salvar'}
                   </button>
@@ -1416,20 +1684,20 @@ export const SurveysPage: React.FC = () => {
               className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto"
             >
               {/* Header */}
-              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-start sticky top-0 bg-white dark:bg-zinc-900 rounded-t-2xl">
-                <div>
+              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-start sticky top-0 bg-white dark:bg-zinc-900 rounded-t-2xl z-10">
+                <div className="flex-1">
                   <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
                     {resultsModal.survey?.title || 'Resultados'}
                   </h2>
                   {resultsModal.results && (
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                      {resultsModal.results.total_responses} {resultsModal.results.total_responses === 1 ? 'resposta' : 'respostas'} • {resultsModal.results.is_anonymous ? 'Anônimo' : 'Não anônimo'}
+                      {resultsModal.results.is_anonymous ? '🔒 Anônimo' : '👤 Não anônimo'}
                     </p>
                   )}
                 </div>
                 <button
                   onClick={handleCloseResults}
-                  className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                  className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors ml-4"
                 >
                   <X size={24} />
                 </button>
@@ -1460,48 +1728,309 @@ export const SurveysPage: React.FC = () => {
                               <p className="font-medium text-zinc-900 dark:text-white">
                                 {question.question}
                               </p>
-                              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 capitalize">
-                                Tipo: {question.type === 'choice' ? 'Múltipla escolha' : 'Texto aberto'}
-                              </p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <span className="text-xs text-zinc-500 dark:text-zinc-400 capitalize flex items-center gap-1">
+                                  {question.type === 'choice' ? (
+                                    <>
+                                      <BarChart3 size={12} />
+                                      Múltipla escolha
+                                    </>
+                                  ) : (
+                                    <>
+                                      <FileText size={12} />
+                                      Texto aberto
+                                    </>
+                                  )}
+                                </span>
+                              </div>
                             </div>
                           </div>
 
-                          {question.type === 'choice' && question.results.length > 0 && (
-                            <div className="space-y-3">
-                              {question.results.map((result) => {
+                          {/* Múltipla Escolha */}
+                          {question.type === 'choice' && (
+                            <div className="space-y-4">
+                              {(question.results as SurveyResultChoiceOption[]).map((result) => {
                                 const percentage = resultsModal.results!.total_responses > 0
                                   ? Math.round((result.count / resultsModal.results!.total_responses) * 100)
                                   : 0;
+                                const hasUsers = result.users && result.users.length > 0;
+                                
+                                // Filtra usuários pela busca
+                                const filteredUsers = result.users?.filter(u => 
+                                  u.name.toLowerCase().includes(choiceResponseFilter.toLowerCase())
+                                ) || [];
+                                const totalPages = Math.ceil(filteredUsers.length / CHOICE_USERS_PER_PAGE);
+                                const currentPage = Math.min(choiceResponsePage, totalPages || 1);
+                                const startIndex = (currentPage - 1) * CHOICE_USERS_PER_PAGE;
+                                const displayedUsers = filteredUsers.slice(startIndex, startIndex + CHOICE_USERS_PER_PAGE);
+
                                 return (
-                                  <div key={result.option_id}>
-                                    <div className="flex justify-between items-center mb-1">
-                                      <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                                  <div key={result.option_id} className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                                         {result.option_text}
                                       </span>
-                                      <span className="text-sm font-medium text-zinc-900 dark:text-white">
+                                      <span className="text-sm font-semibold text-zinc-900 dark:text-white">
                                         {result.count} ({percentage}%)
                                       </span>
                                     </div>
-                                    <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2.5 overflow-hidden">
+                                    <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-3 overflow-hidden">
                                       <div
-                                        className="bg-emerald-600 h-2.5 rounded-full transition-all duration-500"
+                                        className={`h-3 rounded-full transition-all duration-500 ${
+                                          percentage > 0 ? 'bg-emerald-600' : 'bg-zinc-400 dark:bg-zinc-600'
+                                        }`}
                                         style={{ width: `${percentage}%` }}
                                       />
                                     </div>
+                                    {hasUsers && !resultsModal.results?.is_anonymous && (
+                                      <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-700">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
+                                            <User size={12} />
+                                            Quem respondeu:
+                                          </p>
+                                          <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                                            {filteredUsers.length} {filteredUsers.length === 1 ? 'pessoa' : 'pessoas'}
+                                          </span>
+                                        </div>
+                                        
+                                        {/* Input de filtro */}
+                                        {filteredUsers.length > 5 && (
+                                          <div className="mb-3">
+                                            <div className="relative">
+                                              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                                              <input
+                                                type="text"
+                                                placeholder="Filtrar por nome..."
+                                                value={choiceResponseFilter}
+                                                onChange={(e) => {
+                                                  setChoiceResponseFilter(e.target.value);
+                                                  setChoiceResponsePage(1);
+                                                }}
+                                                className="w-full pl-8 pr-8 py-1.5 text-xs border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                                              />
+                                              {choiceResponseFilter && (
+                                                <button
+                                                  onClick={() => {
+                                                    setChoiceResponseFilter('');
+                                                    setChoiceResponsePage(1);
+                                                  }}
+                                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                                                >
+                                                  <X size={12} />
+                                                </button>
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+                                        
+                                        {/* Lista de usuários */}
+                                        {filteredUsers.length === 0 ? (
+                                          <p className="text-xs text-zinc-400 dark:text-zinc-500 italic">
+                                            {choiceResponseFilter ? 'Nenhum usuário encontrado com este filtro.' : 'Nenhuma resposta.'}
+                                          </p>
+                                        ) : (
+                                          <>
+                                            <div className="flex flex-wrap gap-2">
+                                              {displayedUsers.map((user) => {
+                                                const hasProfileImage = user.profile_image_path && user.profile_image_path.trim() !== '';
+                                                
+                                                return (
+                                                  <div
+                                                    key={user.id}
+                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-emerald-300 dark:hover:border-emerald-600 transition-colors"
+                                                    title={user.name}
+                                                  >
+                                                    {hasProfileImage ? (
+                                                      <img
+                                                        src={user.profile_image_path}
+                                                        alt={user.name}
+                                                        className="w-5 h-5 rounded-full object-cover border border-emerald-200 dark:border-emerald-800"
+                                                      />
+                                                    ) : (
+                                                      <div className="w-5 h-5 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                                                        <User size={12} className="text-emerald-600 dark:text-emerald-400" />
+                                                      </div>
+                                                    )}
+                                                    <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 max-w-[120px] truncate">
+                                                      {user.name}
+                                                    </span>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                            
+                                            {/* Paginação */}
+                                            {totalPages > 1 && (
+                                              <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-700">
+                                                <button
+                                                  onClick={() => setChoiceResponsePage(prev => Math.max(prev - 1, 1))}
+                                                  disabled={currentPage === 1}
+                                                  className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                >
+                                                  <ChevronLeft size={14} />
+                                                </button>
+                                                <span className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">
+                                                  Página {currentPage} de {totalPages}
+                                                </span>
+                                                <button
+                                                  onClick={() => setChoiceResponsePage(prev => Math.min(prev + 1, totalPages))}
+                                                  disabled={currentPage === totalPages}
+                                                  className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                >
+                                                  <ChevronRight size={14} />
+                                                </button>
+                                              </div>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               })}
                             </div>
                           )}
 
+                          {/* Texto Aberto */}
                           {question.type === 'text' && (
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400 italic">
-                              Respostas de texto não são exibidas neste resumo.
-                            </p>
+                            <div className="space-y-3">
+                              {Array.isArray(question.results) && question.results.length > 0 ? (
+                                (() => {
+                                  // Filtra respostas pela busca (nome do usuário ou texto)
+                                  const filteredResponses = (question.results as SurveyResultTextOption[]).filter(answer => {
+                                    const searchLower = textResponseFilter.toLowerCase();
+                                    const userName = answer.user?.name?.toLowerCase() || '';
+                                    const textAnswer = answer.text_answer?.toLowerCase() || '';
+                                    return userName.includes(searchLower) || textAnswer.includes(searchLower);
+                                  });
+                                  
+                                  const totalPages = Math.ceil(filteredResponses.length / TEXT_RESPONSES_PER_PAGE);
+                                  const currentPage = Math.min(textResponsePage, totalPages || 1);
+                                  const startIndex = (currentPage - 1) * TEXT_RESPONSES_PER_PAGE;
+                                  const displayedResponses = filteredResponses.slice(startIndex, startIndex + TEXT_RESPONSES_PER_PAGE);
+                                  
+                                  return (
+                                    <>
+                                      {/* Filtro */}
+                                      {filteredResponses.length > 5 && (
+                                        <div className="mb-3">
+                                          <div className="relative">
+                                            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                                            <input
+                                              type="text"
+                                              placeholder="Filtrar por nome ou texto..."
+                                              value={textResponseFilter}
+                                              onChange={(e) => {
+                                                setTextResponseFilter(e.target.value);
+                                                setTextResponsePage(1);
+                                              }}
+                                              className="w-full pl-8 pr-8 py-1.5 text-xs border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                                            />
+                                            {textResponseFilter && (
+                                              <button
+                                                onClick={() => {
+                                                  setTextResponseFilter('');
+                                                  setTextResponsePage(1);
+                                                }}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                                              >
+                                                <X size={12} />
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Lista de respostas */}
+                                      {filteredResponses.length === 0 ? (
+                                        <p className="text-sm text-zinc-500 dark:text-zinc-400 italic text-center py-4">
+                                          {textResponseFilter ? 'Nenhuma resposta encontrada com este filtro.' : 'Nenhuma resposta ainda.'}
+                                        </p>
+                                      ) : (
+                                        <>
+                                          <div className="space-y-3">
+                                            {displayedResponses.map((answer, idx) => {
+                                              const hasProfileImage = answer.user?.profile_image_path && answer.user.profile_image_path.trim() !== '';
+                                              
+                                              return (
+                                                <div
+                                                  key={idx}
+                                                  className="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl p-4"
+                                                >
+                                                  <div className="flex items-start gap-3">
+                                                    <div className="flex-shrink-0">
+                                                      {!resultsModal.results?.is_anonymous ? (
+                                                        hasProfileImage ? (
+                                                          <img
+                                                            src={answer.user.profile_image_path}
+                                                            alt={answer.user.name}
+                                                            className="w-10 h-10 rounded-full object-cover border-2 border-emerald-200 dark:border-emerald-800"
+                                                          />
+                                                        ) : (
+                                                          <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
+                                                            <User size={20} className="text-emerald-600 dark:text-emerald-400" />
+                                                          </div>
+                                                        )
+                                                      ) : (
+                                                        <div className="w-10 h-10 bg-zinc-200 dark:bg-zinc-700 rounded-full flex items-center justify-center">
+                                                          <User size={20} className="text-zinc-400 dark:text-zinc-500" />
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                      {!resultsModal.results?.is_anonymous ? (
+                                                        <p className="text-sm font-semibold text-zinc-900 dark:text-white mb-1">
+                                                          {answer.user?.name || 'Usuário'}
+                                                        </p>
+                                                      ) : null}
+                                                      <p className="text-sm text-zinc-700 dark:text-zinc-300 italic leading-relaxed break-words">
+                                                        "{answer.text_answer}"
+                                                      </p>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                          
+                                          {/* Paginação */}
+                                          {totalPages > 1 && (
+                                            <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+                                              <button
+                                                onClick={() => setTextResponsePage(prev => Math.max(prev - 1, 1))}
+                                                disabled={currentPage === 1}
+                                                className="p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                              >
+                                                <ChevronLeft size={16} />
+                                              </button>
+                                              <span className="text-sm text-zinc-600 dark:text-zinc-400 font-medium">
+                                                Página {currentPage} de {totalPages} ({filteredResponses.length} {filteredResponses.length === 1 ? 'resposta' : 'respostas'})
+                                              </span>
+                                              <button
+                                                onClick={() => setTextResponsePage(prev => Math.min(prev + 1, totalPages))}
+                                                disabled={currentPage === totalPages}
+                                                className="p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                              >
+                                                <ChevronRight size={16} />
+                                              </button>
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+                                    </>
+                                  );
+                                })()
+                              ) : (
+                                <p className="text-sm text-zinc-500 dark:text-zinc-400 italic text-center py-4">
+                                  Nenhuma resposta ainda.
+                                </p>
+                              )}
+                            </div>
                           )}
 
-                          {question.type === 'choice' && question.results.length === 0 && (
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400 italic">
+                          {question.type === 'choice' && (!Array.isArray(question.results) || question.results.length === 0) && (
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400 italic text-center py-4">
                               Nenhuma resposta ainda.
                             </p>
                           )}
