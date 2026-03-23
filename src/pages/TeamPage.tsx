@@ -8,6 +8,7 @@ import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { userSchema, userUpdateSchema } from '../validators/schemas';
+import { getFullImageUrl } from '../utils';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -357,7 +358,7 @@ export const TeamPage: React.FC = () => {
                     <div className="flex items-center gap-3 flex-1">
                       <div className="w-14 h-14 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 overflow-hidden border-2 border-emerald-200 dark:border-emerald-800 flex-shrink-0">
                         {user.profile_image_url ? (
-                          <img src={user.profile_image_url} alt={user.name} className="w-full h-full object-cover" />
+                          <img src={getFullImageUrl(user.profile_image_url) || ''} alt={user.name} className="w-full h-full object-cover" />
                         ) : (
                           <User size={28} />
                         )}
@@ -497,13 +498,13 @@ export const TeamPage: React.FC = () => {
                         {formData.photo ? (
                           <img 
                             src={URL.createObjectURL(formData.photo)} 
-                            alt="Preview" 
+                            alt="Preview"
                             className="w-full h-full object-cover"
                           />
                         ) : editingUser?.profile_image_url ? (
-                          <img 
-                            src={editingUser.profile_image_url} 
-                            alt={editingUser.name} 
+                          <img
+                            src={getFullImageUrl(editingUser.profile_image_url) || ''}
+                            alt={editingUser.name}
                             className="w-full h-full object-cover"
                           />
                         ) : (

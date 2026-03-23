@@ -7,6 +7,7 @@ import { User as UserType, Feedback } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { feedbackSchema } from '../validators/schemas';
+import { getFullImageUrl } from '../utils';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -292,7 +293,7 @@ export const FeedbacksPage: React.FC = () => {
                     >
                       <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 dark:text-zinc-500 mb-4 overflow-hidden border border-zinc-100 dark:border-zinc-700">
                         {user.profile_image_url ? (
-                          <img src={user.profile_image_url} alt={user.name} className="w-full h-full object-cover" />
+                          <img src={getFullImageUrl(user.profile_image_url) || ''} alt={user.name} className="w-full h-full object-cover" />
                         ) : (
                           <User size={32} />
                         )}
@@ -379,7 +380,7 @@ export const FeedbacksPage: React.FC = () => {
                       >
                         <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 dark:text-zinc-500 flex-shrink-0 overflow-hidden border border-zinc-100 dark:border-zinc-700">
                           {!isAnonymous && sender?.profile_image_url ? (
-                            <img src={sender.profile_image_url} alt={sender.name} className="w-full h-full object-cover" />
+                            <img src={getFullImageUrl(sender.profile_image_url) || ''} alt={sender.name} className="w-full h-full object-cover" />
                           ) : (
                             <User size={24} />
                           )}
@@ -489,7 +490,7 @@ export const FeedbacksPage: React.FC = () => {
                       >
                         <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 dark:text-zinc-500 flex-shrink-0 overflow-hidden border border-zinc-100 dark:border-zinc-700">
                           {!isAnonymous && sender?.profile_image_url ? (
-                            <img src={sender.profile_image_url} alt={sender.name} className="w-full h-full object-cover" />
+                            <img src={getFullImageUrl(sender.profile_image_url) || ''} alt={sender.name} className="w-full h-full object-cover" />
                           ) : (
                             <User size={24} />
                           )}
@@ -584,7 +585,7 @@ export const FeedbacksPage: React.FC = () => {
                   <div className="flex items-center gap-3 mb-4 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
                     <div className="w-10 h-10 bg-zinc-200 dark:bg-zinc-700 rounded-full flex items-center justify-center text-zinc-500 dark:text-zinc-400 overflow-hidden">
                       {selectedUser.profile_image_url ? (
-                        <img src={selectedUser.profile_image_url} alt={selectedUser.name} className="w-full h-full object-cover" />
+                        <img src={getFullImageUrl(selectedUser.profile_image_url) || ''} alt={selectedUser.name} className="w-full h-full object-cover" />
                       ) : (
                         <User size={20} />
                       )}
