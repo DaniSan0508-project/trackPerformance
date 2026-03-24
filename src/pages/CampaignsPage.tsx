@@ -513,6 +513,15 @@ export const CampaignsPage: React.FC = () => {
           setActiveTab('actions');
           return;
         }
+        
+        // Valida se todas as ações têm coins válidos (não negativos)
+        const invalidActions = selectedActions.filter(a => !a.coins || a.coins < 0);
+        if (invalidActions.length > 0) {
+          addToast('error', 'Existem ações com valores inválidos. Verifique os coins de cada ação.');
+          setActiveTab('actions');
+          return;
+        }
+        
         if (selectedProducts.length > 0) {
           addToast('error', 'Campanhas de engajamento não podem ter produtos.');
           setActiveTab('products');
@@ -2011,18 +2020,36 @@ export const CampaignsPage: React.FC = () => {
                                     value={actionCoinsInputs[action.id] ?? (selectedActions.find(a => a.id === action.id)?.coins ?? defaultActionCoins[action.name] ?? 10)}
                                     onChange={(e) => {
                                       const val = e.target.value;
-                                      // Sempre atualiza o estado local primeiro
-                                      setActionCoinsInputs(prev => ({ ...prev, [action.id]: val }));
+                                      // Permite digitar "-" temporariamente, mas não atualiza o estado real
+                                      if (val === '' || val === '-' || /^-?\d*$/.test(val)) {
+                                        setActionCoinsInputs(prev => ({ ...prev, [action.id]: val }));
+                                      }
                                     }}
                                     onBlur={(e) => {
-                                      // Atualiza o estado real apenas quando perde o foco
-                                      const val = e.target.value;
-                                      const numVal = parseInt(val);
-                                      if (!isNaN(numVal) && numVal >= 0) {
-                                        updateActionCoins(action.id, numVal);
-                                      } else {
+                                      // Valida e atualiza o estado real apenas quando perde o foco
+                                      const val = e.target.value.trim();
+                                      
+                                      // Não permite vazio ou apenas "-"
+                                      if (val === '' || val === '-') {
+                                        setActionCoinsInputs(prev => ({ ...prev, [action.id]: '0' }));
                                         updateActionCoins(action.id, 0);
+                                        addToast('warning', 'Valor inválido. Definido como 0.');
+                                        return;
                                       }
+                                      
+                                      const numVal = parseInt(val);
+                                      
+                                      // Não permite negativos
+                                      if (isNaN(numVal) || numVal < 0) {
+                                        setActionCoinsInputs(prev => ({ ...prev, [action.id]: '0' }));
+                                        updateActionCoins(action.id, 0);
+                                        addToast('warning', 'Valores negativos não são permitidos. Definido como 0.');
+                                        return;
+                                      }
+                                      
+                                      // Valor válido
+                                      setActionCoinsInputs(prev => ({ ...prev, [action.id]: String(numVal) }));
+                                      updateActionCoins(action.id, numVal);
                                     }}
                                     onClick={(e) => e.stopPropagation()}
                                     className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
