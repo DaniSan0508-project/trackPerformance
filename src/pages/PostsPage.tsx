@@ -76,6 +76,9 @@ export const PostsPage: React.FC = () => {
   const [editPostModal, setEditPostModal] = useState<Post | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
+  const [editMediaType, setEditMediaType] = useState<'none' | 'image' | 'video'>('none');
+  const [editImage, setEditImage] = useState<File | null>(null);
+  const [editVideoUrl, setEditVideoUrl] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
@@ -295,16 +298,77 @@ export const PostsPage: React.FC = () => {
     if (!token || !editPostModal) return;
 
     setIsUpdating(true);
+    console.log('=== Update Post ===');
+    console.log('editMediaType:', editMediaType);
+    console.log('editImage:', editImage);
+    console.log('editVideoUrl:', editVideoUrl);
+    console.log('Post original:', {
+      image_url: editPostModal.image_url,
+      video_url: editPostModal.video_url
+    });
+    
     try {
-      await api.updatePost(token, editPostModal.id, { title: editTitle, content: editContent });
-      setPosts(prev => prev.map(p => p.id === editPostModal.id ? { ...p, title: editTitle, content: editContent } : p));
+      const formData = new FormData();
+      formData.append('title', editTitle);
+      formData.append('content', editContent);
+
+      // Adicionar mídia se houver mudança
+      if (editMediaType === 'image') {
+        if (editImage) {
+          formData.append('image', editImage);
+          console.log('Enviando nova imagem:', editImage.name);
+          // Se tinha vídeo antes, remover
+          if (editPostModal.video_url) {
+            formData.append('remove_video', 'true');
+            console.log('Removendo vídeo existente');
+          }
+        } else if (editPostModal.image_url) {
+          // Manter imagem atual
+          formData.append('keep_existing_media', 'true');
+          console.log('Mantendo imagem atual');
+        }
+      } else if (editMediaType === 'video') {
+        if (editVideoUrl) {
+          formData.append('video_url', editVideoUrl);
+          console.log('Enviando novo vídeo:', editVideoUrl);
+          // Se tinha imagem antes, remover
+          if (editPostModal.image_url) {
+            formData.append('remove_image', 'true');
+            console.log('Removendo imagem existente');
+          }
+        } else if (editPostModal.video_url) {
+          // Manter vídeo atual
+          formData.append('keep_existing_media', 'true');
+          console.log('Mantendo vídeo atual');
+        }
+      } else if (editMediaType === 'none') {
+        // Remover mídia existente
+        formData.append('remove_media', 'true');
+        console.log('Removendo toda mídia');
+      }
+
+      console.log('FormData enviado:', formData);
+      for (let pair of formData.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
+      }
+
+      // Usar API específica para FormData
+      await api.updatePostWithMedia(token, editPostModal.id, formData);
+
+      // Atualizar lista de posts (refresh completo)
+      await fetchPosts(currentPage, searchTerm);
+
       setEditPostModal(null);
       setEditTitle('');
       setEditContent('');
+      setEditMediaType('none');
+      setEditImage(null);
+      setEditVideoUrl('');
       addToast('success', 'Post atualizado com sucesso!');
     } catch (err: any) {
       console.error('Error updating post:', err);
-      addToast('error', err.message || 'Erro ao atualizar post');
+      const errorMessage = err.response?.data?.message || err.message || 'Erro ao atualizar post';
+      addToast('error', errorMessage);
     } finally {
       setIsUpdating(false);
     }
@@ -314,6 +378,21 @@ export const PostsPage: React.FC = () => {
     setEditPostModal(post);
     setEditTitle(post.title || '');
     setEditContent(post.content);
+    
+    // Inicializar mídia atual do post
+    if (post.video_url) {
+      setEditMediaType('video');
+      setEditVideoUrl(post.video_url);
+      setEditImage(null);
+    } else if (post.image_url) {
+      setEditMediaType('image');
+      setEditVideoUrl('');
+    } else {
+      setEditMediaType('none');
+      setEditImage(null);
+      setEditVideoUrl('');
+    }
+    
     setActiveMenuPostId(null);
   };
 
@@ -842,21 +921,23 @@ export const PostsPage: React.FC = () => {
         {/* Edit Post Modal */}
         <AnimatePresence>
           {editPostModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-              <motion.div 
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
+                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden my-8 flex flex-col"
+                style={{maxHeight: 'calc(100vh - 4rem)'}}
               >
-                <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
+                <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50 flex-shrink-0">
                   <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Editar Post</h2>
                   <button onClick={() => setEditPostModal(null)} className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
                     <X size={24} />
                   </button>
                 </div>
-                
-                <form onSubmit={handleUpdatePost} className="p-6 space-y-4">
+
+                <div className="overflow-y-auto flex-1">
+                  <form onSubmit={handleUpdatePost} className="p-6 space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                       Título *
@@ -884,6 +965,180 @@ export const PostsPage: React.FC = () => {
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      Mídia (Opcional)
+                    </label>
+                    
+                    {/* Mostrar mídia atual se existir */}
+                    {(editPostModal.image_url || editPostModal.video_url) && (
+                      <div className="mb-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">Mídia atual:</p>
+                        {editPostModal.video_url ? (
+                          <div className="relative rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+                            <img
+                              src={editPostModal.video_thumbnail_url || getYouTubeThumbnailUrl(editPostModal.video_url) || ''}
+                              alt="Current video"
+                              className="w-full h-40 object-contain bg-black"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center">
+                                <div className="w-0 h-0 border-t-6 border-t-transparent border-l-10 border-l-white border-b-6 border-b-transparent ml-1"></div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="relative rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center" style={{minHeight: '160px', maxHeight: '240px'}}>
+                            <img
+                              src={editPostModal.image_full_url || ''}
+                              alt="Current image"
+                              className="max-w-full max-h-60 object-contain"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex gap-3 mb-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editMediaType === 'image') {
+                            setEditMediaType('none');
+                            setEditImage(null);
+                          } else {
+                            setEditMediaType('image');
+                            setEditVideoUrl('');
+                          }
+                        }}
+                        className={`flex-1 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+                          editMediaType === 'image'
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                        }`}
+                      >
+                        <ImageIcon size={18} />
+                        Imagem
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editMediaType === 'video') {
+                            setEditMediaType('none');
+                            setEditVideoUrl('');
+                          } else {
+                            setEditMediaType('video');
+                            setEditImage(null);
+                          }
+                        }}
+                        className={`flex-1 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+                          editMediaType === 'video'
+                            ? 'bg-red-600 text-white'
+                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                        }`}
+                      >
+                        <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                        </svg>
+                        YouTube
+                      </button>
+                    </div>
+
+                    {/* Campo de Imagem */}
+                    {editMediaType === 'image' && (
+                      <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-zinc-300 dark:border-zinc-700 border-dashed rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer relative">
+                        <div className="space-y-1 text-center">
+                          {editImage ? (
+                            <div className="relative">
+                              <img
+                                src={URL.createObjectURL(editImage)}
+                                alt="Preview"
+                                className="mx-auto h-48 object-contain rounded-lg"
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  setEditImage(null);
+                                  setEditMediaType('none');
+                                }}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                              >
+                                <X size={16} />
+                              </button>
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">{editImage.name}</p>
+                            </div>
+                          ) : (
+                            <>
+                              <ImageIcon className="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-500" />
+                              <div className="flex text-sm text-zinc-600 dark:text-zinc-400 justify-center">
+                                <label
+                                  htmlFor="edit-file-upload"
+                                  className="relative cursor-pointer bg-white dark:bg-zinc-900 rounded-md font-medium text-emerald-600 hover:text-emerald-500 focus-within:outline-none"
+                                >
+                                  <span>Upload um arquivo</span>
+                                  <input
+                                    id="edit-file-upload"
+                                    name="edit-file-upload"
+                                    type="file"
+                                    className="sr-only"
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      if (e.target.files && e.target.files[0]) {
+                                        setEditImage(e.target.files[0]);
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                PNG, JPG, GIF até 5MB
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Campo de Vídeo */}
+                    {editMediaType === 'video' && (
+                      <div>
+                        <input
+                          type="text"
+                          value={editVideoUrl}
+                          onChange={(e) => setEditVideoUrl(e.target.value)}
+                          className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+                          placeholder="https://www.youtube.com/watch?v=..."
+                        />
+                        {editVideoUrl && (
+                          <div className="mt-2">
+                            {(() => {
+                              const videoId = extractYouTubeVideoId(editVideoUrl);
+                              if (videoId) {
+                                return (
+                                  <div className="relative rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                                    <img
+                                      src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
+                                      alt="YouTube thumbnail"
+                                      className="w-full h-48 object-cover"
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                      <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
+                                        <div className="w-0 h-0 border-t-8 border-t-transparent border-l-12 border-l-white border-b-8 border-b-transparent ml-1"></div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="pt-2 flex gap-3">
                     <button
                       type="button"
@@ -894,14 +1149,16 @@ export const PostsPage: React.FC = () => {
                     </button>
                     <button
                       type="submit"
-                      disabled={isUpdating || !editContent.trim()}
+                      disabled={isUpdating || !editContent.trim() || editMediaType === 'none'}
                       className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={editMediaType === 'none' ? 'Selecione uma imagem ou vídeo do YouTube' : ''}
                     >
                       {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <Edit size={18} />}
                       Salvar Alterações
                     </button>
                   </div>
                 </form>
+                </div>
               </motion.div>
             </div>
           )}

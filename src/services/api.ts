@@ -177,6 +177,24 @@ export const api = {
     return response.json();
   },
 
+  updatePostWithMedia: async (token: string, id: number, formData: FormData) => {
+    const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+      body: formData,
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error = new Error('Falha ao atualizar post');
+      (error as any).response = { data: errorData, status: response.status };
+      throw error;
+    }
+    return response.json();
+  },
+
   deletePost: async (token: string, id: number) => {
     const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
       method: 'DELETE',
