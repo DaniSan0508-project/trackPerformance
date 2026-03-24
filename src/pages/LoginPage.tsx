@@ -55,12 +55,12 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-200 relative overflow-hidden">
       {/* Background Image & Overlay */}
       <div className="absolute inset-0 z-0">
-        <img 
+        <img
           src={loginBackgroundImage}
-          alt="Background" 
+          alt="Background"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-zinc-900/40 dark:bg-zinc-950/50 backdrop-blur-sm"></div>z
+        <div className="absolute inset-0 bg-zinc-900/30 dark:bg-zinc-950/40 backdrop-blur-[2px]"></div>
       </div>
 
       <motion.div 
