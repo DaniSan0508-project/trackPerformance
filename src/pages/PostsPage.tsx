@@ -60,6 +60,7 @@ export const PostsPage: React.FC = () => {
   const [commentsModalPost, setCommentsModalPost] = useState<Post | null>(null);
   const [shareModalPost, setShareModalPost] = useState<Post | null>(null);
   const [contentModalPost, setContentModalPost] = useState<Post | null>(null);
+  const [videoModalPost, setVideoModalPost] = useState<Post | null>(null);
   
   // Create Post state
   const [createPostModal, setCreatePostModal] = useState(false);
@@ -67,6 +68,7 @@ export const PostsPage: React.FC = () => {
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostImage, setNewPostImage] = useState<File | null>(null);
   const [newPostVideoUrl, setNewPostVideoUrl] = useState('');
+  const [mediaType, setMediaType] = useState<'none' | 'image' | 'video'>('none');
   const [isCreating, setIsCreating] = useState(false);
 
   // Edit/Delete state
@@ -205,6 +207,7 @@ export const PostsPage: React.FC = () => {
       setNewPostContent('');
       setNewPostImage(null);
       setNewPostVideoUrl('');
+      setMediaType('none');
 
       // Refresh posts
       fetchPosts(1, searchTerm);
@@ -485,15 +488,18 @@ export const PostsPage: React.FC = () => {
                   {(post.image_full_url || post.video_url) && (
                     <div className="w-full bg-zinc-50 dark:bg-zinc-900 border-y border-zinc-100 dark:border-zinc-800 aspect-square flex items-center justify-center overflow-hidden">
                       {post.video_url ? (
-                        <div className="relative w-full h-full">
+                        <div 
+                          className="relative w-full h-full cursor-pointer group"
+                          onClick={() => setVideoModalPost(post)}
+                        >
                           <img
                             src={post.video_thumbnail_url || getYouTubeThumbnailUrl(post.video_url) || ''}
                             alt="YouTube video thumbnail"
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                             loading="lazy"
                           />
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-lg">
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
+                            <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                               <div className="w-0 h-0 border-t-12 border-t-transparent border-l-20 border-l-white border-b-12 border-b-transparent ml-1"></div>
                             </div>
                           </div>
@@ -796,6 +802,43 @@ export const PostsPage: React.FC = () => {
             </div>
           )}
         </AnimatePresence>
+        {/* Video Modal */}
+        <AnimatePresence>
+          {videoModalPost && (
+            <div 
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+              onClick={() => setVideoModalPost(null)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-4xl aspect-video"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button 
+                  onClick={() => setVideoModalPost(null)}
+                  className="absolute -top-10 right-0 text-white hover:text-zinc-300 transition-colors z-10"
+                >
+                  <X size={32} />
+                </button>
+                <div className="w-full h-full bg-black rounded-lg overflow-hidden">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${extractYouTubeVideoId(videoModalPost.video_url || '')}?autoplay=1&rel=0`}
+                    title="YouTube video player"
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+                <div className="mt-4 text-white">
+                  <h3 className="text-lg font-bold mb-1">{videoModalPost.title}</h3>
+                  <p className="text-sm text-zinc-400">Por {videoModalPost.user?.name || 'Usuário'}</p>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
         {/* Edit Post Modal */}
         <AnimatePresence>
           {editPostModal && (
@@ -909,96 +952,145 @@ export const PostsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                      Imagem (Opcional)
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      Mídia (Opcional)
                     </label>
-                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-zinc-300 dark:border-zinc-700 border-dashed rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer relative">
-                      <div className="space-y-1 text-center">
-                        {newPostImage ? (
-                          <div className="relative">
-                            <img 
-                              src={URL.createObjectURL(newPostImage)} 
-                              alt="Preview" 
-                              className="mx-auto h-48 object-contain rounded-lg"
-                            />
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                setNewPostImage(null);
-                              }}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                            >
-                              <X size={16} />
-                            </button>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">{newPostImage.name}</p>
-                          </div>
-                        ) : (
-                          <>
-                            <ImageIcon className="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-500" />
-                            <div className="flex text-sm text-zinc-600 dark:text-zinc-400 justify-center">
-                              <label
-                                htmlFor="file-upload"
-                                className="relative cursor-pointer bg-white dark:bg-zinc-900 rounded-md font-medium text-emerald-600 hover:text-emerald-500 focus-within:outline-none"
-                              >
-                                <span>Upload um arquivo</span>
-                                <input 
-                                  id="file-upload" 
-                                  name="file-upload" 
-                                  type="file" 
-                                  className="sr-only" 
-                                  accept="image/*"
-                                  onChange={(e) => {
-                                    if (e.target.files && e.target.files[0]) {
-                                      setNewPostImage(e.target.files[0]);
-                                    }
-                                  }}
-                                />
-                              </label>
-                            </div>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                              PNG, JPG, GIF até 5MB
-                            </p>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                      Vídeo do YouTube (Opcional)
-                    </label>
-                    <input
-                      type="text"
-                      value={newPostVideoUrl}
-                      onChange={(e) => setNewPostVideoUrl(e.target.value)}
-                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
-                      placeholder="https://www.youtube.com/watch?v=..."
-                    />
-                    {newPostVideoUrl && (
-                      <div className="mt-2">
-                        {(() => {
-                          const videoId = extractYouTubeVideoId(newPostVideoUrl);
-                          if (videoId) {
-                            return (
-                              <div className="relative rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                                <img
-                                  src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
-                                  alt="YouTube thumbnail"
-                                  className="w-full h-48 object-cover"
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                  <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
-                                    <div className="w-0 h-0 border-t-8 border-t-transparent border-l-12 border-l-white border-b-8 border-b-transparent ml-1"></div>
-                                  </div>
-                                </div>
-                              </div>
-                            );
+                    <div className="flex gap-3 mb-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (mediaType === 'image') {
+                            setMediaType('none');
+                            setNewPostImage(null);
+                          } else {
+                            setMediaType('image');
+                            setNewPostVideoUrl('');
                           }
-                          return null;
-                        })()}
+                        }}
+                        className={`flex-1 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+                          mediaType === 'image'
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                        }`}
+                      >
+                        <ImageIcon size={18} />
+                        Imagem
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (mediaType === 'video') {
+                            setMediaType('none');
+                            setNewPostVideoUrl('');
+                          } else {
+                            setMediaType('video');
+                            setNewPostImage(null);
+                          }
+                        }}
+                        className={`flex-1 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+                          mediaType === 'video'
+                            ? 'bg-red-600 text-white'
+                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                        }`}
+                      >
+                        <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                        </svg>
+                        YouTube
+                      </button>
+                    </div>
+
+                    {/* Campo de Imagem */}
+                    {mediaType === 'image' && (
+                      <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-zinc-300 dark:border-zinc-700 border-dashed rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer relative">
+                        <div className="space-y-1 text-center">
+                          {newPostImage ? (
+                            <div className="relative">
+                              <img
+                                src={URL.createObjectURL(newPostImage)}
+                                alt="Preview"
+                                className="mx-auto h-48 object-contain rounded-lg"
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  setNewPostImage(null);
+                                  setMediaType('none');
+                                }}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                              >
+                                <X size={16} />
+                              </button>
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">{newPostImage.name}</p>
+                            </div>
+                          ) : (
+                            <>
+                              <ImageIcon className="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-500" />
+                              <div className="flex text-sm text-zinc-600 dark:text-zinc-400 justify-center">
+                                <label
+                                  htmlFor="file-upload"
+                                  className="relative cursor-pointer bg-white dark:bg-zinc-900 rounded-md font-medium text-emerald-600 hover:text-emerald-500 focus-within:outline-none"
+                                >
+                                  <span>Upload um arquivo</span>
+                                  <input
+                                    id="file-upload"
+                                    name="file-upload"
+                                    type="file"
+                                    className="sr-only"
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      if (e.target.files && e.target.files[0]) {
+                                        setNewPostImage(e.target.files[0]);
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                PNG, JPG, GIF até 5MB
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Campo de Vídeo */}
+                    {mediaType === 'video' && (
+                      <div>
+                        <input
+                          type="text"
+                          value={newPostVideoUrl}
+                          onChange={(e) => setNewPostVideoUrl(e.target.value)}
+                          className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+                          placeholder="https://www.youtube.com/watch?v=..."
+                        />
+                        {newPostVideoUrl && (
+                          <div className="mt-2">
+                            {(() => {
+                              const videoId = extractYouTubeVideoId(newPostVideoUrl);
+                              if (videoId) {
+                                return (
+                                  <div className="relative rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                                    <img
+                                      src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
+                                      alt="YouTube thumbnail"
+                                      className="w-full h-48 object-cover"
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                      <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
+                                        <div className="w-0 h-0 border-t-8 border-t-transparent border-l-12 border-l-white border-b-8 border-b-transparent ml-1"></div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
