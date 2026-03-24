@@ -1,4 +1,4 @@
-import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward, Campaign, CampaignAction, Product, CampaignRanking, Redemption, RedemptionStatus, Survey } from '../types';
+import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward, Campaign, CampaignAction, Product, CampaignRanking, Redemption, RedemptionStatus, Survey, CoinStatementResponse } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8010/api/v1';
 
@@ -662,9 +662,9 @@ export const api = {
       });
       if (!response.ok) throw new Error('Falha ao carregar fabricantes');
       const data = await response.json() as PaginatedResponse<any>;
-      
+
       allManufacturers.push(...(data.data || []));
-      
+
       if (currentPage >= (data.meta?.last_page || data.last_page || 1)) {
         break;
       }
@@ -672,6 +672,40 @@ export const api = {
     }
 
     return allManufacturers;
+  },
+
+  getCoinStatements: async (
+    token: string,
+    userId: number,
+    page = 1,
+    filters?: {
+      start_date?: string;
+      end_date?: string;
+      created_at?: string;
+    }
+  ) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    queryParams.append('filter[user_id]', userId.toString());
+    
+    if (filters?.start_date) {
+      queryParams.append('filter[start_date]', filters.start_date);
+    }
+    if (filters?.end_date) {
+      queryParams.append('filter[end_date]', filters.end_date);
+    }
+    if (filters?.created_at) {
+      queryParams.append('filter[created_at]', filters.created_at);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/coin-statements?${queryParams.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar extrato');
+    return response.json() as Promise<CoinStatementResponse>;
   },
 
   getCampaignRanking: async (token: string, campaignId: number) => {

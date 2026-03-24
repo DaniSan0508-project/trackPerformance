@@ -343,3 +343,49 @@ export interface SurveyResults {
   total_responses: number;
   questions: SurveyResultQuestion[];
 }
+
+export interface CoinStatement {
+  id: number;
+  tenant_id: number;
+  user_id: number;
+  campaign_id: number | null;
+  action_id: number | null;
+  value: number;
+  operation: 'credit' | 'debit';
+  reference_type: string;
+  reference_id: number;
+  reward_date: string;
+  description: string;
+  created_at: string;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}
+
+export interface CoinStatementSummary {
+  total_credits: number;
+  total_debits: number;
+}
+
+export interface CoinStatementResponse {
+  summary: CoinStatementSummary;
+  current_page: number;
+  data: CoinStatement[];
+  first_page_url: string;
+  from: number;
+  last_page: number;
+  last_page_url: string;
+  links: Array<{
+    url: string | null;
+    label: string;
+    active: boolean;
+  }>;
+  next_page_url: string | null;
+  path: string;
+  per_page: number;
+  prev_page_url: string | null;
+  to: number;
+  total: number;
+}

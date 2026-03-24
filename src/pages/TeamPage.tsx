@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera, LogOut, Store as StoreIcon } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera, LogOut, Store as StoreIcon, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { User as UserType } from '../types';
@@ -9,6 +9,7 @@ import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { userSchema, userUpdateSchema } from '../validators/schemas';
 import { getFullImageUrl } from '../utils';
+import { CoinStatementModal } from '../components/Team';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -60,6 +61,15 @@ export const TeamPage: React.FC = () => {
     message: '',
     onConfirm: async () => {},
     isLoading: false,
+  });
+
+  // Modal de Extrato
+  const [coinStatementModal, setCoinStatementModal] = useState<{
+    isOpen: boolean;
+    user: UserType | null;
+  }>({
+    isOpen: false,
+    user: null,
   });
 
   const [formData, setFormData] = useState({
@@ -145,6 +155,14 @@ export const TeamPage: React.FC = () => {
       });
     }
     setIsModalOpen(true);
+  };
+
+  const handleViewCoinStatement = (user: UserType) => {
+    setCoinStatementModal({ isOpen: true, user });
+  };
+
+  const handleCloseCoinStatement = () => {
+    setCoinStatementModal({ isOpen: false, user: null });
   };
 
   const handleCloseModal = () => {
@@ -371,6 +389,15 @@ export const TeamPage: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleViewCoinStatement(user)}
+                          className="p-2 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                          title="Ver extrato de moedas"
+                        >
+                          <FileText size={16} />
+                        </button>
+                      )}
                       {(isAdmin || currentUser?.id === user.id) && (
                         <button
                           onClick={() => handleOpenModal(user)}
@@ -625,6 +652,14 @@ export const TeamPage: React.FC = () => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Modal de Extrato de Moedas */}
+      <CoinStatementModal
+        isOpen={coinStatementModal.isOpen}
+        user={coinStatementModal.user}
+        token={token}
+        onClose={handleCloseCoinStatement}
+      />
     </Layout>
   );
 };
