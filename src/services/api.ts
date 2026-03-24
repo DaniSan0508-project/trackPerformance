@@ -1,6 +1,6 @@
 import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward, Campaign, CampaignAction, Product, CampaignRanking, Redemption, RedemptionStatus, Survey } from '../types';
 
-const API_BASE_URL = 'https://trackperformance.sysfar.com.br/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8010/api/v1';
 
 export const api = {
   login: async (credentials: any) => {
@@ -392,7 +392,7 @@ export const api = {
         'Accept': 'application/json',
       },
     });
-    if (!response.ok) throw new Error('Falha ao carregar prêmios');
+    if (!response.ok) throw new Error('Falha ao carregar recompensas');
     return response.json() as Promise<PaginatedResponse<Reward>>;
   },
 
@@ -405,7 +405,7 @@ export const api = {
       },
       body: formData,
     });
-    if (!response.ok) throw new Error('Falha ao criar prêmio');
+    if (!response.ok) throw new Error('Falha ao criar recompensa');
     return response.json();
   },
 
@@ -418,7 +418,7 @@ export const api = {
       },
       body: formData,
     });
-    if (!response.ok) throw new Error('Falha ao atualizar prêmio');
+    if (!response.ok) throw new Error('Falha ao atualizar recompensa');
     return response.json();
   },
 
@@ -430,7 +430,7 @@ export const api = {
         'Accept': 'application/json',
       },
     });
-    if (!response.ok) throw new Error('Falha ao excluir prêmio');
+    if (!response.ok) throw new Error('Falha ao excluir recompensa');
     if (response.status === 204) return;
     return response.json();
   },
@@ -499,7 +499,7 @@ export const api = {
         'Accept': 'application/json',
       },
     });
-    
+
     if (!response.ok) {
       // Tenta obter os dados de erro da resposta
       const errorData = await response.json().catch(() => ({}));
@@ -507,9 +507,42 @@ export const api = {
       error.response = { data: errorData, status: response.status };
       throw error;
     }
-    
+
     if (response.status === 204) return;
     return response.json();
+  },
+
+  getCampaignUsers: async (token: string, campaignId: number) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/users?per_page=99999999`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar usuários da campanha');
+    return response.json() as Promise<{ data: User[] }>;
+  },
+
+  getCampaignProducts: async (token: string, campaignId: number) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/products?per_page=9999`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar produtos da campanha');
+    return response.json() as Promise<{ data: Product[] }>;
+  },
+
+  getCampaignActions: async (token: string, campaignId: number) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/actions?per_page=9999`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar ações da campanha');
+    return response.json() as Promise<{ data: { id: number; description: string; coins: number }[] }>;
   },
 
   getAllUsers: async (token: string, page = 1, perPage = 10) => {
@@ -639,6 +672,40 @@ export const api = {
     }
 
     return allManufacturers;
+  },
+
+  getCoinStatements: async (
+    token: string,
+    userId: number,
+    page = 1,
+    filters?: {
+      start_date?: string;
+      end_date?: string;
+      created_at?: string;
+    }
+  ) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    queryParams.append('filter[user_id]', userId.toString());
+
+    if (filters?.start_date) {
+      queryParams.append('filter[start_date]', filters.start_date);
+    }
+    if (filters?.end_date) {
+      queryParams.append('filter[end_date]', filters.end_date);
+    }
+    if (filters?.created_at) {
+      queryParams.append('filter[created_at]', filters.created_at);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/coin-statements?${queryParams.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar extrato');
+    return response.json() as Promise<CoinStatementResponse>;
   },
 
   getCampaignRanking: async (token: string, campaignId: number) => {

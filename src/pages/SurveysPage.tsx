@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, FileText, Calendar, Eye, Users, Coins, CheckCircle, XCircle, Clock, EyeOff, Plus, Edit2, Trash2, X, Save, Check, User as UserIcon, Shield, User, BarChart3, PlusCircle, GripVertical, Copy } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, FileText, Calendar, Eye, Users, CheckCircle, XCircle, Clock, EyeOff, Plus, Edit2, Trash2, X, Save, Check, User as UserIcon, Shield, User, BarChart3, PlusCircle, GripVertical, Copy, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Survey, SurveyStatus, User as UserType, SurveyResults, SurveyResultTextOption, SurveyResultChoiceOption } from '../types';
@@ -64,7 +64,6 @@ export const SurveysPage: React.FC = () => {
     ends_at: '',
     is_anonymous: false,
     is_published: false,
-    coins_reward: false,
     survey_type: '' as 'choice' | 'text' | '',
   });
 
@@ -74,9 +73,8 @@ export const SurveysPage: React.FC = () => {
     const hasType = formData.survey_type;
     const hasStartDate = formData.starts_at;
     const hasEndDate = formData.ends_at;
-    const hasAtLeastOneOption = formData.is_anonymous || formData.is_published || formData.coins_reward;
     
-    return hasTitle && hasType && hasStartDate && hasEndDate && hasAtLeastOneOption;
+    return hasTitle && hasType && hasStartDate && hasEndDate;
   };
 
   // Usuários
@@ -196,7 +194,6 @@ export const SurveysPage: React.FC = () => {
 
   const handleRefresh = () => {
     fetchSurveys(currentPage, debouncedSearchTerm);
-    addToast('success', 'Lista atualizada com sucesso!');
   };
 
   const handleOpenModal = (survey?: Survey) => {
@@ -209,7 +206,6 @@ export const SurveysPage: React.FC = () => {
         ends_at: survey.ends_at.split('T')[0],
         is_anonymous: survey.is_anonymous,
         is_published: survey.is_published,
-        coins_reward: survey.coins_reward,
         survey_type: '',
       });
       // TODO: Carregar usuários e questões da pesquisa existente
@@ -221,7 +217,6 @@ export const SurveysPage: React.FC = () => {
         ends_at: '',
         is_anonymous: false,
         is_published: false,
-        coins_reward: false,
         survey_type: '',
       });
       setSelectedUsers([]);
@@ -543,7 +538,6 @@ export const SurveysPage: React.FC = () => {
         ends_at: formData.ends_at,
         is_anonymous: formData.is_anonymous,
         is_published: formData.is_published,
-        coins_reward: formData.coins_reward,
         users: selectedUsers,
         questions: questionsToSave,
       };
@@ -623,10 +617,10 @@ export const SurveysPage: React.FC = () => {
           <div className="flex gap-2">
             <button
               onClick={handleRefresh}
-              className="flex items-center gap-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-4 py-2 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all"
+              className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-2 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all"
+              title="Atualizar"
             >
-              <RefreshCw size={16} />
-              Atualizar
+              <RefreshCw size={20} />
             </button>
             <button
               onClick={() => handleOpenModal()}
@@ -746,13 +740,6 @@ export const SurveysPage: React.FC = () => {
                               <span className="text-zinc-500 dark:text-zinc-500">Visualizações:</span>
                               <span className="font-medium text-zinc-900 dark:text-white">{survey.views_count}</span>
                             </div>
-                            {survey.coins_reward && (
-                              <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                                <Coins size={16} className="text-emerald-500" />
-                                <span className="text-zinc-500 dark:text-zinc-500">Recompensa:</span>
-                                <span className="font-medium text-emerald-600 dark:text-emerald-400">Sim</span>
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -911,7 +898,7 @@ export const SurveysPage: React.FC = () => {
                         type="text"
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        placeholder="Ex: Pesquisa de Clima Organizacional 2026"
+                        placeholder="Ex: Pesquisa de Clima Organizacional"
                         className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                       />
                     </div>
@@ -1019,12 +1006,6 @@ export const SurveysPage: React.FC = () => {
                                 Data de término
                               </p>
                             )}
-                            {(!formData.is_anonymous && !formData.is_published && !formData.coins_reward) && (
-                              <p className="text-xs text-amber-700 dark:text-amber-500 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                Pelo menos uma opção (Anônima, Publicar ou Recompensa)
-                              </p>
-                            )}
                           </div>
                         </div>
                       )}
@@ -1079,22 +1060,6 @@ export const SurveysPage: React.FC = () => {
                         <div>
                           <p className="font-medium text-zinc-900 dark:text-white">Publicar Imediatamente</p>
                           <p className="text-sm text-zinc-500 dark:text-zinc-400">A pesquisa ficará visível para os participantes</p>
-                        </div>
-                      </label>
-
-                      <label className="flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={formData.coins_reward}
-                          onChange={(e) => setFormData({ ...formData, coins_reward: e.target.checked })}
-                          className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500"
-                        />
-                        <div>
-                          <p className="font-medium text-zinc-900 dark:text-white flex items-center gap-2">
-                            <Coins size={16} className="text-emerald-500" />
-                            Recompensa com Moedas
-                          </p>
-                          <p className="text-sm text-zinc-500 dark:text-zinc-400">Participantes ganharão moedas ao responder</p>
                         </div>
                       </label>
                     </div>
@@ -1375,7 +1340,7 @@ export const SurveysPage: React.FC = () => {
                                 </span>
                                 {user.coin_balance !== undefined && user.coin_balance > 0 && (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
-                                    <Coins size={10} />
+                                    <DollarSign size={10} />
                                     {user.coin_balance.toLocaleString('pt-BR')}
                                   </span>
                                 )}

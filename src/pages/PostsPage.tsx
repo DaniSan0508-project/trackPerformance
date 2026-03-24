@@ -7,6 +7,7 @@ import { Post, Like, Comment, User as UserType } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { getFullImageUrl } from '../utils';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -26,7 +27,7 @@ const UserListItem: React.FC<{ user?: UserType | { name: string; profile_image_u
   <div className="flex items-center gap-3 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg transition-colors">
     <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-500 dark:text-zinc-400 flex-shrink-0 overflow-hidden">
       {user?.profile_image_url ? (
-        <img src={user.profile_image_url} alt={user.name} className="w-full h-full object-cover" />
+        <img src={getFullImageUrl(user.profile_image_url) || ''} alt={user.name} className="w-full h-full object-cover" />
       ) : (
         <User size={20} />
       )}
@@ -374,7 +375,7 @@ export const PostsPage: React.FC = () => {
                       <div className="w-8 h-8 bg-gradient-to-tr from-emerald-400 via-green-500 to-teal-600 p-[2px] rounded-full flex-shrink-0">
                         <div className="w-full h-full bg-white dark:bg-zinc-900 rounded-full p-[2px]">
                           {post.user?.profile_image_url ? (
-                            <img src={post.user.profile_image_url} alt={post.user.name} className="w-full h-full rounded-full object-cover" />
+                            <img src={getFullImageUrl(post.user.profile_image_url) || ''} alt={post.user.name} className="w-full h-full rounded-full object-cover" />
                           ) : (
                             <div className="w-full h-full bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 dark:text-zinc-500">
                               <User size={14} />
@@ -615,7 +616,7 @@ export const PostsPage: React.FC = () => {
                           <div key={comment.id} className="flex gap-3">
                             <div className="w-8 h-8 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-500 dark:text-zinc-400 flex-shrink-0 overflow-hidden mt-1">
                               {user?.profile_image_url ? (
-                                <img src={user.profile_image_url} alt={user.name} className="w-full h-full object-cover" />
+                                <img src={getFullImageUrl(user.profile_image_url) || ''} alt={user.name} className="w-full h-full object-cover" />
                               ) : (
                                 <User size={16} />
                               )}
@@ -696,7 +697,7 @@ export const PostsPage: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-500 dark:text-zinc-400 overflow-hidden">
                        {contentModalPost.user?.profile_image_url ? (
-                        <img src={contentModalPost.user.profile_image_url} alt={contentModalPost.user.name} className="w-full h-full object-cover" />
+                        <img src={getFullImageUrl(contentModalPost.user.profile_image_url) || ''} alt={contentModalPost.user.name} className="w-full h-full object-cover" />
                       ) : (
                         <User size={16} />
                       )}

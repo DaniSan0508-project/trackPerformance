@@ -64,8 +64,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <nav className="flex-1 p-4 space-y-1">
           <NavItem
             to="/dashboard"
-            icon={<Gamepad2 size={20} />}
-            label="Dashboard"
+            icon={<TrendingUp size={20} />}
+            label="Indicadores"
             active={location.pathname === '/dashboard'}
           />
           <NavItem
@@ -77,13 +77,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <NavItem
             to="/posts"
             icon={<Megaphone size={20} />}
-            label="Posts"
+            label="Postagens"
             active={location.pathname === '/posts'}
           />
           <NavItem
             to="/feedbacks"
             icon={<ThumbsUp size={20} />}
-            label="Reconhecimentos"
+            label="Feedbacks"
             active={location.pathname === '/feedbacks'}
           />
           <NavItem
@@ -109,12 +109,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             icon={<FileText size={20} />}
             label="Pesquisas"
             active={location.pathname === '/surveys'}
-          />
-          <NavItem
-            to="/reports"
-            icon={<BarChart3 size={20} />}
-            label="Relatórios"
-            active={location.pathname === '/reports'}
           />
           <NavItem
             to="/settings"
