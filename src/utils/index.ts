@@ -9,4 +9,7 @@ export {
   formatDocument,
   debounce,
   getFullImageUrl,
+  formatRelativeDate,
+  extractYouTubeVideoId,
+  getYouTubeThumbnailUrl,
 } from './formatters';

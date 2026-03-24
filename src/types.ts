@@ -114,10 +114,12 @@ export interface Post {
   title: string;
   content: string;
   image_url: string | null;
+  video_url: string | null;
   earns_coins: boolean;
   created_at: string;
   updated_at: string;
   image_full_url: string | null;
+  video_thumbnail_url?: string | null;
   user?: User;
   likes?: Like[];
   likes_count?: number;

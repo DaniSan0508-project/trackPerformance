@@ -7,7 +7,7 @@ import { Post, Like, Comment, User as UserType } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { getFullImageUrl } from '../utils';
+import { getFullImageUrl, extractYouTubeVideoId, formatRelativeDate, getYouTubeThumbnailUrl } from '../utils';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -66,6 +66,7 @@ export const PostsPage: React.FC = () => {
   const [newPostTitle, setNewPostTitle] = useState('');
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostImage, setNewPostImage] = useState<File | null>(null);
+  const [newPostVideoUrl, setNewPostVideoUrl] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
   // Edit/Delete state
@@ -191,22 +192,27 @@ export const PostsPage: React.FC = () => {
       if (newPostImage) {
         formData.append('image', newPostImage);
       }
+      if (newPostVideoUrl) {
+        formData.append('video_url', newPostVideoUrl);
+      }
       formData.append('survey_id', '1');
 
       await api.createPost(token, formData);
-      
+
       // Reset and close
       setCreatePostModal(false);
       setNewPostTitle('');
       setNewPostContent('');
       setNewPostImage(null);
-      
+      setNewPostVideoUrl('');
+
       // Refresh posts
       fetchPosts(1, searchTerm);
       addToast('success', 'Post criado com sucesso!');
     } catch (err: any) {
       console.error('Error creating post:', err);
-      addToast('error', err.message || 'Erro ao criar post');
+      const errorMessage = err.response?.data?.message || err.message || 'Erro ao criar post';
+      addToast('error', errorMessage);
     } finally {
       setIsCreating(false);
     }
@@ -247,6 +253,37 @@ export const PostsPage: React.FC = () => {
     } catch (error) {
       console.error('Error in confirm action:', error);
       setConfirmModal(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number, postId: number) => {
+    if (!token) return;
+    
+    try {
+      await api.deletePostComment(token, commentId);
+      // Remove o comentário da lista
+      setCommentsModalPost(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          comments: prev.comments.filter(c => c.id !== commentId)
+        };
+      });
+      // Atualiza também o post na lista principal
+      setPosts(prev => prev.map(p => {
+        if (p.id === postId && p.comments) {
+          return {
+            ...p,
+            comments: p.comments.filter(c => c.id !== commentId)
+          };
+        }
+        return p;
+      }));
+      addToast('success', 'Comentário excluído com sucesso!');
+    } catch (err: any) {
+      console.error('Error deleting comment:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Erro ao excluir comentário';
+      addToast('error', errorMessage);
     }
   };
 
@@ -386,7 +423,7 @@ export const PostsPage: React.FC = () => {
                       <div className="min-w-0">
                         <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 leading-none truncate">{post.user?.name || 'Usuário'}</h3>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
-                          {new Date(post.created_at).toLocaleDateString()}
+                          {formatRelativeDate(post.created_at)}
                           {post.earns_coins && <span className="ml-2 text-amber-600 font-medium">• Ganha Moedas</span>}
                         </p>
                       </div>
@@ -444,15 +481,31 @@ export const PostsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Image */}
-                  {post.image_full_url && (
+                  {/* Image / Video Thumbnail */}
+                  {(post.image_full_url || post.video_url) && (
                     <div className="w-full bg-zinc-50 dark:bg-zinc-900 border-y border-zinc-100 dark:border-zinc-800 aspect-square flex items-center justify-center overflow-hidden">
-                      <img 
-                        src={post.image_full_url} 
-                        alt="Post content" 
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
+                      {post.video_url ? (
+                        <div className="relative w-full h-full">
+                          <img
+                            src={post.video_thumbnail_url || getYouTubeThumbnailUrl(post.video_url) || ''}
+                            alt="YouTube video thumbnail"
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-lg">
+                              <div className="w-0 h-0 border-t-12 border-t-transparent border-l-20 border-l-white border-b-12 border-b-transparent ml-1"></div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <img
+                          src={post.image_full_url}
+                          alt="Post content"
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      )}
                     </div>
                   )}
 
@@ -612,8 +665,10 @@ export const PostsPage: React.FC = () => {
                     <div className="space-y-4">
                       {commentsModalPost.comments.map((comment) => {
                         const user = usersCache[comment.user_id] || comment.user;
+                        const isAdmin = currentUser?.user_type_id === 1;
+                        
                         return (
-                          <div key={comment.id} className="flex gap-3">
+                          <div key={comment.id} className="flex gap-3 group">
                             <div className="w-8 h-8 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-500 dark:text-zinc-400 flex-shrink-0 overflow-hidden mt-1">
                               {user?.profile_image_url ? (
                                 <img src={getFullImageUrl(user.profile_image_url) || ''} alt={user.name} className="w-full h-full object-cover" />
@@ -623,11 +678,22 @@ export const PostsPage: React.FC = () => {
                             </div>
                             <div className="flex-1">
                               <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl rounded-tl-none">
-                                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-1">{user?.name || 'Usuário Desconhecido'}</p>
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-1">{user?.name || 'Usuário Desconhecido'}</p>
+                                  {isAdmin && (
+                                    <button
+                                      onClick={() => handleDeleteComment(comment.id, commentsModalPost.id)}
+                                      className="text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                      title="Excluir comentário"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  )}
+                                </div>
                                 <p className="text-sm text-zinc-700 dark:text-zinc-300">{comment.text}</p>
                               </div>
                               <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 ml-2">
-                                {new Date(comment.created_at).toLocaleDateString()} às {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {formatRelativeDate(comment.created_at)}
                               </p>
                             </div>
                           </div>
@@ -898,6 +964,43 @@ export const PostsPage: React.FC = () => {
                         )}
                       </div>
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                      Vídeo do YouTube (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={newPostVideoUrl}
+                      onChange={(e) => setNewPostVideoUrl(e.target.value)}
+                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+                      placeholder="https://www.youtube.com/watch?v=..."
+                    />
+                    {newPostVideoUrl && (
+                      <div className="mt-2">
+                        {(() => {
+                          const videoId = extractYouTubeVideoId(newPostVideoUrl);
+                          if (videoId) {
+                            return (
+                              <div className="relative rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                                <img
+                                  src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
+                                  alt="YouTube thumbnail"
+                                  className="w-full h-48 object-cover"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
+                                    <div className="w-0 h-0 border-t-8 border-t-transparent border-l-12 border-l-white border-b-8 border-b-transparent ml-1"></div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-2 flex gap-3">

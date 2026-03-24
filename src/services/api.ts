@@ -153,7 +153,13 @@ export const api = {
       },
       body: formData,
     });
-    if (!response.ok) throw new Error('Falha ao criar post');
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error = new Error('Falha ao criar post');
+      (error as any).response = { data: errorData, status: response.status };
+      throw error;
+    }
     return response.json();
   },
 
@@ -180,6 +186,24 @@ export const api = {
       },
     });
     if (!response.ok) throw new Error('Falha ao excluir post');
+    if (response.status === 204) return;
+    return response.json();
+  },
+
+  deletePostComment: async (token: string, commentId: number) => {
+    const response = await fetch(`${API_BASE_URL}/post-comments/${commentId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error = new Error('Falha ao excluir comentário');
+      (error as any).response = { data: errorData, status: response.status };
+      throw error;
+    }
     if (response.status === 204) return;
     return response.json();
   },

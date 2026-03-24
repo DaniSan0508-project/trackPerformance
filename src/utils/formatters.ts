@@ -109,3 +109,69 @@ export const debounce = <T extends (...args: any[]) => any>(
     timeoutId = setTimeout(() => func(...args), delay);
   };
 };
+
+/**
+ * Formata data para formato relativo estilo Instagram
+ * Ex: "há 1 hora", "há 2 dias", "agora mesmo"
+ */
+export const formatRelativeDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 0) return 'agora mesmo';
+  if (diffInSeconds < 60) return 'agora mesmo';
+  if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `há ${minutes} min`;
+  }
+  if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `há ${hours} h`;
+  }
+  if (diffInSeconds < 604800) {
+    const days = Math.floor(diffInSeconds / 86400);
+    return `há ${days} d`;
+  }
+  if (diffInSeconds < 2592000) {
+    const weeks = Math.floor(diffInSeconds / 604800);
+    return `há ${weeks} sem`;
+  }
+  if (diffInSeconds < 31536000) {
+    const months = Math.floor(diffInSeconds / 2592000);
+    return `há ${months} meses`;
+  }
+  const years = Math.floor(diffInSeconds / 31536000);
+  return `há ${years} anos`;
+};
+
+/**
+ * Extrai o ID de um vídeo do YouTube a partir da URL
+ */
+export const extractYouTubeVideoId = (url: string): string | null => {
+  if (!url) return null;
+  
+  // Padrões de URL do YouTube
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+    /^([a-zA-Z0-9_-]{11})$/  // ID direto (11 caracteres)
+  ];
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+  
+  return null;
+};
+
+/**
+ * Retorna a URL da thumbnail de um vídeo do YouTube
+ */
+export const getYouTubeThumbnailUrl = (videoUrl: string): string | null => {
+  const videoId = extractYouTubeVideoId(videoUrl);
+  if (!videoId) return null;
+  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+};
