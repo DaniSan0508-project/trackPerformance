@@ -27,20 +27,21 @@ const translateConfigKey = (key: string): string => {
     cnpj: 'CNPJ',
     email: 'E-mail',
     phone: 'Telefone',
-    timezone: 'Fuso Horário',
-    date_format: 'Formato de Data',
-    email_notifications_enabled: 'Notificações por E-mail',
+    timezone: 'Fuso horário',
+    date_format: 'Formato de data',
+    email_notifications_enabled: 'Notificações por e-mail',
+    engagement_reward_frequency: 'Frequência de recompensa por engajamento',
     api_integration_enabled: 'Integração via API',
-    webhook_url: 'URL do Webhook',
-    allow_user_post: 'Permitir Posts de Usuários',
-    primary_color: 'Cor Primária',
-    secondary_color: 'Cor Secundária',
-    path_logo: 'URL do Logo',
-    path_welcome: 'Tela de Boas-vindas',
+    webhook_url: 'Endereço webhook',
+    allow_user_post: 'Permitir posts de usuários',
+    primary_color: 'Cor primária',
+    secondary_color: 'Cor decundária',
+    path_logo: 'Endereço logomarca',
+    path_welcome: 'Tela de boas-vindas',
     coin_name: 'Nome da Moeda',
-    privacy_policy_url: 'URL da Política de Privacidade',
-    post_quantity: 'Quantidade de Posts',
-    user_profile: 'Perfil do Usuário'
+    privacy_policy_url: 'Endereço documento de política de privacidade',
+    post_quantity: 'Quantidade de posts exibidos na tela inicial do aplicativo',
+    user_profile: 'Perfil do usuário'
   };
   return translations[key] || key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
@@ -51,6 +52,12 @@ const userProfileOptions = [
   { value: 'multiple_companies', label: 'Múltiplas Empresas' }
 ];
 
+// Opções para o perfil do usuário
+const engagementRewardFrequencyOptions = [
+    { value: 'daily', label: 'Apenas uma vez ao dia' },
+    { value: 'always', label: 'Sempre que realizar a ação' }
+];
+
 const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConfig, newValue: string) => Promise<boolean> }> = ({ config, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(config.config_value);
@@ -59,6 +66,7 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
 
   const isBoolean = config.config_value === 'true' || config.config_value === 'false';
   const isUserProfile = config.config_key === 'user_profile';
+  const isEngagementFrequency = config.config_key === 'engagement_reward_frequency';
   const hasChanged = value !== config.config_value;
 
   // Validação em tempo real
@@ -126,6 +134,11 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
        if (digits.length === 10) return digits.replace(/^(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
     }
 
+      if (key === 'engagement_reward_frequency') {
+          const option = engagementRewardFrequencyOptions.find(o => o.value === val);
+          return option?.label || val;
+      }
+
     return val;
   };
 
@@ -141,7 +154,7 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
         </div>
 
         <div className="flex-1 w-full md:w-auto flex justify-end">
-          {isEditing || isBoolean || isUserProfile ? (
+          {isEditing || isBoolean || isUserProfile || isEngagementFrequency ? (
             <div className="flex items-center gap-2 w-full md:w-auto justify-end">
               {isBoolean ? (
                 <button
@@ -162,6 +175,17 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
                   autoFocus
                 >
                   {userProfileOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              ) : isEngagementFrequency ? (
+                <select
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  autoFocus
+                >
+                  {engagementRewardFrequencyOptions.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>

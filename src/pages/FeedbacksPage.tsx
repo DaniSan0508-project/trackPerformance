@@ -106,7 +106,7 @@ export const FeedbacksPage: React.FC = () => {
       setFeedbacksToItem(data.meta.to);
     } catch (err: any) {
       console.error('Error fetching feedbacks:', err);
-      setFeedbacksError(err.message || 'Não foi possível carregar os reconhecimentos.');
+      setFeedbacksError(err.message || 'Não foi possível carregar os feedbacks.');
     } finally {
       setLoadingFeedbacks(false);
     }
@@ -126,7 +126,7 @@ export const FeedbacksPage: React.FC = () => {
       setAllFeedbacksToItem(data.meta.to);
     } catch (err: any) {
       console.error('Error fetching all feedbacks:', err);
-      setAllFeedbacksError(err.message || 'Não foi possível carregar os reconhecimentos do tenant.');
+      setAllFeedbacksError(err.message || 'Não foi possível carregar os feedbacks do tenant.');
     } finally {
       setLoadingAllFeedbacks(false);
     }
@@ -178,14 +178,14 @@ export const FeedbacksPage: React.FC = () => {
         content: feedbackContent,
         is_anonymous: isAnonymous
       });
-      addToast('success', 'Reconhecimento enviado com sucesso!');
+      addToast('success', 'Feedback enviado com sucesso!');
       setSelectedUser(null);
       setFeedbackContent('');
       setIsAnonymous(false);
       setFeedbackError(null);
     } catch (err: any) {
       console.error('Error sending feedback:', err);
-      addToast('error', err.message || 'Erro ao enviar reconhecimento');
+      addToast('error', err.message || 'Erro ao enviar feedback');
     } finally {
       setSending(false);
     }
@@ -196,8 +196,8 @@ export const FeedbacksPage: React.FC = () => {
       <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Reconhecimentos</h1>
-            <p className="text-zinc-500 dark:text-zinc-400">Gerencie seus reconhecimentos enviados e recebidos.</p>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Feedbacks</h1>
+            <p className="text-zinc-500 dark:text-zinc-400">Gerencie seus feedbacks enviados e recebidos.</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -225,7 +225,7 @@ export const FeedbacksPage: React.FC = () => {
             }`}
           >
             <PenSquare size={18} />
-            Enviar Reconhecimento
+            Enviar Feedback
           </button>
           <button
             onClick={() => setActiveTab('received')}
@@ -411,8 +411,8 @@ export const FeedbacksPage: React.FC = () => {
                 {feedbacks.length === 0 && (
                   <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors duration-200">
                     <Inbox className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
-                    <h3 className="text-lg font-medium text-zinc-900 dark:text-white">Nenhum reconhecimento recebido</h3>
-                    <p className="text-zinc-500 dark:text-zinc-400">Você ainda não recebeu nenhum reconhecimento.</p>
+                    <h3 className="text-lg font-medium text-zinc-900 dark:text-white">Nenhum feedback recebido</h3>
+                    <p className="text-zinc-500 dark:text-zinc-400">Você ainda não recebeu nenhum feedback.</p>
                   </div>
                 )}
 
@@ -527,7 +527,7 @@ export const FeedbacksPage: React.FC = () => {
                 {allFeedbacks.length === 0 && (
                   <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors duration-200">
                     <MessageSquarePlus className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
-                    <h3 className="text-lg font-medium text-zinc-900 dark:text-white">Nenhum reconhecimento encontrado</h3>
+                    <h3 className="text-lg font-medium text-zinc-900 dark:text-white">Nenhum feedback encontrado</h3>
                     <p className="text-zinc-500 dark:text-zinc-400">Tente buscar por outro nome ou ajuste os filtros.</p>
                   </div>
                 )}
@@ -575,7 +575,7 @@ export const FeedbacksPage: React.FC = () => {
                 className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-zinc-200 dark:border-zinc-800"
               >
                 <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
-                  <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Enviar Reconhecimento</h2>
+                  <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Enviar Feedback</h2>
                   <button onClick={() => setSelectedUser(null)} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
                     <X size={24} />
                   </button>
@@ -607,7 +607,7 @@ export const FeedbacksPage: React.FC = () => {
                       className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[120px] resize-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${
                         feedbackError ? 'border-red-500 focus:ring-red-500' : 'border-zinc-200 dark:border-zinc-700'
                       }`}
-                      placeholder="Escreva seu reconhecimento construtivo aqui..."
+                      placeholder="Escreva seu feedback construtivo aqui..."
                     />
                     {feedbackError && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{feedbackError}</p>}
                   </div>

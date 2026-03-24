@@ -121,6 +121,9 @@ export const CampaignsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingAux, setLoadingAux] = useState(false);
 
+  // Metas calculadas para campanhas de engajamento (por campaign_id)
+  const [campaignGoals, setCampaignGoals] = useState<{ [key: number]: number }>({});
+
   // Abas do modal
   const [activeTab, setActiveTab] = useState<'basic' | 'users' | 'actions' | 'products'>('basic');
 
@@ -137,9 +140,6 @@ export const CampaignsPage: React.FC = () => {
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [selectedActions, setSelectedActions] = useState<{ id: number; coins: number }[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
-
-  // Estado para controlar os inputs de coins das ações (permite edição livre)
-  const [actionCoinsInputs, setActionCoinsInputs] = useState<{ [key: number]: string }>({});
 
   // Paginação e filtros para usuários
   const [usersPage, setUsersPage] = useState(1);
@@ -267,6 +267,26 @@ export const CampaignsPage: React.FC = () => {
       setTotalItems(data.total);
       setFromItem(data.from);
       setToItem(data.to);
+
+      // Buscar ações para campanhas de engajamento e calcular metas
+      const engagementCampaigns = data.data.filter((c: Campaign) => c.type === 'engagement');
+      if (engagementCampaigns.length > 0) {
+        const goals: { [key: number]: number } = {};
+        await Promise.all(
+          engagementCampaigns.map(async (campaign: Campaign) => {
+            try {
+              const actionsResponse = await api.getCampaignActions(token, campaign.id);
+              const actions = actionsResponse.data || [];
+              const totalCoins = actions.reduce((sum, action) => sum + (parseInt(action.coins) || 0), 0);
+              goals[campaign.id] = totalCoins;
+            } catch (error) {
+              console.error(`Error fetching actions for campaign ${campaign.id}:`, error);
+              goals[campaign.id] = 0;
+            }
+          })
+        );
+        setCampaignGoals(goals);
+      }
     } catch (err: any) {
       console.error('Error fetching campaigns:', err);
       setError(err.message || 'Não foi possível carregar as campanhas.');
@@ -306,7 +326,7 @@ export const CampaignsPage: React.FC = () => {
       setFormData({
         name: campaign.name,
         type: campaign.type,
-        goal: campaign.goal ? String(campaign.goal) : '',
+        goal: campaign.type === 'sales' ? campaign.goal : '',
         start_date: campaign.start_date,
         end_date: campaign.end_date,
         status: status,
@@ -352,12 +372,12 @@ export const CampaignsPage: React.FC = () => {
             setSelectedActions(actionsWithCoins);
             setSelectedProducts([]);
 
-            // Popular o estado local dos inputs com os valores das ações
-            const coinsInputsMap: { [key: number]: string } = {};
-            actionsWithCoins.forEach(a => {
-              coinsInputsMap[a.id] = a.coins.toString();
-            });
-            setActionCoinsInputs(coinsInputsMap);
+            // Calcular meta como soma das moedas de todas as ações (apenas para exibição informativa)
+            const totalCoins = actionsWithCoins.reduce((sum, action) => sum + (action.coins || 0), 0);
+            setFormData(prev => ({
+              ...prev,
+              goal: totalCoins > 0 ? totalCoins.toString() : '',
+            }));
 
             // Carregar TODOS os usuários para a lista auxiliar (engagement precisa de user_type_id = 2)
             const allUsersResponse = await api.getAllUsersComplete(token);
@@ -372,15 +392,7 @@ export const CampaignsPage: React.FC = () => {
             : (campaign.users?.map(u => u.id) || []);
           setSelectedUsers(validUsers);
           setSelectedProducts(campaign.products?.map(p => p.product_id) || []);
-          const fallbackActions = campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || [];
-          setSelectedActions(fallbackActions);
-          
-          // Popular estado local no fallback
-          const fallbackCoinsInputs: { [key: number]: string } = {};
-          fallbackActions.forEach(a => {
-            fallbackCoinsInputs[a.id] = a.coins.toString();
-          });
-          setActionCoinsInputs(fallbackCoinsInputs);
+          setSelectedActions(campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || []);
         }
       } else {
         // Fallback sem token
@@ -389,15 +401,7 @@ export const CampaignsPage: React.FC = () => {
           : (campaign.users?.map(u => u.id) || []);
         setSelectedUsers(validUsers);
         setSelectedProducts(campaign.products?.map(p => p.product_id) || []);
-        const fallbackActions = campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || [];
-        setSelectedActions(fallbackActions);
-        
-        // Popular estado local no fallback
-        const fallbackCoinsInputs: { [key: number]: string } = {};
-        fallbackActions.forEach(a => {
-          fallbackCoinsInputs[a.id] = a.coins.toString();
-        });
-        setActionCoinsInputs(fallbackCoinsInputs);
+        setSelectedActions(campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || []);
       }
     } else {
       setEditingCampaign(null);
@@ -412,7 +416,6 @@ export const CampaignsPage: React.FC = () => {
       setSelectedUsers([]);
       setSelectedProducts([]);
       setSelectedActions([]);
-      setActionCoinsInputs({});
     }
     setIsModalOpen(true);
     fetchAuxiliaryData();
@@ -442,7 +445,6 @@ export const CampaignsPage: React.FC = () => {
     setSelectedUsers([]);
     setSelectedProducts([]);
     setSelectedActions([]);
-    setActionCoinsInputs({});
     setFullySelectedRoles(new Set());
     setFullySelectedManufacturers(new Set());
     setFormErrors({});
@@ -500,28 +502,11 @@ export const CampaignsPage: React.FC = () => {
       }
 
       if (formData.type === 'engagement') {
-        // Validação da meta apenas na criação (não na edição)
-        if (!editingCampaign) {
-          if (!formData.goal || parseFloat(formData.goal) <= 0) {
-            addToast('error', 'Campanhas de engajamento exigem uma meta válida.');
-            setActiveTab('basic');
-            return;
-          }
-        }
         if (selectedActions.length === 0) {
           addToast('error', 'Campanhas de engajamento exigem pelo menos 1 ação vinculada.');
           setActiveTab('actions');
           return;
         }
-        
-        // Valida se todas as ações têm coins válidos (não negativos)
-        const invalidActions = selectedActions.filter(a => !a.coins || a.coins < 0);
-        if (invalidActions.length > 0) {
-          addToast('error', 'Existem ações com valores inválidos. Verifique os coins de cada ação.');
-          setActiveTab('actions');
-          return;
-        }
-        
         if (selectedProducts.length > 0) {
           addToast('error', 'Campanhas de engajamento não podem ter produtos.');
           setActiveTab('products');
@@ -538,24 +523,18 @@ export const CampaignsPage: React.FC = () => {
       }
     }
 
-    // Validação do schema apenas na criação (não na edição)
-    if (!editingCampaign) {
-      const result = campaignSchema.safeParse(formData);
-      if (!result.success) {
-        const errors = result.error.flatten().fieldErrors;
-        const formattedErrors: { [key: string]: string } = {};
-        Object.entries(errors).forEach(([key, messages]) => {
-          if (messages?.length) {
-            formattedErrors[key] = messages[0];
-          }
-        });
-        setFormErrors(formattedErrors);
-        
-        // Mostra mensagem específica do erro
-        const errorMessages = Object.values(formattedErrors).join(', ');
-        addToast('error', errorMessages || 'Verifique os campos obrigatórios.');
-        return;
-      }
+    const result = campaignSchema.safeParse(formData);
+    if (!result.success) {
+      const errors = result.error.flatten().fieldErrors;
+      const formattedErrors: { [key: string]: string } = {};
+      Object.entries(errors).forEach(([key, messages]) => {
+        if (messages?.length) {
+          formattedErrors[key] = messages[0];
+        }
+      });
+      setFormErrors(formattedErrors);
+      addToast('error', 'Verifique os campos obrigatórios.');
+      return;
     }
 
     // Validação adicional: end_date deve ser maior que start_date (somente criação)
@@ -566,26 +545,24 @@ export const CampaignsPage: React.FC = () => {
     }
 
     setSaving(true);
-    let dataToSave: any = {};
     try {
+      const dataToSave: any = {};
+
       // Na edição, envia apenas campos alterados
       if (editingCampaign) {
         // Envia apenas se houver valor (não vazio)
         if (formData.name?.trim()) {
           dataToSave.name = formData.name.trim();
         }
-
+        
         // Sempre envia is_active na edição (status pode ser alterado)
         dataToSave.is_active = formData.status === 'ativa';
-
+        
         // Envia users apenas se houver selecionados
         if (selectedUsers.length > 0) {
           dataToSave.users = selectedUsers;
         }
-
-        // NÃO envia goal na edição (somente na criação)
-        // Goal é definido apenas no momento da criação da campanha
-
+        
         // Envia conforme o tipo da campanha
         if (editingCampaign.type === 'sales') {
           // Envia products apenas se houver selecionados
@@ -605,14 +582,13 @@ export const CampaignsPage: React.FC = () => {
         dataToSave.is_active = formData.status === 'ativa';
         dataToSave.users = selectedUsers;
         
-        // Goal para vendas e engajamento
+        // Goal apenas para vendas
         if (formData.type === 'sales') {
           dataToSave.goal = parseFloat(formData.goal);
           dataToSave.start_date = formData.start_date;
           dataToSave.end_date = formData.end_date;
           dataToSave.products = selectedProducts;
         } else if (formData.type === 'engagement') {
-          dataToSave.goal = parseFloat(formData.goal);
           dataToSave.start_date = formData.start_date;
           dataToSave.end_date = formData.end_date;
           dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
@@ -630,40 +606,8 @@ export const CampaignsPage: React.FC = () => {
       await fetchCampaigns(currentPage, searchTerm);
       handleCloseModal();
     } catch (error: any) {
-      // Tratamento de erros específicos da API
-      let errorMessage = 'Erro ao salvar campanha.';
-
-      if (error.response?.data?.errors) {
-        const apiErrors = error.response.data.errors;
-
-        // Erro: ações já em uso em outra campanha de engajamento
-        if (apiErrors.actions?.[0]?.includes('already active in another engagement campaign')) {
-          errorMessage = 'Uma ou mais ações selecionadas já estão em uso em outra campanha de engajamento ativa. Por favor, selecione ações diferentes.';
-        }
-        // Usa a mensagem de erro da API se disponível
-        else if (apiErrors.campaign?.[0]) {
-          errorMessage = apiErrors.campaign[0];
-        }
-        else if (apiErrors.goal?.[0]) {
-          errorMessage = apiErrors.goal[0];
-        }
-        else if (apiErrors.name?.[0]) {
-          errorMessage = apiErrors.name[0];
-        }
-        else {
-          // Tenta juntar todos os erros
-          const allErrors = Object.values(apiErrors).flat().join(', ');
-          if (allErrors) {
-            errorMessage = allErrors;
-          }
-        }
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      addToast('error', errorMessage);
+      console.error('Error saving campaign:', error);
+      addToast('error', error.message || 'Erro ao salvar campanha.');
     } finally {
       setSaving(false);
     }
@@ -781,12 +725,6 @@ export const CampaignsPage: React.FC = () => {
     setSelectedActions(prev => {
       const exists = prev.find(a => a.id === actionId);
       if (exists) {
-        // Remove o estado local do input quando desmarcar
-        setActionCoinsInputs(prevInputs => {
-          const newInputs = { ...prevInputs };
-          delete newInputs[actionId];
-          return newInputs;
-        });
         return prev.filter(a => a.id !== actionId);
       }
       const action = ENGAGEMENT_ACTIONS.find(a => a.id === actionId);
@@ -1283,7 +1221,7 @@ export const CampaignsPage: React.FC = () => {
                                 <Coins size={16} className="text-amber-500" />
                                 <span className="text-zinc-500 dark:text-zinc-500">Meta:</span>
                                 <span className="font-semibold text-zinc-900 dark:text-white">
-                                  {Math.floor(campaign.goal || 0)} coins
+                                  {campaignGoals[campaign.id] || 0} moedas
                                 </span>
                               </div>
                             )}
@@ -1359,7 +1297,7 @@ export const CampaignsPage: React.FC = () => {
                                   )}
                                   {campaign.type === 'engagement' && member.coins_total !== null && (
                                     <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                                      {Math.floor(member.coins_total)} coins
+                                      {member.coins_total} 🪙
                                     </span>
                                   )}
                                 </div>
@@ -1555,7 +1493,7 @@ export const CampaignsPage: React.FC = () => {
                               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta</label>
                               <p className="text-sm font-medium text-zinc-900 dark:text-white">
                                 {editingCampaign.type === 'engagement'
-                                  ? `${Math.floor(editingCampaign.goal || 0)} coins`
+                                  ? `${formData.goal || 0} moedas (por membro do time)`
                                   : formatCurrency(formData.goal)
                                 }
                               </p>
@@ -1606,27 +1544,6 @@ export const CampaignsPage: React.FC = () => {
                                 placeholder="R$ 0,00"
                               />
                               {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
-                            </div>
-                          )}
-
-                          {/* Meta para campanhas de engajamento (editável) */}
-                          {formData.type === 'engagement' && (
-                            <div>
-                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta (Coins) *</label>
-                              <input
-                                type="number"
-                                value={formData.goal}
-                                onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
-                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
-                                  formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                                }`}
-                                placeholder="Ex: 100"
-                                min="0"
-                              />
-                              {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
-                              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                Defina a meta de coins que os participantes devem alcançar
-                              </p>
                             </div>
                           )}
 
@@ -1991,8 +1908,9 @@ export const CampaignsPage: React.FC = () => {
                     <div className="space-y-3">
                       <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
                         {editingCampaign?.type === 'engagement'
-                          ? 'Selecione as ações e defina quantos coins serão ganhos (obrigatório para campanhas de engajamento):'
-                          : 'Selecione as ações e defina quantos coins serão ganhos:'}
+                          ? 'Selecione as ações e defina quantas moedas serão ganhas (obrigatório para campanhas de engajamento):'
+                          : 'Selecione as ações e defina quantas moedas serão concedidas por cada uma.\n' +
+                            'Observação: as recompensas pelas ações de curtir post, comentar post e enviar feedback serão concedidas apenas uma vez por dia para cada membro do time:'}
                       </p>
 
                       {/* Filtro de busca de ações */}
@@ -2051,40 +1969,8 @@ export const CampaignsPage: React.FC = () => {
                                   <input
                                     type="number"
                                     min="0"
-                                    value={actionCoinsInputs[action.id] ?? (selectedActions.find(a => a.id === action.id)?.coins ?? defaultActionCoins[action.name] ?? 10)}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      // Permite digitar "-" temporariamente, mas não atualiza o estado real
-                                      if (val === '' || val === '-' || /^-?\d*$/.test(val)) {
-                                        setActionCoinsInputs(prev => ({ ...prev, [action.id]: val }));
-                                      }
-                                    }}
-                                    onBlur={(e) => {
-                                      // Valida e atualiza o estado real apenas quando perde o foco
-                                      const val = e.target.value.trim();
-                                      
-                                      // Não permite vazio ou apenas "-"
-                                      if (val === '' || val === '-') {
-                                        setActionCoinsInputs(prev => ({ ...prev, [action.id]: '0' }));
-                                        updateActionCoins(action.id, 0);
-                                        addToast('warning', 'Valor inválido. Definido como 0.');
-                                        return;
-                                      }
-                                      
-                                      const numVal = parseInt(val);
-                                      
-                                      // Não permite negativos
-                                      if (isNaN(numVal) || numVal < 0) {
-                                        setActionCoinsInputs(prev => ({ ...prev, [action.id]: '0' }));
-                                        updateActionCoins(action.id, 0);
-                                        addToast('warning', 'Valores negativos não são permitidos. Definido como 0.');
-                                        return;
-                                      }
-                                      
-                                      // Valor válido
-                                      setActionCoinsInputs(prev => ({ ...prev, [action.id]: String(numVal) }));
-                                      updateActionCoins(action.id, numVal);
-                                    }}
+                                    value={selectedActions.find(a => a.id === action.id)?.coins || defaultActionCoins[action.name] || 10}
+                                    onChange={(e) => updateActionCoins(action.id, parseInt(e.target.value) || 0)}
                                     onClick={(e) => e.stopPropagation()}
                                     className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
                                   />
@@ -2514,12 +2400,12 @@ export const CampaignsPage: React.FC = () => {
                             </div>
                             <div className="text-right">
                               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                {rankingModal.campaign?.type === 'sales' ? 'Valor Vendido' : 'Total de Coins'}
+                                {rankingModal.campaign?.type === 'sales' ? 'Valor Vendido' : 'Total de Coin(s)'}
                               </p>
                               <p className="font-bold text-lg text-zinc-900 dark:text-white">
                                 {rankingModal.campaign?.type === 'sales'
                                   ? formatCurrency(String(salesAmount !== null ? salesAmount : item.value || 0))
-                                  : `${Math.floor(coinsTotal !== null ? coinsTotal : item.value || 0)} coins`
+                                  : `${coinsTotal !== null ? coinsTotal : item.value || 0} coins`
                                 }
                               </p>
                             </div>

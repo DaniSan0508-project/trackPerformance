@@ -1,4 +1,4 @@
-import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward, Campaign, CampaignAction, Product, CampaignRanking, Redemption, RedemptionStatus, Survey, CoinStatementResponse } from '../types';
+import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward, Campaign, CampaignAction, Product, CampaignRanking, Redemption, RedemptionStatus, Survey } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8010/api/v1';
 
@@ -674,9 +674,9 @@ export const api = {
       });
       if (!response.ok) throw new Error('Falha ao carregar fabricantes');
       const data = await response.json() as PaginatedResponse<any>;
-
+      
       allManufacturers.push(...(data.data || []));
-
+      
       if (currentPage >= (data.meta?.last_page || data.last_page || 1)) {
         break;
       }
@@ -699,7 +699,7 @@ export const api = {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
     queryParams.append('filter[user_id]', userId.toString());
-    
+
     if (filters?.start_date) {
       queryParams.append('filter[start_date]', filters.start_date);
     }
