@@ -448,13 +448,6 @@ export const TeamPage: React.FC = () => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                      {user.role && (
-                        <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                          <Briefcase size={14} className="text-zinc-400 flex-shrink-0" />
-                          <span className="truncate text-xs">{user.role}</span>
-                        </div>
-                      )}
-
                       {user.store && (
                         <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                           <StoreIcon size={14} className="text-zinc-400 flex-shrink-0" />
