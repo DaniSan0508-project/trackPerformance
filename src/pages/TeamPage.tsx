@@ -78,6 +78,8 @@ export const TeamPage: React.FC = () => {
     password: '',
     user_type_id: 2,
     store_id: '' as number | '',
+    role: '',
+    description: '',
     photo: null as File | null
   });
 
@@ -141,6 +143,8 @@ export const TeamPage: React.FC = () => {
         password: '', // Password not populated on edit
         user_type_id: user.user_type_id,
         store_id: user.store_id || '',
+        role: user.role || '',
+        description: user.description || '',
         photo: null
       });
     } else {
@@ -151,6 +155,8 @@ export const TeamPage: React.FC = () => {
         password: '',
         user_type_id: 2,
         store_id: '',
+        role: '',
+        description: '',
         photo: null
       });
     }
@@ -191,6 +197,8 @@ export const TeamPage: React.FC = () => {
       password: formData.password,
       user_type_id: String(formData.user_type_id),
       store_id: formData.store_id === '' ? undefined : String(formData.store_id),
+      role: formData.role || undefined,
+      description: formData.description || undefined,
     });
 
     if (!result.success) {
@@ -217,6 +225,12 @@ export const TeamPage: React.FC = () => {
       data.append('user_type_id', String(formData.user_type_id));
       if (formData.store_id) {
         data.append('store_id', String(formData.store_id));
+      }
+      if (formData.role) {
+        data.append('role', formData.role);
+      }
+      if (formData.description) {
+        data.append('description', formData.description);
       }
       if (formData.photo) {
         data.append('photo', formData.photo);
@@ -383,9 +397,17 @@ export const TeamPage: React.FC = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-zinc-900 dark:text-white line-clamp-1" title={user.name}>{user.name}</h3>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getUserTypeColor(user.user_type_id)}`}>
-                          {getUserTypeLabel(user.user_type_id)}
-                        </span>
+                        <div className="flex items-center gap-2 flex-wrap mt-1">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getUserTypeColor(user.user_type_id)}`}>
+                            {getUserTypeLabel(user.user_type_id)}
+                          </span>
+                          {user.role && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                              <Briefcase size={10} className="mr-1" />
+                              {user.role}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
@@ -440,6 +462,13 @@ export const TeamPage: React.FC = () => {
                         </div>
                       )}
                     </div>
+
+                    {user.description && (
+                      <div className="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                        <FileText size={14} className="text-zinc-400 flex-shrink-0 mt-0.5" />
+                        <span className="text-xs italic">{user.description}</span>
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between gap-4 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                       <div className="flex items-center gap-1.5 text-sm">
@@ -626,6 +655,28 @@ export const TeamPage: React.FC = () => {
                           <option key={store.id} value={store.id}>{store.name}</option>
                         ))}
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Cargo (Opcional)</label>
+                      <input
+                        type="text"
+                        value={formData.role}
+                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                        placeholder="Ex: Gerente, Vendedor, etc."
+                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Descrição (Opcional)</label>
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        placeholder="Ex: Gerente da loja centro..."
+                        rows={3}
+                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white resize-none"
+                      />
                     </div>
                   </div>
 
