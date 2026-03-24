@@ -473,7 +473,13 @@ export const api = {
       },
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Falha ao criar campanha');
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error = new Error('Falha ao criar campanha');
+      (error as any).response = { data: errorData, status: response.status };
+      throw error;
+    }
     return response.json();
   },
 
@@ -487,7 +493,13 @@ export const api = {
       },
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Falha ao atualizar campanha');
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error = new Error('Falha ao atualizar campanha');
+      (error as any).response = { data: errorData, status: response.status };
+      throw error;
+    }
     return response.json();
   },
 

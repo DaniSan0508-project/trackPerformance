@@ -550,7 +550,10 @@ export const CampaignsPage: React.FC = () => {
           }
         });
         setFormErrors(formattedErrors);
-        addToast('error', 'Verifique os campos obrigatórios.');
+        
+        // Mostra mensagem específica do erro
+        const errorMessages = Object.values(formattedErrors).join(', ');
+        addToast('error', errorMessages || 'Verifique os campos obrigatórios.');
         return;
       }
     }
@@ -563,9 +566,8 @@ export const CampaignsPage: React.FC = () => {
     }
 
     setSaving(true);
+    let dataToSave: any = {};
     try {
-      const dataToSave: any = {};
-
       // Na edição, envia apenas campos alterados
       if (editingCampaign) {
         // Envia apenas se houver valor (não vazio)
@@ -628,8 +630,40 @@ export const CampaignsPage: React.FC = () => {
       await fetchCampaigns(currentPage, searchTerm);
       handleCloseModal();
     } catch (error: any) {
-      console.error('Error saving campaign:', error);
-      addToast('error', error.message || 'Erro ao salvar campanha.');
+      // Tratamento de erros específicos da API
+      let errorMessage = 'Erro ao salvar campanha.';
+
+      if (error.response?.data?.errors) {
+        const apiErrors = error.response.data.errors;
+
+        // Erro: ações já em uso em outra campanha de engajamento
+        if (apiErrors.actions?.[0]?.includes('already active in another engagement campaign')) {
+          errorMessage = 'Uma ou mais ações selecionadas já estão em uso em outra campanha de engajamento ativa. Por favor, selecione ações diferentes.';
+        }
+        // Usa a mensagem de erro da API se disponível
+        else if (apiErrors.campaign?.[0]) {
+          errorMessage = apiErrors.campaign[0];
+        }
+        else if (apiErrors.goal?.[0]) {
+          errorMessage = apiErrors.goal[0];
+        }
+        else if (apiErrors.name?.[0]) {
+          errorMessage = apiErrors.name[0];
+        }
+        else {
+          // Tenta juntar todos os erros
+          const allErrors = Object.values(apiErrors).flat().join(', ');
+          if (allErrors) {
+            errorMessage = allErrors;
+          }
+        }
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      addToast('error', errorMessage);
     } finally {
       setSaving(false);
     }
