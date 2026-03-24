@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
+  Gamepad2,
   Users,
   TrendingUp,
   Shield,
@@ -16,6 +17,7 @@ import {
   Gift,
   Flag,
   BarChart3,
+  FileText,
   Sun,
   Moon,
   Trophy
@@ -62,8 +64,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <nav className="flex-1 p-4 space-y-1">
           <NavItem
             to="/dashboard"
-            icon={<TrendingUp size={20} />}
-            label="Indicadores"
+            icon={<Gamepad2 size={20} />}
+            label="Dashboard"
             active={location.pathname === '/dashboard'}
           />
           <NavItem
@@ -75,13 +77,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <NavItem
             to="/posts"
             icon={<Megaphone size={20} />}
-            label="Postagens"
+            label="Posts"
             active={location.pathname === '/posts'}
           />
           <NavItem
             to="/feedbacks"
             icon={<ThumbsUp size={20} />}
-            label="Feedbacks"
+            label="Reconhecimentos"
             active={location.pathname === '/feedbacks'}
           />
           <NavItem
@@ -101,6 +103,18 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             icon={<Flag size={20} />}
             label="Campanhas"
             active={location.pathname === '/campaigns'}
+          />
+          <NavItem
+            to="/surveys"
+            icon={<FileText size={20} />}
+            label="Pesquisas"
+            active={location.pathname === '/surveys'}
+          />
+          <NavItem
+            to="/reports"
+            icon={<BarChart3 size={20} />}
+            label="Relatórios"
+            active={location.pathname === '/reports'}
           />
           <NavItem
             to="/settings"
@@ -170,7 +184,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 px-6 py-3 flex justify-between items-center z-20 transition-colors duration-200">
           <MobileNavItem
             to="/dashboard"
-            icon={<TrendingUp size={24} />}
+            icon={<Gamepad2 size={24} />}
             active={location.pathname === '/dashboard'}
           />
           <MobileNavItem
@@ -202,6 +216,16 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             to="/campaigns"
             icon={<Flag size={24} />}
             active={location.pathname === '/campaigns'}
+          />
+          <MobileNavItem
+            to="/surveys"
+            icon={<FileText size={24} />}
+            active={location.pathname === '/surveys'}
+          />
+          <MobileNavItem
+            to="/reports"
+            icon={<BarChart3 size={24} />}
+            active={location.pathname === '/reports'}
           />
           <MobileNavItem
             to="/settings"

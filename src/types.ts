@@ -289,3 +289,57 @@ export interface RedemptionItem {
   updated_at: string;
   reward?: Reward;
 }
+
+export type SurveyStatus = 'draft' | 'active' | 'closed';
+
+export interface Survey {
+  id: number;
+  title: string;
+  status: SurveyStatus;
+  starts_at: string;
+  ends_at: string;
+  is_anonymous: boolean;
+  is_published: boolean;
+  coins_reward: boolean;
+  views_count: number;
+  questions_count: number;
+  responses_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SurveyResultTextOption {
+  text_answer: string;
+  user_id: number;
+  user: {
+    id: number;
+    name: string;
+    profile_image_path: string | null;
+  };
+}
+
+export interface SurveyResultChoiceOption {
+  option_id: number;
+  option_text: string;
+  count: number;
+  users: Array<{
+    id: number;
+    name: string;
+    profile_image_path: string | null;
+  }>;
+}
+
+export interface SurveyResultQuestion {
+  question_id: number;
+  question: string;
+  type: 'choice' | 'text';
+  results: SurveyResultTextOption[] | SurveyResultChoiceOption[];
+}
+
+export interface SurveyResults {
+  survey_id: number;
+  title: string;
+  is_anonymous: boolean;
+  total_responses: number;
+  questions: SurveyResultQuestion[];
+}
