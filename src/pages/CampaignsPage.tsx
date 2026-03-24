@@ -138,6 +138,9 @@ export const CampaignsPage: React.FC = () => {
   const [selectedActions, setSelectedActions] = useState<{ id: number; coins: number }[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
 
+  // Estado para controlar os inputs de coins das ações (permite edição livre)
+  const [actionCoinsInputs, setActionCoinsInputs] = useState<{ [key: number]: string }>({});
+
   // Paginação e filtros para usuários
   const [usersPage, setUsersPage] = useState(1);
   const [usersTotalPages, setUsersTotalPages] = useState(1);
@@ -349,6 +352,13 @@ export const CampaignsPage: React.FC = () => {
             setSelectedActions(actionsWithCoins);
             setSelectedProducts([]);
 
+            // Popular o estado local dos inputs com os valores das ações
+            const coinsInputsMap: { [key: number]: string } = {};
+            actionsWithCoins.forEach(a => {
+              coinsInputsMap[a.id] = a.coins.toString();
+            });
+            setActionCoinsInputs(coinsInputsMap);
+
             // Carregar TODOS os usuários para a lista auxiliar (engagement precisa de user_type_id = 2)
             const allUsersResponse = await api.getAllUsersComplete(token);
             setUsers(allUsersResponse);
@@ -362,7 +372,15 @@ export const CampaignsPage: React.FC = () => {
             : (campaign.users?.map(u => u.id) || []);
           setSelectedUsers(validUsers);
           setSelectedProducts(campaign.products?.map(p => p.product_id) || []);
-          setSelectedActions(campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || []);
+          const fallbackActions = campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || [];
+          setSelectedActions(fallbackActions);
+          
+          // Popular estado local no fallback
+          const fallbackCoinsInputs: { [key: number]: string } = {};
+          fallbackActions.forEach(a => {
+            fallbackCoinsInputs[a.id] = a.coins.toString();
+          });
+          setActionCoinsInputs(fallbackCoinsInputs);
         }
       } else {
         // Fallback sem token
@@ -371,7 +389,15 @@ export const CampaignsPage: React.FC = () => {
           : (campaign.users?.map(u => u.id) || []);
         setSelectedUsers(validUsers);
         setSelectedProducts(campaign.products?.map(p => p.product_id) || []);
-        setSelectedActions(campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || []);
+        const fallbackActions = campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || [];
+        setSelectedActions(fallbackActions);
+        
+        // Popular estado local no fallback
+        const fallbackCoinsInputs: { [key: number]: string } = {};
+        fallbackActions.forEach(a => {
+          fallbackCoinsInputs[a.id] = a.coins.toString();
+        });
+        setActionCoinsInputs(fallbackCoinsInputs);
       }
     } else {
       setEditingCampaign(null);
@@ -386,6 +412,7 @@ export const CampaignsPage: React.FC = () => {
       setSelectedUsers([]);
       setSelectedProducts([]);
       setSelectedActions([]);
+      setActionCoinsInputs({});
     }
     setIsModalOpen(true);
     fetchAuxiliaryData();
@@ -415,6 +442,7 @@ export const CampaignsPage: React.FC = () => {
     setSelectedUsers([]);
     setSelectedProducts([]);
     setSelectedActions([]);
+    setActionCoinsInputs({});
     setFullySelectedRoles(new Set());
     setFullySelectedManufacturers(new Set());
     setFormErrors({});
@@ -529,15 +557,20 @@ export const CampaignsPage: React.FC = () => {
         if (formData.name?.trim()) {
           dataToSave.name = formData.name.trim();
         }
-        
+
         // Sempre envia is_active na edição (status pode ser alterado)
         dataToSave.is_active = formData.status === 'ativa';
-        
+
         // Envia users apenas se houver selecionados
         if (selectedUsers.length > 0) {
           dataToSave.users = selectedUsers;
         }
-        
+
+        // Envia goal se houver valor (para sales e engagement)
+        if (formData.goal && !isNaN(parseFloat(formData.goal))) {
+          dataToSave.goal = parseFloat(formData.goal);
+        }
+
         // Envia conforme o tipo da campanha
         if (editingCampaign.type === 'sales') {
           // Envia products apenas se houver selecionados
@@ -701,6 +734,12 @@ export const CampaignsPage: React.FC = () => {
     setSelectedActions(prev => {
       const exists = prev.find(a => a.id === actionId);
       if (exists) {
+        // Remove o estado local do input quando desmarcar
+        setActionCoinsInputs(prevInputs => {
+          const newInputs = { ...prevInputs };
+          delete newInputs[actionId];
+          return newInputs;
+        });
         return prev.filter(a => a.id !== actionId);
       }
       const action = ENGAGEMENT_ACTIONS.find(a => a.id === actionId);
@@ -1197,7 +1236,7 @@ export const CampaignsPage: React.FC = () => {
                                 <Coins size={16} className="text-amber-500" />
                                 <span className="text-zinc-500 dark:text-zinc-500">Meta:</span>
                                 <span className="font-semibold text-zinc-900 dark:text-white">
-                                  {campaign.goal || 0} moedas
+                                  {Math.floor(campaign.goal || 0)} coins
                                 </span>
                               </div>
                             )}
@@ -1273,7 +1312,7 @@ export const CampaignsPage: React.FC = () => {
                                   )}
                                   {campaign.type === 'engagement' && member.coins_total !== null && (
                                     <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                                      {member.coins_total} 🪙
+                                      {Math.floor(member.coins_total)} coins
                                     </span>
                                   )}
                                 </div>
@@ -1469,7 +1508,7 @@ export const CampaignsPage: React.FC = () => {
                               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta</label>
                               <p className="text-sm font-medium text-zinc-900 dark:text-white">
                                 {editingCampaign.type === 'engagement'
-                                  ? `${editingCampaign.goal || 0} moedas`
+                                  ? `${Math.floor(editingCampaign.goal || 0)} coins`
                                   : formatCurrency(formData.goal)
                                 }
                               </p>
@@ -1905,8 +1944,8 @@ export const CampaignsPage: React.FC = () => {
                     <div className="space-y-3">
                       <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
                         {editingCampaign?.type === 'engagement'
-                          ? 'Selecione as ações e defina quantas moedas serão ganhas (obrigatório para campanhas de engajamento):'
-                          : 'Selecione as ações e defina quantas moedas serão ganhas:'}
+                          ? 'Selecione as ações e defina quantos coins serão ganhos (obrigatório para campanhas de engajamento):'
+                          : 'Selecione as ações e defina quantos coins serão ganhos:'}
                       </p>
 
                       {/* Filtro de busca de ações */}
@@ -1965,8 +2004,22 @@ export const CampaignsPage: React.FC = () => {
                                   <input
                                     type="number"
                                     min="0"
-                                    value={selectedActions.find(a => a.id === action.id)?.coins || defaultActionCoins[action.name] || 10}
-                                    onChange={(e) => updateActionCoins(action.id, parseInt(e.target.value) || 0)}
+                                    value={actionCoinsInputs[action.id] ?? (selectedActions.find(a => a.id === action.id)?.coins ?? defaultActionCoins[action.name] ?? 10)}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      // Sempre atualiza o estado local primeiro
+                                      setActionCoinsInputs(prev => ({ ...prev, [action.id]: val }));
+                                    }}
+                                    onBlur={(e) => {
+                                      // Atualiza o estado real apenas quando perde o foco
+                                      const val = e.target.value;
+                                      const numVal = parseInt(val);
+                                      if (!isNaN(numVal) && numVal >= 0) {
+                                        updateActionCoins(action.id, numVal);
+                                      } else {
+                                        updateActionCoins(action.id, 0);
+                                      }
+                                    }}
                                     onClick={(e) => e.stopPropagation()}
                                     className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
                                   />
@@ -2396,12 +2449,12 @@ export const CampaignsPage: React.FC = () => {
                             </div>
                             <div className="text-right">
                               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                {rankingModal.campaign?.type === 'sales' ? 'Valor Vendido' : 'Total de Coin(s)'}
+                                {rankingModal.campaign?.type === 'sales' ? 'Valor Vendido' : 'Total de Coins'}
                               </p>
                               <p className="font-bold text-lg text-zinc-900 dark:text-white">
                                 {rankingModal.campaign?.type === 'sales'
                                   ? formatCurrency(String(salesAmount !== null ? salesAmount : item.value || 0))
-                                  : `${coinsTotal !== null ? coinsTotal : item.value || 0} coins`
+                                  : `${Math.floor(coinsTotal !== null ? coinsTotal : item.value || 0)} coins`
                                 }
                               </p>
                             </div>
