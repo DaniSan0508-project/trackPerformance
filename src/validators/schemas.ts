@@ -197,22 +197,29 @@ export const campaignSchema = z.object({
       message: 'Status inválido',
     }),
 }).refine((data) => {
-  // Goal é obrigatório apenas para sales
+  // Goal é obrigatório para sales e engagement
   if (data.type === 'sales' && (!data.goal || data.goal.trim() === '')) {
+    return false;
+  }
+  if (data.type === 'engagement' && (!data.goal || data.goal.trim() === '')) {
     return false;
   }
   return true;
 }, {
-  message: 'Meta é obrigatória para campanhas de vendas',
+  message: 'Meta é obrigatória',
   path: ['goal'],
 }).refine((data) => {
   // Valida formato numérico se goal estiver presente
   if (data.goal && data.goal.trim() !== '') {
-    return /^\d+(\.\d{1,2})?$/.test(data.goal);
+    if (data.type === 'sales') {
+      return /^\d+(\.\d{1,2})?$/.test(data.goal);
+    } else if (data.type === 'engagement') {
+      return /^\d+$/.test(data.goal);
+    }
   }
   return true;
 }, {
-  message: 'Deve ser um número válido com até 2 casas decimais',
+  message: 'Deve ser um número válido',
   path: ['goal'],
 });
 

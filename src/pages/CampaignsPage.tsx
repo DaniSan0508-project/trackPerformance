@@ -121,9 +121,6 @@ export const CampaignsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingAux, setLoadingAux] = useState(false);
 
-  // Metas calculadas para campanhas de engajamento (por campaign_id)
-  const [campaignGoals, setCampaignGoals] = useState<{ [key: number]: number }>({});
-
   // Abas do modal
   const [activeTab, setActiveTab] = useState<'basic' | 'users' | 'actions' | 'products'>('basic');
 
@@ -267,26 +264,6 @@ export const CampaignsPage: React.FC = () => {
       setTotalItems(data.total);
       setFromItem(data.from);
       setToItem(data.to);
-
-      // Buscar ações para campanhas de engajamento e calcular metas
-      const engagementCampaigns = data.data.filter((c: Campaign) => c.type === 'engagement');
-      if (engagementCampaigns.length > 0) {
-        const goals: { [key: number]: number } = {};
-        await Promise.all(
-          engagementCampaigns.map(async (campaign: Campaign) => {
-            try {
-              const actionsResponse = await api.getCampaignActions(token, campaign.id);
-              const actions = actionsResponse.data || [];
-              const totalCoins = actions.reduce((sum, action) => sum + (parseInt(action.coins) || 0), 0);
-              goals[campaign.id] = totalCoins;
-            } catch (error) {
-              console.error(`Error fetching actions for campaign ${campaign.id}:`, error);
-              goals[campaign.id] = 0;
-            }
-          })
-        );
-        setCampaignGoals(goals);
-      }
     } catch (err: any) {
       console.error('Error fetching campaigns:', err);
       setError(err.message || 'Não foi possível carregar as campanhas.');
@@ -326,7 +303,7 @@ export const CampaignsPage: React.FC = () => {
       setFormData({
         name: campaign.name,
         type: campaign.type,
-        goal: campaign.type === 'sales' ? campaign.goal : '',
+        goal: campaign.goal || '',
         start_date: campaign.start_date,
         end_date: campaign.end_date,
         status: status,
@@ -371,13 +348,6 @@ export const CampaignsPage: React.FC = () => {
             const actionsWithCoins = campaignActions.map(a => ({ id: a.id, coins: parseInt(a.coins) || 0 }));
             setSelectedActions(actionsWithCoins);
             setSelectedProducts([]);
-
-            // Calcular meta como soma das moedas de todas as ações (apenas para exibição informativa)
-            const totalCoins = actionsWithCoins.reduce((sum, action) => sum + (action.coins || 0), 0);
-            setFormData(prev => ({
-              ...prev,
-              goal: totalCoins > 0 ? totalCoins.toString() : '',
-            }));
 
             // Carregar TODOS os usuários para a lista auxiliar (engagement precisa de user_type_id = 2)
             const allUsersResponse = await api.getAllUsersComplete(token);
@@ -502,6 +472,11 @@ export const CampaignsPage: React.FC = () => {
       }
 
       if (formData.type === 'engagement') {
+        if (!formData.goal || parseFloat(formData.goal) <= 0) {
+          addToast('error', 'Campanhas de engajamento exigem uma meta válida.');
+          setActiveTab('basic');
+          return;
+        }
         if (selectedActions.length === 0) {
           addToast('error', 'Campanhas de engajamento exigem pelo menos 1 ação vinculada.');
           setActiveTab('actions');
@@ -582,13 +557,14 @@ export const CampaignsPage: React.FC = () => {
         dataToSave.is_active = formData.status === 'ativa';
         dataToSave.users = selectedUsers;
         
-        // Goal apenas para vendas
+        // Goal para vendas e engajamento
         if (formData.type === 'sales') {
           dataToSave.goal = parseFloat(formData.goal);
           dataToSave.start_date = formData.start_date;
           dataToSave.end_date = formData.end_date;
           dataToSave.products = selectedProducts;
         } else if (formData.type === 'engagement') {
+          dataToSave.goal = parseFloat(formData.goal);
           dataToSave.start_date = formData.start_date;
           dataToSave.end_date = formData.end_date;
           dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
@@ -1221,7 +1197,7 @@ export const CampaignsPage: React.FC = () => {
                                 <Coins size={16} className="text-amber-500" />
                                 <span className="text-zinc-500 dark:text-zinc-500">Meta:</span>
                                 <span className="font-semibold text-zinc-900 dark:text-white">
-                                  {campaignGoals[campaign.id] || 0} moedas
+                                  {campaign.goal || 0} moedas
                                 </span>
                               </div>
                             )}
@@ -1493,7 +1469,7 @@ export const CampaignsPage: React.FC = () => {
                               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta</label>
                               <p className="text-sm font-medium text-zinc-900 dark:text-white">
                                 {editingCampaign.type === 'engagement'
-                                  ? `${formData.goal || 0} moedas (por membro do time)`
+                                  ? `${editingCampaign.goal || 0} moedas`
                                   : formatCurrency(formData.goal)
                                 }
                               </p>
@@ -1544,6 +1520,27 @@ export const CampaignsPage: React.FC = () => {
                                 placeholder="R$ 0,00"
                               />
                               {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
+                            </div>
+                          )}
+
+                          {/* Meta para campanhas de engajamento (editável) */}
+                          {formData.type === 'engagement' && (
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta (Coins) *</label>
+                              <input
+                                type="number"
+                                value={formData.goal}
+                                onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
+                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                  formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                }`}
+                                placeholder="Ex: 100"
+                                min="0"
+                              />
+                              {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                Defina a meta de coins que os participantes devem alcançar
+                              </p>
                             </div>
                           )}
 
