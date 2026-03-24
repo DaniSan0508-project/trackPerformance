@@ -356,19 +356,19 @@ export const PostsPage: React.FC = () => {
             <p className="text-zinc-500 dark:text-zinc-400">Gerencie e visualize as publicações do seu time.</p>
           </div>
           <div className="flex gap-2">
-            <button 
-              onClick={() => setCreatePostModal(true)}
-              className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
-            >
-              <Plus size={18} />
-              Novo Post
-            </button>
-            <button 
+            <button
               onClick={() => fetchPosts(currentPage, searchTerm)}
               className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all"
               title="Atualizar"
             >
               <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
+            </button>
+            <button
+              onClick={() => setCreatePostModal(true)}
+              className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
+            >
+              <Plus size={18} />
+              Novo Post
             </button>
           </div>
         </div>
@@ -432,13 +432,13 @@ export const PostsPage: React.FC = () => {
                       </div>
                     </div>
                     <div className="relative">
-                      <button 
+                      <button
                         onClick={() => setActiveMenuPostId(activeMenuPostId === post.id ? null : post.id)}
                         className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 flex-shrink-0 p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                       >
                         <MoreHorizontal size={20} />
                       </button>
-                      
+
                       {activeMenuPostId === post.id && (
                         <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-zinc-800 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-700 py-1 z-10 overflow-hidden">
                           {(() => {
@@ -689,7 +689,7 @@ export const PostsPage: React.FC = () => {
                                   {isAdmin && (
                                     <button
                                       onClick={() => handleDeleteComment(comment.id, commentsModalPost.id)}
-                                      className="text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                      className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-400 transition-colors"
                                       title="Excluir comentário"
                                     >
                                       <Trash2 size={14} />
@@ -1105,8 +1105,9 @@ export const PostsPage: React.FC = () => {
                     </button>
                     <button
                       type="submit"
-                      disabled={isCreating || !newPostContent.trim()}
+                      disabled={isCreating || !newPostContent.trim() || (mediaType === 'none')}
                       className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={mediaType === 'none' ? 'Selecione uma imagem ou vídeo do YouTube' : ''}
                     >
                       {isCreating ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
                       Publicar
