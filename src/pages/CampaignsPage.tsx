@@ -306,7 +306,7 @@ export const CampaignsPage: React.FC = () => {
       setFormData({
         name: campaign.name,
         type: campaign.type,
-        goal: campaign.goal || '',
+        goal: campaign.goal ? String(campaign.goal) : '',
         start_date: campaign.start_date,
         end_date: campaign.end_date,
         status: status,
@@ -500,10 +500,13 @@ export const CampaignsPage: React.FC = () => {
       }
 
       if (formData.type === 'engagement') {
-        if (!formData.goal || parseFloat(formData.goal) <= 0) {
-          addToast('error', 'Campanhas de engajamento exigem uma meta válida.');
-          setActiveTab('basic');
-          return;
+        // Validação da meta apenas na criação (não na edição)
+        if (!editingCampaign) {
+          if (!formData.goal || parseFloat(formData.goal) <= 0) {
+            addToast('error', 'Campanhas de engajamento exigem uma meta válida.');
+            setActiveTab('basic');
+            return;
+          }
         }
         if (selectedActions.length === 0) {
           addToast('error', 'Campanhas de engajamento exigem pelo menos 1 ação vinculada.');
@@ -526,18 +529,21 @@ export const CampaignsPage: React.FC = () => {
       }
     }
 
-    const result = campaignSchema.safeParse(formData);
-    if (!result.success) {
-      const errors = result.error.flatten().fieldErrors;
-      const formattedErrors: { [key: string]: string } = {};
-      Object.entries(errors).forEach(([key, messages]) => {
-        if (messages?.length) {
-          formattedErrors[key] = messages[0];
-        }
-      });
-      setFormErrors(formattedErrors);
-      addToast('error', 'Verifique os campos obrigatórios.');
-      return;
+    // Validação do schema apenas na criação (não na edição)
+    if (!editingCampaign) {
+      const result = campaignSchema.safeParse(formData);
+      if (!result.success) {
+        const errors = result.error.flatten().fieldErrors;
+        const formattedErrors: { [key: string]: string } = {};
+        Object.entries(errors).forEach(([key, messages]) => {
+          if (messages?.length) {
+            formattedErrors[key] = messages[0];
+          }
+        });
+        setFormErrors(formattedErrors);
+        addToast('error', 'Verifique os campos obrigatórios.');
+        return;
+      }
     }
 
     // Validação adicional: end_date deve ser maior que start_date (somente criação)
@@ -566,10 +572,8 @@ export const CampaignsPage: React.FC = () => {
           dataToSave.users = selectedUsers;
         }
 
-        // Envia goal se houver valor (para sales e engagement)
-        if (formData.goal && !isNaN(parseFloat(formData.goal))) {
-          dataToSave.goal = parseFloat(formData.goal);
-        }
+        // NÃO envia goal na edição (somente na criação)
+        // Goal é definido apenas no momento da criação da campanha
 
         // Envia conforme o tipo da campanha
         if (editingCampaign.type === 'sales') {
