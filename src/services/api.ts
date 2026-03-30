@@ -126,12 +126,17 @@ export const api = {
     return response.json() as Promise<PaginatedResponse<Feedback>>;
   },
 
-  getPosts: async (token: string, page = 1, search = '') => {
+  getPosts: async (token: string, page = 1, filters: { userName?: string; createdAt?: string } = {}) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
-    queryParams.append('include', 'user');
-    if (search) {
-      queryParams.append('filter[content]', search);
+    queryParams.append('include', 'user,likes,comments');
+    
+    if (filters.userName) {
+      queryParams.append('filter[user.name]', filters.userName);
+    }
+    
+    if (filters.createdAt) {
+      queryParams.append('filter[created_at]', filters.createdAt);
     }
 
     const response = await fetch(`${API_BASE_URL}/posts?${queryParams.toString()}`, {
