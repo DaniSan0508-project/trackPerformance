@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, Tenant, AuthResponse, RefreshResponse } from '../types';
 import { api } from '../services/api';
 
@@ -7,6 +7,7 @@ interface AuthContextType {
   tenant: Tenant | null;
   token: string | null;
   logoUrl: string | null;
+  coinName: string;
   login: (data: AuthResponse, rememberMe?: boolean) => void;
   logout: () => void;
   isAuthenticated: boolean;
@@ -15,11 +16,12 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [coinName, setCoinName] = useState<string>('coins');
   const [loading, setLoading] = useState(true);
 
   // Initialize state from storage
@@ -33,6 +35,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(data.user);
           setTenant(data.tenant);
           setToken(data.access_token);
+          // If coin_name was saved in storage, restore it
+          // stored blob may contain coin_name added later
+          const parsed = JSON.parse(localAuth);
+          if (parsed.coin_name) setCoinName(parsed.coin_name);
           return;
         }
 
@@ -43,6 +49,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(data.user);
           setTenant(data.tenant);
           setToken(data.access_token);
+          const parsed = JSON.parse(sessionAuth);
+          if (parsed.coin_name) setCoinName(parsed.coin_name);
         }
       } catch (e) {
         console.error('Failed to parse auth data', e);
@@ -56,21 +64,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadAuthData();
   }, []);
 
-  // Fetch logo when token is available
+  // Fetch tenant configs (logo and coin_name) when token is available
   useEffect(() => {
-    const fetchLogo = async () => {
+    const fetchTenantConfigs = async () => {
       if (!token) return;
       try {
-        const response = await api.getTenantConfigs(token, 1, 'path_logo');
+        const response = await api.getTenantConfigs(token, 1);
         const logoConfig = response.data.find(c => c.config_key === 'path_logo');
-        if (logoConfig) {
-          setLogoUrl(logoConfig.config_value);
+        const coinConfig = response.data.find(c => c.config_key === 'coin_name');
+        if (logoConfig) setLogoUrl(logoConfig.config_value);
+        if (coinConfig && coinConfig.config_value) setCoinName(String(coinConfig.config_value));
+
+        // Persist coin_name into storage if present so subsequent loads can restore it
+        if (coinConfig && coinConfig.config_value) {
+          const persist = (storage: Storage) => {
+            const stored = storage.getItem('track_performance_auth');
+            if (stored) {
+              try {
+                const parsed = JSON.parse(stored);
+                parsed.coin_name = String(coinConfig.config_value);
+                storage.setItem('track_performance_auth', JSON.stringify(parsed));
+              } catch (e) {
+                // ignore
+              }
+            }
+          };
+          persist(localStorage);
+          persist(sessionStorage);
         }
       } catch (error) {
-        console.error('Failed to fetch logo', error);
+        console.error('Failed to fetch tenant configs', error);
       }
     };
-    fetchLogo();
+    fetchTenantConfigs();
   }, [token]);
 
   const login = (data: AuthResponse, rememberMe: boolean = false) => {
@@ -94,6 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTenant(null);
     setToken(null);
     setLogoUrl(null);
+    setCoinName('coins');
     localStorage.removeItem('track_performance_auth');
     sessionStorage.removeItem('track_performance_auth');
   }, []);
@@ -181,7 +208,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [token, user?.id]);
 
   return (
-    <AuthContext.Provider value={{ user, tenant, token, logoUrl, login, logout, isAuthenticated: !!token, refreshAccessToken }}>
+    <AuthContext.Provider value={{ user, tenant, token, logoUrl, coinName, login, logout, isAuthenticated: !!token, refreshAccessToken }}>
       {!loading && children}
     </AuthContext.Provider>
   );

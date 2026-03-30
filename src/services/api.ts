@@ -959,4 +959,65 @@ export const api = {
     if (!response.ok) throw new Error('Falha ao carregar resultados da pesquisa');
     return response.json();
   },
+
+  // Dashboard summary metrics
+  getDashboard: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/dashboard`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar dashboard');
+    return response.json();
+  },
+
+  // Active campaigns for dashboard
+  getActiveCampaigns: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/dashboard/active-campaigns`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar campanhas ativas');
+    return response.json();
+  },
+
+  // Engagement index per store for dashboard
+  getEngagementIndex: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/dashboard/engagement-index`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar índice de engajamento');
+    return response.json();
+  },
+
+  // Top collaborators (podium) - retorna array dos top colaboradores
+  getTopCollaborators: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/dashboard/top-collaborators`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar top collaborators');
+    return response.json();
+  },
+
+  // Engagement actions summary for dashboard (supports period query: current_day, current_week, current_month)
+  getEngagementActionsSummary: async (token: string, period?: string) => {
+    const query = period ? `?period=${encodeURIComponent(period)}` : '';
+    const response = await fetch(`${API_BASE_URL}/dashboard/engagement-actions-summary${query}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar resumo de ações de engajamento');
+    return response.json();
+  },
 };
