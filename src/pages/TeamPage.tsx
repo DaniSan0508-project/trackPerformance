@@ -131,11 +131,11 @@ export const TeamPage: React.FC = () => {
   const fetchStores = useCallback(async () => {
     if (!token) return;
     try {
-      // Fetch all stores (or enough to populate dropdown)
+      // Fetch stores (currently page 1)
       const data = await api.getStores(token, 1, ''); 
-      // Ideally fetch all, but pagination might limit. For now, fetching first page.
-      // If needed, we can implement a "load more" or fetch all logic.
-      setStores(data.data);
+      // Filtra apenas as lojas ativas para o select
+      const activeStores = data.data.filter(store => store.active);
+      setStores(activeStores);
     } catch (error) {
       console.error('Error fetching stores', error);
     }
