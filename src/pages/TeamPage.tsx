@@ -248,7 +248,37 @@ export const TeamPage: React.FC = () => {
       handleCloseModal();
     } catch (error: any) {
       console.error('Error saving user:', error);
-      addToast('error', error.message || 'Erro ao salvar usuário.');
+      
+      // Handle API validation errors
+      if (error.response?.data?.errors) {
+        const apiErrors = error.response.data.errors;
+        const formattedErrors: { [key: string]: string } = {};
+        
+        const translations: { [key: string]: string } = {
+          'The email has already been taken.': 'Este e-mail já está em uso.',
+          'The password field is required.': 'O campo senha é obrigatório.',
+          'The name field is required.': 'O campo nome é obrigatório.',
+          'The selected store id is invalid.': 'A loja selecionada é inválida.',
+          'The password must be at least 8 characters.': 'A senha deve ter pelo menos 8 caracteres.',
+        };
+
+        Object.entries(apiErrors).forEach(([key, messages]: [string, any]) => {
+          let message = Array.isArray(messages) ? messages[0] : messages;
+          if (typeof message === 'string') {
+            formattedErrors[key] = translations[message] || message;
+          }
+        });
+        
+        setFormErrors(formattedErrors);
+        
+        const apiMessage = error.response.data.message === 'Validation error' 
+          ? 'Erro de validação nos campos abaixo.' 
+          : error.response.data.message;
+          
+        addToast('error', apiMessage);
+      } else {
+        addToast('error', error.message || 'Erro ao salvar usuário.');
+      }
     } finally {
       setSaving(false);
     }
