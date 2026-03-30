@@ -264,10 +264,22 @@ export const PostsPage: React.FC = () => {
 
   const handleDeleteComment = async (commentId: number, postId: number) => {
     if (!token) return;
-    
+
     try {
       await api.deletePostComment(token, commentId);
-      // Remove o comentário da lista
+      // Atualiza o post na lista principal
+      setPosts(prev => prev.map(p => {
+        if (p.id === postId && p.comments) {
+          return {
+            ...p,
+            comments: p.comments.filter(c => c.id !== commentId),
+            comments_count: (p.comments_count || 1) - 1
+          };
+        }
+        return p;
+      }));
+      
+      // Atualiza o modal de comentários se estiver aberto
       setCommentsModalPost(prev => {
         if (!prev) return null;
         return {
@@ -275,22 +287,34 @@ export const PostsPage: React.FC = () => {
           comments: prev.comments.filter(c => c.id !== commentId)
         };
       });
-      // Atualiza também o post na lista principal
-      setPosts(prev => prev.map(p => {
-        if (p.id === postId && p.comments) {
-          return {
-            ...p,
-            comments: p.comments.filter(c => c.id !== commentId)
-          };
-        }
-        return p;
-      }));
+      
       addToast('success', 'Comentário excluído com sucesso!');
     } catch (err: any) {
       console.error('Error deleting comment:', err);
       const errorMessage = err.response?.data?.message || err.message || 'Erro ao excluir comentário';
       addToast('error', errorMessage);
     }
+  };
+
+  const [confirmCommentModal, setConfirmCommentModal] = useState<{
+    isOpen: boolean;
+    commentId: number | null;
+    postId: number | null;
+  }>({
+    isOpen: false,
+    commentId: null,
+    postId: null,
+  });
+
+  const handleDeleteCommentConfirm = async () => {
+    if (confirmCommentModal.commentId && confirmCommentModal.postId) {
+      await handleDeleteComment(confirmCommentModal.commentId, confirmCommentModal.postId);
+    }
+    setConfirmCommentModal({ isOpen: false, commentId: null, postId: null });
+  };
+
+  const handleDeleteCommentClick = (commentId: number, postId: number) => {
+    setConfirmCommentModal({ isOpen: true, commentId, postId });
   };
 
   const handleUpdatePost = async (e: React.FormEvent) => {
@@ -427,6 +451,14 @@ export const PostsPage: React.FC = () => {
         title={confirmModal.title}
         message={confirmModal.message}
         isLoading={confirmModal.isLoading}
+      />
+      <ConfirmModal
+        isOpen={confirmCommentModal.isOpen}
+        onClose={() => setConfirmCommentModal({ isOpen: false, commentId: null, postId: null })}
+        onConfirm={handleDeleteCommentConfirm}
+        title="Excluir Comentário"
+        message="Tem certeza que deseja excluir este comentário? Esta ação não pode ser desfeita."
+        isLoading={false}
       />
       <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -767,7 +799,7 @@ export const PostsPage: React.FC = () => {
                                   <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-1">{user?.name || 'Usuário Desconhecido'}</p>
                                   {isAdmin && (
                                     <button
-                                      onClick={() => handleDeleteComment(comment.id, commentsModalPost.id)}
+                                      onClick={() => handleDeleteCommentClick(comment.id, commentsModalPost.id)}
                                       className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-400 transition-colors"
                                       title="Excluir comentário"
                                     >
