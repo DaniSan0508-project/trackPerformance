@@ -240,7 +240,12 @@ export const api = {
       },
       body: formData,
     });
-    if (!response.ok) throw new Error('Falha ao criar usuário');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error = new Error('Falha ao criar usuário');
+      (error as any).response = { data: errorData, status: response.status };
+      throw error;
+    }
     return response.json();
   },
 
@@ -253,7 +258,12 @@ export const api = {
       },
       body: formData,
     });
-    if (!response.ok) throw new Error('Falha ao atualizar usuário');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error = new Error('Falha ao atualizar usuário');
+      (error as any).response = { data: errorData, status: response.status };
+      throw error;
+    }
     return response.json();
   },
 
