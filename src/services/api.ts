@@ -109,12 +109,12 @@ export const api = {
     return response.json() as Promise<PaginatedResponse<Feedback>>;
   },
 
-  getAllTenantFeedbacks: async (token: string, page = 1, searchName = '') => {
+  getAllTenantFeedbacks: async (token: string, page = 1, searchName = '', filterType: 'sender_name' | 'recipient_name' = 'recipient_name') => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
     queryParams.append('include', 'sender,recipient');
     if (searchName) {
-      queryParams.append('filter[sender_name]', searchName);
+      queryParams.append(`filter[${filterType}]`, searchName);
     }
 
     const response = await fetch(`${API_BASE_URL}/feedbacks/tenant?${queryParams.toString()}`, {
