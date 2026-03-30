@@ -439,7 +439,7 @@ export const api = {
   getRewards: async (token: string, page = 1, search = '') => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
-    queryParams.append('include', 'images,primaryImage');
+    queryParams.append('include', 'images');
     if (search) {
       queryParams.append('filter[name]', search);
     }
