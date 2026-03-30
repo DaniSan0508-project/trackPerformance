@@ -45,8 +45,10 @@ export const PostsPage: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const [filterUserName, setFilterUserName] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  const debouncedUserName = useDebounce(filterUserName, 500);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -100,12 +102,12 @@ export const PostsPage: React.FC = () => {
   const [usersCache, setUsersCache] = useState<Record<number, UserType>>({});
   const [loadingUsers, setLoadingUsers] = useState(false);
 
-  const fetchPosts = useCallback(async (page = 1, search = '') => {
+  const fetchPosts = useCallback(async (page = 1, filters: { userName?: string; createdAt?: string } = {}) => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getPosts(token, page, search);
+      const data = await api.getPosts(token, page, filters);
       setPosts(data.data);
       setCurrentPage(data.meta.current_page);
       setTotalPages(data.meta.last_page);
@@ -213,7 +215,10 @@ export const PostsPage: React.FC = () => {
       setMediaType('none');
 
       // Refresh posts
-      fetchPosts(1, searchTerm);
+      const dateFilter = filterStartDate && filterEndDate 
+        ? `${filterStartDate},${filterEndDate}` 
+        : filterStartDate || filterEndDate || '';
+      fetchPosts(1, { userName: filterUserName, createdAt: dateFilter });
       addToast('success', 'Post criado com sucesso!');
     } catch (err: any) {
       console.error('Error creating post:', err);
@@ -380,7 +385,10 @@ export const PostsPage: React.FC = () => {
       await api.updatePostWithMedia(token, editPostModal.id, formData);
 
       // Atualizar lista de posts (refresh completo)
-      await fetchPosts(currentPage, searchTerm);
+      const dateFilter = filterStartDate && filterEndDate 
+        ? `${filterStartDate},${filterEndDate}` 
+        : filterStartDate || filterEndDate || '';
+      await fetchPosts(currentPage, { userName: filterUserName, createdAt: dateFilter });
 
       setEditPostModal(null);
       setEditTitle('');
@@ -435,12 +443,16 @@ export const PostsPage: React.FC = () => {
   }, [commentsModalPost]);
 
   useEffect(() => {
-    fetchPosts(currentPage, debouncedSearchTerm);
-  }, [fetchPosts, currentPage, debouncedSearchTerm]);
+    const dateFilter = filterStartDate && filterEndDate 
+      ? `${filterStartDate},${filterEndDate}` 
+      : filterStartDate || filterEndDate || '';
+    
+    fetchPosts(currentPage, { userName: debouncedUserName, createdAt: dateFilter });
+  }, [fetchPosts, currentPage, debouncedUserName, filterStartDate, filterEndDate]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm]);
+  }, [debouncedUserName, filterStartDate, filterEndDate]);
 
   return (
     <Layout>
@@ -468,7 +480,10 @@ export const PostsPage: React.FC = () => {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => fetchPosts(currentPage, searchTerm)}
+              onClick={() => {
+                const dateFilter = filterStartDate && filterEndDate ? `${filterStartDate},${filterEndDate}` : filterStartDate || filterEndDate || '';
+                fetchPosts(currentPage, { userName: filterUserName, createdAt: dateFilter });
+              }}
               className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all"
               title="Atualizar"
             >
@@ -490,12 +505,41 @@ export const PostsPage: React.FC = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400 dark:text-zinc-500" size={20} />
             <input 
               type="text" 
-              placeholder="Buscar por conteúdo..." 
+              placeholder="Buscar por nome do usuário..." 
               className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={filterUserName}
+              onChange={(e) => setFilterUserName(e.target.value)}
             />
           </div>
+          <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+            <input 
+              type="date" 
+              className="w-full md:w-40 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+              value={filterStartDate}
+              onChange={(e) => setFilterStartDate(e.target.value)}
+              title="Data início"
+            />
+            <input 
+              type="date" 
+              className="w-full md:w-40 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+              value={filterEndDate}
+              onChange={(e) => setFilterEndDate(e.target.value)}
+              title="Data fim"
+            />
+          </div>
+          {(filterUserName || filterStartDate || filterEndDate) && (
+            <button
+              onClick={() => {
+                setFilterUserName('');
+                setFilterStartDate('');
+                setFilterEndDate('');
+              }}
+              className="text-sm text-red-500 hover:text-red-600 font-medium px-2 py-1 transition-colors flex items-center gap-1"
+            >
+              <X size={16} />
+              Limpar
+            </button>
+          )}
         </div>
 
         {/* Posts List */}
@@ -506,7 +550,13 @@ export const PostsPage: React.FC = () => {
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
             {error}
-            <button onClick={() => fetchPosts(currentPage, searchTerm)} className="block mx-auto mt-2 text-sm font-semibold hover:underline">
+            <button 
+              onClick={() => {
+                const dateFilter = filterStartDate && filterEndDate ? `${filterStartDate},${filterEndDate}` : filterStartDate || filterEndDate || '';
+                fetchPosts(currentPage, { userName: filterUserName, createdAt: dateFilter });
+              }} 
+              className="block mx-auto mt-2 text-sm font-semibold hover:underline"
+            >
               Tentar novamente
             </button>
           </div>
