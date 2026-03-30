@@ -629,7 +629,7 @@ export const StoresPage: React.FC = () => {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">CNPJ</label>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">CNPJ *</label>
                         <input
                           type="text"
                           value={formData.cnpj}
@@ -643,7 +643,7 @@ export const StoresPage: React.FC = () => {
                         {formErrors.cnpj && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.cnpj}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Telefone</label>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Telefone (Opcional)</label>
                         <input
                           type="text"
                           value={formData.phone}
@@ -659,7 +659,7 @@ export const StoresPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Email</label>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Email (Opcional)</label>
                       <input
                         type="email"
                         value={formData.email}

@@ -69,12 +69,14 @@ export const storeSchema = z.object({
     .regex(/^\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}$/, 'CNPJ inválido'),
   email: z
     .string()
-    .min(1, 'E-mail inválido')
-    .email('E-mail inválido'),
+    .email('E-mail inválido')
+    .optional()
+    .or(z.literal('')),
   phone: z
     .string()
-    .min(1, 'Telefone inválido')
-    .regex(/^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/, 'Telefone inválido'),
+    .regex(/^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/, 'Telefone inválido')
+    .optional()
+    .or(z.literal('')),
   active: z.boolean(),
   store_group_id: z.union([z.string(), z.number()]).nullable(),
 });
