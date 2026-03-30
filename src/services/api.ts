@@ -44,6 +44,7 @@ export const api = {
     queryParams.append('page', page.toString());
     queryParams.append('per_page', '10');
     queryParams.append('include', 'store');
+    queryParams.append('sort', '-id');
     if (search) {
       queryParams.append(`filter[${filterType}]`, search);
     }
