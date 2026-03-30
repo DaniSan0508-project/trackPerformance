@@ -75,6 +75,7 @@ export const TeamPage: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     password: '',
     user_type_id: 2,
     store_id: '' as number | '',
@@ -82,6 +83,25 @@ export const TeamPage: React.FC = () => {
     description: '',
     photo: null as File | null
   });
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 11) value = value.slice(0, 11);
+    
+    let maskedValue = '';
+    if (value.length > 0) {
+      maskedValue = `(${value.slice(0, 2)}`;
+      if (value.length > 2) {
+        maskedValue += `) ${value.slice(2, 7)}`;
+        if (value.length > 7) {
+          maskedValue += `-${value.slice(7, 11)}`;
+        }
+      }
+    } else {
+      maskedValue = '';
+    }
+    setFormData({ ...formData, phone: maskedValue });
+  };
 
   const isAdmin = currentUser?.user_type_id === 1;
 
@@ -140,6 +160,7 @@ export const TeamPage: React.FC = () => {
       setFormData({
         name: user.name,
         email: user.email,
+        phone: user.phone || '',
         password: '', // Password not populated on edit
         user_type_id: user.user_type_id,
         store_id: user.store_id || '',
@@ -152,6 +173,7 @@ export const TeamPage: React.FC = () => {
       setFormData({
         name: '',
         email: '',
+        phone: '',
         password: '',
         user_type_id: 2,
         store_id: '',
@@ -177,9 +199,12 @@ export const TeamPage: React.FC = () => {
     setFormData({
       name: '',
       email: '',
+      phone: '',
       password: '',
       user_type_id: 2,
       store_id: '',
+      role: '',
+      description: '',
       photo: null
     });
   };
@@ -194,6 +219,7 @@ export const TeamPage: React.FC = () => {
     const result = schema.safeParse({
       name: formData.name,
       email: formData.email,
+      phone: formData.phone || undefined,
       password: formData.password,
       user_type_id: String(formData.user_type_id),
       store_id: formData.store_id === '' ? undefined : String(formData.store_id),
@@ -219,6 +245,9 @@ export const TeamPage: React.FC = () => {
       const data = new FormData();
       data.append('name', formData.name);
       data.append('email', formData.email);
+      if (formData.phone) {
+        data.append('phone', formData.phone);
+      }
       if (formData.password) {
         data.append('password', formData.password);
       }
@@ -477,6 +506,13 @@ export const TeamPage: React.FC = () => {
                       <span className="truncate" title={user.email}>{user.email}</span>
                     </div>
 
+                    {user.phone && (
+                      <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        <span className="text-zinc-400 flex-shrink-0">📞</span>
+                        <span className="truncate">{user.phone}</span>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-3">
                       {user.store && (
                         <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
@@ -633,6 +669,20 @@ export const TeamPage: React.FC = () => {
                       placeholder="email@exemplo.com"
                     />
                     {formErrors.email && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.email}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Telefone (Opcional)</label>
+                    <input
+                      type="text"
+                      value={formData.phone}
+                      onChange={handlePhoneChange}
+                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                        formErrors.phone ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                      }`}
+                      placeholder="(00) 00000-0000"
+                    />
+                    {formErrors.phone && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.phone}</p>}
                   </div>
 
                   <div>
