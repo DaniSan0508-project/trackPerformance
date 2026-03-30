@@ -93,10 +93,10 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-zinc-200 dark:border-zinc-800"
+            className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-zinc-200 dark:border-zinc-800"
           >
             {/* Header */}
-            <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-start sticky top-0 bg-white dark:bg-zinc-900 rounded-t-2xl z-10">
+            <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-start flex-shrink-0 bg-white dark:bg-zinc-900 rounded-t-2xl z-10">
               <div className="flex-1">
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
                   Extrato de Moedas - {user?.name || ''}
@@ -110,7 +110,7 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
               </button>
             </div>
 
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto flex-1 min-h-0">
               <div className="space-y-6">
         {/* Resumo */}
         {data?.summary && (
@@ -186,7 +186,7 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
           </div>
         ) : data?.data && data.data.length > 0 ? (
           <>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            <div className="space-y-2">
               {data.data.map((statement) => (
                 <div
                   key={statement.id}
@@ -204,7 +204,7 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
                         <div className="flex items-center gap-3 mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                           <span className="flex items-center gap-1">
                             <Calendar size={12} />
-                            {formatDate(statement.reward_date)}
+                            {statement.date}
                           </span>
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getOperationColor(statement.operation)}`}>
                             {formatOperation(statement.operation)}
@@ -216,9 +216,6 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
                       <p className={`text-lg font-bold ${statement.operation === 'credit' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                         {statement.operation === 'credit' ? '+' : '-'}{statement.value.toLocaleString('pt-BR')} 🪙
                       </p>
-                      <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
-                        {formatDate(statement.created_at)}
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -227,7 +224,7 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
 
             {/* Paginação */}
             {data.last_page > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+              <div className="flex items-center justify-center gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-700 sticky bottom-0 bg-white dark:bg-zinc-900 py-2">
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
