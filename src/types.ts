@@ -357,7 +357,8 @@ export interface CoinStatement {
   operation: 'credit' | 'debit';
   reference_type: string;
   reference_id: number;
-  reward_date: string;
+  reward_date?: string;
+  date: string;
   description: string;
   created_at: string;
   user?: {
