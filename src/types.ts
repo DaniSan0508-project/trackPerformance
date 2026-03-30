@@ -31,6 +31,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  phone?: string | null;
   tenant_id: number;
   user_type?: string; // Keep optional if not always present
   user_type_id: number;

@@ -28,6 +28,12 @@ export const userSchema = z.object({
     .min(6, 'A senha deve ter no mínimo 6 caracteres'),
   user_type_id: z.string(),
   store_id: z.string().optional(),
+  phone: z
+    .string()
+    .optional()
+    .refine((val) => !val || /^\(\d{2}\)\s?\d{4,5}-?\d{4}$/.test(val), {
+      message: 'Telefone inválido',
+    }),
 });
 
 // Schema para Usuário (edição - senha opcional)
@@ -43,6 +49,12 @@ export const userUpdateSchema = z.object({
   password: z.string().optional(),
   user_type_id: z.string(),
   store_id: z.string().optional(),
+  phone: z
+    .string()
+    .optional()
+    .refine((val) => !val || /^\(\d{2}\)\s?\d{4,5}-?\d{4}$/.test(val), {
+      message: 'Telefone inválido',
+    }),
 });
 
 // Schema para Loja
