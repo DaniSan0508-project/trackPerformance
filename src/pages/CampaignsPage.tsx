@@ -10,8 +10,6 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { campaignSchema } from '../validators/schemas';
 import { getFullImageUrl } from '../utils';
 
-const API_BASE_URL = 'http://localhost:8010/api/v1';
-
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
   useEffect(() => {
@@ -289,14 +287,16 @@ export const CampaignsPage: React.FC = () => {
   // Buscar usuários automaticamente quando a busca debounced mudar
   useEffect(() => {
     if (isModalOpen) {
-      fetchUsers(usersPage, debouncedUserSearch, userFilterType);
+      setUsersPage(1); // Reseta para a primeira página ao buscar
+      fetchUsers(1, debouncedUserSearch, userFilterType);
     }
   }, [debouncedUserSearch, userFilterType, isModalOpen]);
 
   // Buscar produtos automaticamente quando a busca debounced mudar
   useEffect(() => {
     if (isModalOpen) {
-      fetchProducts(productsPage, debouncedProductSearch, productFilterType, productManufacturerFilter);
+      setProductsPage(1); // Reseta para a primeira página ao buscar
+      fetchProducts(1, debouncedProductSearch, productFilterType, productManufacturerFilter);
     }
   }, [debouncedProductSearch, productFilterType, productManufacturerFilter, isModalOpen]);
 
@@ -631,40 +631,40 @@ export const CampaignsPage: React.FC = () => {
       await fetchCampaigns(currentPage, searchTerm);
       handleCloseModal();
     } catch (error: any) {
-      // Tratamento de erros específicos da API
-      let errorMessage = 'Erro ao salvar campanha.';
-
+      console.error('Error saving campaign:', error);
+      
+      // Handle API validation errors
       if (error.response?.data?.errors) {
         const apiErrors = error.response.data.errors;
+        const formattedErrors: { [key: string]: string } = {};
+        
+        const translations: { [key: string]: string } = {
+          'The name field is required.': 'O campo nome é obrigatório.',
+          'The type field is required.': 'O campo tipo é obrigatório.',
+          'The start date field is required.': 'A data de início é obrigatória.',
+          'The end date field is required.': 'A data de término é obrigatória.',
+          'The goal field is required.': 'O campo meta é obrigatório.',
+          'The end date must be a date after or equal to start date.': 'A data de término deve ser posterior ou igual à data de início.',
+          'One or more actions are already active in another engagement campaign.': 'Uma ou mais ações já estão em uso em outra campanha ativa.',
+        };
 
-        // Erro: ações já em uso em outra campanha de engajamento
-        if (apiErrors.actions?.[0]?.includes('already active in another engagement campaign')) {
-          errorMessage = 'Uma ou mais ações selecionadas já estão em uso em outra campanha de engajamento ativa. Por favor, selecione ações diferentes.';
-        }
-        // Usa a mensagem de erro da API se disponível
-        else if (apiErrors.campaign?.[0]) {
-          errorMessage = apiErrors.campaign[0];
-        }
-        else if (apiErrors.goal?.[0]) {
-          errorMessage = apiErrors.goal[0];
-        }
-        else if (apiErrors.name?.[0]) {
-          errorMessage = apiErrors.name[0];
-        }
-        else {
-          // Tenta juntar todos os erros
-          const allErrors = Object.values(apiErrors).flat().join(', ');
-          if (allErrors) {
-            errorMessage = allErrors;
+        Object.entries(apiErrors).forEach(([key, messages]: [string, any]) => {
+          let message = Array.isArray(messages) ? messages[0] : messages;
+          if (typeof message === 'string') {
+            formattedErrors[key] = translations[message] || message;
           }
-        }
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
+        });
+        
+        setFormErrors(formattedErrors);
+        
+        const apiMessage = error.response.data.message === 'Validation error' 
+          ? 'Erro de validação nos campos abaixo.' 
+          : error.response.data.message;
+          
+        addToast('error', apiMessage);
+      } else {
+        addToast('error', error.message || 'Erro ao salvar campanha.');
       }
-
-      addToast('error', errorMessage);
     } finally {
       setSaving(false);
     }
@@ -680,26 +680,17 @@ export const CampaignsPage: React.FC = () => {
     } catch (error: any) {
       console.error('Error deleting campaign:', error);
       
-      // Tenta extrair a mensagem de erro da resposta
       let errorMessage = 'Erro ao excluir campanha.';
       
-      // Verifica diferentes formatos de erro
       if (error.response?.data) {
         const data = error.response.data;
-        // Formato: { errors: { campaign: [...] } }
-        if (data.errors?.campaign?.[0]?.includes('Active campaigns cannot be deleted')) {
-          errorMessage = 'Não é possível excluir uma campanha ativa. Desative a campanha primeiro.';
+        if (data.message?.includes('Active campaigns cannot be deleted')) {
+          errorMessage = 'Não é possível excluir uma campanha ativa. Desative-a primeiro.';
+        } else if (data.errors?.campaign?.[0]?.includes('Active campaigns')) {
+          errorMessage = 'Não é possível excluir uma campanha ativa. Desative-a primeiro.';
+        } else {
+          errorMessage = data.message || errorMessage;
         }
-        // Formato: { message: '...' }
-        else if (data.message?.includes('Active campaigns')) {
-          errorMessage = 'Não é possível excluir uma campanha ativa. Desative a campanha primeiro.';
-        }
-        // Usa mensagem da API se disponível
-        else if (data.message) {
-          errorMessage = data.message;
-        }
-      } else if (error.message) {
-        errorMessage = error.message;
       }
       
       addToast('error', errorMessage);
@@ -822,7 +813,7 @@ export const CampaignsPage: React.FC = () => {
     const hasSelectedUsers = selectedUsers.length > 0;
 
     if (hasSelectedUsers) {
-      // Desmarcar TODOS os usuários selecionados (não apenas da página atual)
+      // Desmarcar TODOS os usuários selecionados
       setSelectedUsers([]);
       setFullySelectedRoles(new Set());
       addToast('success', 'Todos os usuários foram desmarcados!');
@@ -830,59 +821,12 @@ export const CampaignsPage: React.FC = () => {
     }
 
     setLoadingSelectAllUsers(true);
-    setSelectAllUsersProgress(null);
     try {
       // Verifica se é campanha de engajamento
       const isCampaignEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
       
-      // Primeira requisição para descobrir o total de páginas
-      const queryParams = new URLSearchParams();
-      queryParams.append('page', '1');
-      queryParams.append('per_page', '100');
-      queryParams.append('include', 'store');
-      if (userSearch) {
-        queryParams.append(`filter[${userFilterType}]`, userSearch);
-      }
-
-      const firstResponse = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-      if (!firstResponse.ok) throw new Error('Falha ao carregar usuários');
-      const firstData = await firstResponse.json() as PaginatedResponse<User>;
-
-      const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
-      let allUsers: User[] = [...(firstData.data || [])];
-
-      // Atualiza progresso após primeira página
-      if (totalPages > 1) {
-        setSelectAllUsersProgress({ current: 1, total: totalPages });
-      }
-
-      // Busca as páginas restantes
-      for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
-        const nextPageParams = new URLSearchParams();
-        nextPageParams.append('page', currentPage.toString());
-        nextPageParams.append('per_page', '100');
-        nextPageParams.append('include', 'store');
-        if (userSearch) {
-          nextPageParams.append(`filter[${userFilterType}]`, userSearch);
-        }
-
-        const response = await fetch(`${API_BASE_URL}/users?${nextPageParams.toString()}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-        if (!response.ok) throw new Error('Falha ao carregar usuários');
-        const data = await response.json() as PaginatedResponse<User>;
-
-        allUsers.push(...(data.data || []));
-        setSelectAllUsersProgress({ current: currentPage, total: totalPages });
-      }
+      // Usa o método otimizado do serviço de API
+      const allUsers = await api.getAllUsersComplete(token, userSearch, userFilterType);
 
       // Filtra apenas usuários válidos para campanha de engajamento
       const validUserIds = isCampaignEngagement
@@ -890,17 +834,16 @@ export const CampaignsPage: React.FC = () => {
         : allUsers.map(u => u.id);
 
       // Adiciona todos os usuários válidos à seleção
-      setSelectedUsers(prev => {
-        const newIds = validUserIds.filter(id => !prev.includes(id));
-        return [...prev, ...newIds];
-      });
+      setSelectedUsers(validUserIds);
+
+      // Marca todos os cargos principais como totalmente selecionados
+      const roles = ['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor'];
+      setFullySelectedRoles(new Set(roles));
 
       addToast('success', `Todos os ${validUserIds.length} usuários foram selecionados!`);
-      setSelectAllUsersProgress(null);
     } catch (error) {
       console.error('Error fetching all users:', error);
       addToast('error', 'Erro ao carregar todos os usuários.');
-      setSelectAllUsersProgress(null);
     } finally {
       setLoadingSelectAllUsers(false);
     }
@@ -912,51 +855,32 @@ export const CampaignsPage: React.FC = () => {
     
     setSelectByRoleLoading(role);
     try {
-      // Primeira requisição para descobrir o total de páginas
-      const queryParams = new URLSearchParams();
-      queryParams.append('page', '1');
-      queryParams.append('per_page', '100');
-      queryParams.append('include', 'store');
-
-      const firstResponse = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-      if (!firstResponse.ok) throw new Error('Falha ao carregar usuários');
-      const firstData = await firstResponse.json() as PaginatedResponse<User>;
-
-      const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
-      let allUsers: User[] = [...(firstData.data || [])];
-
-      // Busca as páginas restantes
-      for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
-        const nextPageParams = new URLSearchParams();
-        nextPageParams.append('page', currentPage.toString());
-        nextPageParams.append('per_page', '100');
-        nextPageParams.append('include', 'store');
-
-        const response = await fetch(`${API_BASE_URL}/users?${nextPageParams.toString()}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-        if (!response.ok) throw new Error('Falha ao carregar usuários');
-        const data = await response.json() as PaginatedResponse<User>;
-
-        allUsers.push(...(data.data || []));
-      }
+      // Usa o método otimizado do serviço de API
+      const allUsers = await api.getAllUsersComplete(token);
 
       // Filtra apenas usuários do cargo selecionado
       const roleUsers = allUsers.filter(u => u.role === role);
+      
+      if (roleUsers.length === 0) {
+        addToast('warning', `Nenhum usuário encontrado com o cargo "${role}".`);
+        setFullySelectedRoles(prev => {
+          const next = new Set(prev);
+          next.delete(role);
+          return next;
+        });
+        return;
+      }
       
       // Filtra apenas usuários válidos para campanha de engajamento se necessário
       const isCampaignEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
       const validUserIds = isCampaignEngagement
         ? roleUsers.filter(u => u.user_type_id === 2).map(u => u.id)
         : roleUsers.map(u => u.id);
+
+      if (validUserIds.length === 0) {
+        addToast('warning', `Nenhum colaborador comum encontrado com o cargo "${role}".`);
+        return;
+      }
 
       // Verifica se já estão todos selecionados para este cargo
       const allRoleSelected = validUserIds.every(id => selectedUsers.includes(id));
@@ -971,7 +895,7 @@ export const CampaignsPage: React.FC = () => {
         });
         addToast('success', `${role}(s) removido(s) da seleção!`);
       } else {
-        // Adiciona os usuários à seleção (não remove os já selecionados)
+        // Adiciona os usuários à seleção
         setSelectedUsers(prev => {
           const newIds = validUserIds.filter(id => !prev.includes(id));
           return [...prev, ...newIds];
@@ -993,53 +917,18 @@ export const CampaignsPage: React.FC = () => {
     return fullySelectedRoles.has(role);
   };
 
-  // Handler para selecionar todos os produtos de um fabricante específico
   const handleSelectAllByManufacturer = async (manufacturerId: number, manufacturerName: string) => {
     if (!token) return;
     
     setSelectByManufacturerLoading(manufacturerName);
     try {
-      // Primeira requisição para descobrir o total de páginas com filtro de fabricante
-      const queryParams = new URLSearchParams();
-      queryParams.append('page', '1');
-      queryParams.append('per_page', '100');
-      queryParams.append('filter[manufacturer_id]', manufacturerId.toString());
-
-      const firstResponse = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-      if (!firstResponse.ok) throw new Error('Falha ao carregar produtos');
-      const firstData = await firstResponse.json() as PaginatedResponse<Product>;
-
-      const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
-      let allProducts: Product[] = [...(firstData.data || [])];
-
-      // Busca as páginas restantes mantendo o filtro de fabricante
-      for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
-        const nextPageParams = new URLSearchParams();
-        nextPageParams.append('page', currentPage.toString());
-        nextPageParams.append('per_page', '100');
-        nextPageParams.append('filter[manufacturer_id]', manufacturerId.toString());
-
-        const response = await fetch(`${API_BASE_URL}/products?${nextPageParams.toString()}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-        if (!response.ok) throw new Error('Falha ao carregar produtos');
-        const data = await response.json() as PaginatedResponse<Product>;
-
-        allProducts.push(...(data.data || []));
-      }
+      // Busca todos os produtos do fabricante usando o filtro da API
+      const allProducts = await api.getAllProductsComplete(token, manufacturerId.toString(), 'manufacturer_id' as any);
 
       const validProductIds = allProducts.map(p => p.id);
 
       // Verifica se já estão todos selecionados para este fabricante
-      const allManufacturerSelected = validProductIds.every(id => selectedProducts.includes(id));
+      const allManufacturerSelected = validProductIds.length > 0 && validProductIds.every(id => selectedProducts.includes(id));
 
       if (allManufacturerSelected) {
         // Desmarcar todos deste fabricante
@@ -1080,7 +969,7 @@ export const CampaignsPage: React.FC = () => {
     const hasSelectedProducts = selectedProducts.length > 0;
 
     if (hasSelectedProducts) {
-      // Desmarcar TODOS os produtos selecionados (não apenas da página atual)
+      // Desmarcar TODOS os produtos selecionados
       setSelectedProducts([]);
       setFullySelectedManufacturers(new Set());
       addToast('success', 'Todos os produtos foram desmarcados!');
@@ -1088,69 +977,18 @@ export const CampaignsPage: React.FC = () => {
     }
 
     setLoadingSelectAllProducts(true);
-    setSelectAllProductsProgress(null);
     try {
-      // Primeira requisição para descobrir o total de páginas
-      const queryParams = new URLSearchParams();
-      queryParams.append('page', '1');
-      queryParams.append('per_page', '100');
-      if (productSearch) {
-        queryParams.append(`filter[${productFilterType}]`, productSearch);
-      }
-
-      const firstResponse = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-      if (!firstResponse.ok) throw new Error('Falha ao carregar produtos');
-      const firstData = await firstResponse.json() as PaginatedResponse<Product>;
-      
-      const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
-      const allProducts: Product[] = [...(firstData.data || [])];
-      
-      // Atualiza progresso após primeira página
-      if (totalPages > 1) {
-        setSelectAllProductsProgress({ current: 1, total: totalPages });
-      }
-      
-      // Busca as páginas restantes
-      for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
-        const nextPageParams = new URLSearchParams();
-        nextPageParams.append('page', currentPage.toString());
-        nextPageParams.append('per_page', '100');
-        if (productSearch) {
-          nextPageParams.append(`filter[${productFilterType}]`, productSearch);
-        }
-
-        const response = await fetch(`${API_BASE_URL}/products?${nextPageParams.toString()}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-        if (!response.ok) throw new Error('Falha ao carregar produtos');
-        const data = await response.json() as PaginatedResponse<Product>;
-        
-        allProducts.push(...(data.data || []));
-        setSelectAllProductsProgress({ current: currentPage, total: totalPages });
-      }
-      
+      // Usa o método otimizado do serviço de API
+      const allProducts = await api.getAllProductsComplete(token, productSearch, productFilterType);
       const allProductIds = allProducts.map(p => p.id);
 
       // Adiciona todos os produtos à seleção
-      setSelectedProducts(prev => {
-        const newIds = allProductIds.filter(id => !prev.includes(id));
-        return [...prev, ...newIds];
-      });
+      setSelectedProducts(allProductIds);
 
       addToast('success', `Todos os ${allProductIds.length} produtos foram selecionados!`);
-      setSelectAllProductsProgress(null);
     } catch (error) {
       console.error('Error fetching all products:', error);
       addToast('error', 'Erro ao carregar todos os produtos.');
-      setSelectAllProductsProgress(null);
     } finally {
       setLoadingSelectAllProducts(false);
     }
@@ -1534,7 +1372,7 @@ export const CampaignsPage: React.FC = () => {
                 </div>
 
                 {/* Tab Content */}
-                <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex-1 overflow-y-auto p-6 min-h-0">
                   {activeTab === 'basic' && (
                     <div className="space-y-4">
                       <div>
@@ -1751,122 +1589,62 @@ export const CampaignsPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Seleção Rápida por Cargo */}
-                      <div className="border-t border-zinc-200 dark:border-zinc-700 pt-4 mb-3">
-                        <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">
-                          👥 Seleção Rápida por Cargo
-                        </p>
-                        <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-3">
-                          Clique para selecionar/desmarcar todos os usuários do cargo selecionado
-                        </p>
-                        <div className="flex flex-wrap gap-2">
+                      {/* Seleção Rápida */}
+                      <div className="border-t border-zinc-200 dark:border-zinc-700 pt-5 mb-4 space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
+                            👥 Seleção Rápida
+                          </p>
                           <button
                             onClick={handleSelectAllUsers}
                             disabled={loadingSelectAllUsers}
-                            className="px-4 py-2 text-sm font-semibold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 shadow-sm"
+                            className={`px-4 py-2 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm border ${
+                              selectedUsers.length > 0
+                                ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
+                                : 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-700 shadow-emerald-500/20'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
                           >
                             {loadingSelectAllUsers ? (
                               <>
                                 <Loader2 size={16} className="animate-spin" />
-                                {selectAllUsersProgress ? `Página ${selectAllUsersProgress.current}/${selectAllUsersProgress.total}` : 'Carregando...'}
+                                <span>Processando...</span>
                               </>
                             ) : (
                               <>
-                                <Users size={16} />
+                                {selectedUsers.length > 0 ? <X size={18} /> : <Users size={18} />}
                                 {selectedUsers.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
                               </>
                             )}
                           </button>
-                          <button
-                            onClick={() => handleSelectAllByRole('Atendente')}
-                            disabled={selectByRoleLoading !== null}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
-                              areAllUsersSelectedByRole('Atendente')
-                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                            } disabled:opacity-50 disabled:cursor-not-allowed`}
-                          >
-                            {selectByRoleLoading === 'Atendente' ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <>
-                                <Check size={14} className={areAllUsersSelectedByRole('Atendente') ? '' : 'invisible'} />
-                                {areAllUsersSelectedByRole('Atendente') ? '✓ Atendente' : '+ Atendente'}
-                              </>
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleSelectAllByRole('Vendedor')}
-                            disabled={selectByRoleLoading !== null}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
-                              areAllUsersSelectedByRole('Vendedor')
-                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                            } disabled:opacity-50 disabled:cursor-not-allowed`}
-                          >
-                            {selectByRoleLoading === 'Vendedor' ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <>
-                                <Check size={14} className={areAllUsersSelectedByRole('Vendedor') ? '' : 'invisible'} />
-                                {areAllUsersSelectedByRole('Vendedor') ? '✓ Vendedor' : '+ Vendedor'}
-                              </>
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleSelectAllByRole('Representante')}
-                            disabled={selectByRoleLoading !== null}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
-                              areAllUsersSelectedByRole('Representante')
-                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                            } disabled:opacity-50 disabled:cursor-not-allowed`}
-                          >
-                            {selectByRoleLoading === 'Representante' ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <>
-                                <Check size={14} className={areAllUsersSelectedByRole('Representante') ? '' : 'invisible'} />
-                                {areAllUsersSelectedByRole('Representante') ? '✓ Representante' : '+ Representante'}
-                              </>
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleSelectAllByRole('Consultor')}
-                            disabled={selectByRoleLoading !== null}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
-                              areAllUsersSelectedByRole('Consultor')
-                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                            } disabled:opacity-50 disabled:cursor-not-allowed`}
-                          >
-                            {selectByRoleLoading === 'Consultor' ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <>
-                                <Check size={14} className={areAllUsersSelectedByRole('Consultor') ? '' : 'invisible'} />
-                                {areAllUsersSelectedByRole('Consultor') ? '✓ Consultor' : '+ Consultor'}
-                              </>
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleSelectAllByRole('Supervisor')}
-                            disabled={selectByRoleLoading !== null}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
-                              areAllUsersSelectedByRole('Supervisor')
-                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                            } disabled:opacity-50 disabled:cursor-not-allowed`}
-                          >
-                            {selectByRoleLoading === 'Supervisor' ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <>
-                                <Check size={14} className={areAllUsersSelectedByRole('Supervisor') ? '' : 'invisible'} />
-                                {areAllUsersSelectedByRole('Supervisor') ? '✓ Supervisor' : '+ Supervisor'}
-                              </>
-                            )}
-                          </button>
+                        </div>
+
+                        <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                          <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 mb-3 uppercase">
+                            Filtrar por Cargo
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor'].map((role) => (
+                              <button
+                                key={role}
+                                onClick={() => handleSelectAllByRole(role)}
+                                disabled={selectByRoleLoading !== null}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
+                                  areAllUsersSelectedByRole(role)
+                                    ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
+                                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-emerald-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
+                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                              >
+                                {selectByRoleLoading === role ? (
+                                  <Loader2 size={12} className="animate-spin" />
+                                ) : (
+                                  <>
+                                    {areAllUsersSelectedByRole(role) ? <Check size={12} /> : <Plus size={12} />}
+                                    {role}
+                                  </>
+                                )}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
 
@@ -1886,7 +1664,7 @@ export const CampaignsPage: React.FC = () => {
                           </div>
 
                           {/* Grid de Cards de Usuários */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pr-2">
                             {/* Filtra usuários: apenas user_type_id = 2 para engajamento */}
                             {(editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement')
                               ? users.filter(u => u.user_type_id === 2)
@@ -1924,7 +1702,12 @@ export const CampaignsPage: React.FC = () => {
                                     <p className="font-bold text-sm text-zinc-900 dark:text-white truncate">
                                       {user.name}
                                     </p>
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                                    {user.role && (
+                                      <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-0.5">
+                                        {user.role}
+                                      </p>
+                                    )}
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
                                       {user.email}
                                     </p>
                                     {user.store && (
@@ -2332,7 +2115,7 @@ export const CampaignsPage: React.FC = () => {
                 </div>
 
                 {/* Footer Actions */}
-                <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex gap-3">
+                <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex gap-3 flex-shrink-0">
                   {/* Botão Voltar */}
                   {activeTab !== 'basic' && (
                     <button
@@ -2482,61 +2265,65 @@ export const CampaignsPage: React.FC = () => {
                       <p className="text-zinc-500 dark:text-zinc-400">Nenhum dado de ranking disponível.</p>
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {rankingModal.ranking.map((item, index) => {
                         const isTop3 = index < 3;
-                        const medalColors = [
-                          'bg-amber-400 text-amber-900',  // 1º
-                          'bg-zinc-400 text-zinc-900',    // 2º
-                          'bg-amber-600 text-amber-100',  // 3º
+                        const medalEmojis = ['🥇', '🥈', '🥉'];
+                        const bgStyles = [
+                          'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 shadow-sm',
+                          'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700 shadow-sm',
+                          'bg-orange-50/50 dark:bg-orange-900/10 border-orange-100 dark:border-orange-900/30 shadow-sm',
                         ];
                         
-                        // Usa o nome do campo correto (user_name ou name)
                         const userName = item.user_name || item.name;
-                        const userEmail = item.user_email;
                         const store = (item as any).store;
                         const salesAmount = (item as any).sales_amount;
                         const coinsTotal = (item as any).coins_total;
 
                         return (
-                          <div
+                          <motion.div
                             key={item.user_id}
-                            className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
-                              isTop3
-                                ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
-                                : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
+                              isTop3 ? bgStyles[index] : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'
                             }`}
                           >
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
-                              isTop3 ? medalColors[index] : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl ${
+                              isTop3 ? '' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 border border-zinc-200 dark:border-zinc-700'
                             }`}>
                               {isTop3 ? (
-                                <Trophy size={20} />
+                                <span className="filter drop-shadow-sm">{medalEmojis[index]}</span>
                               ) : (
-                                item.position
+                                <span className="text-sm">{index + 1}º</span>
                               )}
                             </div>
-                            <div className="flex-1">
-                              <p className="font-semibold text-zinc-900 dark:text-white">{userName}</p>
-                              {store && (
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400">{store.name}</p>
-                              )}
-                              {userEmail && !store && (
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400">{userEmail}</p>
-                              )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-zinc-900 dark:text-white truncate">{userName}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {store && (
+                                  <span className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    <StoreIcon size={12} />
+                                    {store.name}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                {rankingModal.campaign?.type === 'sales' ? 'Valor Vendido' : 'Total de Coin(s)'}
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-[10px] uppercase tracking-wider font-bold text-zinc-400 dark:text-zinc-500 mb-0.5">
+                                {rankingModal.campaign?.type === 'sales' ? 'Vendas' : 'Pontuação'}
                               </p>
-                              <p className="font-bold text-lg text-zinc-900 dark:text-white">
+                              <p className={`font-black text-lg ${
+                                isTop3 ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-700 dark:text-zinc-300'
+                              }`}>
                                 {rankingModal.campaign?.type === 'sales'
                                   ? formatCurrency(String(salesAmount !== null ? salesAmount : item.value || 0))
-                                  : `${coinsTotal !== null ? coinsTotal : item.value || 0} coins`
+                                  : `${coinsTotal !== null ? coinsTotal : item.value || 0} 🪙`
                                 }
                               </p>
                             </div>
-                          </div>
+                          </motion.div>
                         );
                       })}
                     </div>
