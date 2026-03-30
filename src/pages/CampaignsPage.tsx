@@ -985,6 +985,10 @@ export const CampaignsPage: React.FC = () => {
       // Adiciona todos os produtos à seleção
       setSelectedProducts(allProductIds);
 
+      // Marca todos os fabricantes como totalmente selecionados
+      const manufacturerIds = manufacturers.map(m => m.id);
+      setFullySelectedManufacturers(new Set(manufacturerIds));
+
       addToast('success', `Todos os ${allProductIds.length} produtos foram selecionados!`);
     } catch (error) {
       console.error('Error fetching all products:', error);
@@ -1968,151 +1972,173 @@ export const CampaignsPage: React.FC = () => {
                             </div>
                           )}
 
-                          {/* Seleção Rápida por Fabricante */}
-                          {manufacturers.length > 0 && (
-                            <div className="border-t border-zinc-200 dark:border-zinc-700 pt-4 mb-3">
-                              <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">
-                                🏭 Seleção Rápida por Fabricante
+                          {/* Seleção Rápida */}
+                          <div className="border-t border-zinc-200 dark:border-zinc-700 pt-5 mb-4 space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
+                                🛒 Seleção Rápida
                               </p>
-                              <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-3">
-                                Clique para selecionar/desmarcar todos os produtos do fabricante selecionado
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                <button
-                                  onClick={handleSelectAllProducts}
-                                  disabled={loadingSelectAllProducts}
-                                  className="px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 shadow-sm"
-                                >
-                                  {loadingSelectAllProducts ? (
-                                    <>
-                                      <Loader2 size={16} className="animate-spin" />
-                                      {selectAllProductsProgress ? `Página ${selectAllProductsProgress.current}/${selectAllProductsProgress.total}` : 'Carregando...'}
-                                    </>
-                                  ) : (
-                                    <>
-                                      <ShoppingBag size={16} />
-                                      {selectedProducts.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
-                                    </>
-                                  )}
-                                </button>
-                                {manufacturers.map((manufacturer) => (
-                                  <button
-                                    key={manufacturer.id}
-                                    onClick={() => handleSelectAllByManufacturer(manufacturer.id, manufacturer.name)}
-                                    disabled={selectByManufacturerLoading !== null}
-                                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
-                                      areAllProductsSelectedByManufacturer(manufacturer.id)
-                                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                        : 'bg-purple-600 text-white hover:bg-purple-700'
-                                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                  >
-                                    {selectByManufacturerLoading === manufacturer.name ? (
-                                      <Loader2 size={12} className="animate-spin" />
-                                    ) : (
-                                      <>
-                                        <Check size={14} className={areAllProductsSelectedByManufacturer(manufacturer.id) ? '' : 'invisible'} />
-                                        {areAllProductsSelectedByManufacturer(manufacturer.id)
-                                          ? `✓ ${manufacturer.name}`
-                                          : `+ ${manufacturer.name}`}
-                                      </>
-                                    )}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Contador de selecionados */}
-                          <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
-                            <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">
-                              🛒 {selectedProducts.length} produto(s) selecionado(s)
-                            </p>
-                          </div>
-
-                          {/* Grid de Cards de Produtos */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-2">
-                            {products.map((product) => (
-                              <motion.button
-                                key={product.id}
-                                onClick={() => toggleProduct(product.id)}
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className={`p-4 rounded-xl border-2 transition-all duration-200 text-left group ${
-                                  selectedProducts.includes(product.id)
-                                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 shadow-md'
-                                    : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm'
-                                }`}
+                              <button
+                                onClick={handleSelectAllProducts}
+                                disabled={loadingSelectAllProducts}
+                                className={`px-4 py-2 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm border ${
+                                  selectedProducts.length > 0
+                                    ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
+                                    : 'bg-blue-600 text-white border-blue-500 hover:bg-blue-700 shadow-blue-500/20'
+                                } disabled:opacity-50 disabled:cursor-not-allowed`}
                               >
-                                <div className="flex items-start gap-3">
-                                  {/* Ícone do Produto */}
-                                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 border-2 border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 flex-shrink-0">
-                                    <ShoppingBag size={24} />
-                                  </div>
+                                {loadingSelectAllProducts ? (
+                                  <>
+                                    <Loader2 size={16} className="animate-spin" />
+                                    <span>Processando...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    {selectedProducts.length > 0 ? <X size={18} /> : <ShoppingBag size={18} />}
+                                    {selectedProducts.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                                  </>
+                                )}
+                              </button>
+                            </div>
 
-                                  {/* Informações */}
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-sm text-zinc-900 dark:text-white truncate">
-                                      {product.name}
-                                    </p>
-                                    {product.barcode && (
-                                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                                        📦 {product.barcode}
-                                      </p>
-                                    )}
-                                    {product.description && (
-                                      <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate mt-1">
-                                        {product.description}
-                                      </p>
-                                    )}
-                                    {product.manufacturer && (
-                                      <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">
-                                        🏭 {product.manufacturer.name}
-                                      </p>
-                                    )}
-                                  </div>
-
-                                  {/* Check de selecionado */}
-                                  <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                                    selectedProducts.includes(product.id)
-                                      ? 'bg-blue-500 border-blue-500'
-                                      : 'border-zinc-300 dark:border-zinc-600 group-hover:border-blue-400'
-                                  }`}>
-                                    {selectedProducts.includes(product.id) && (
-                                      <Check size={14} className="text-white" />
-                                    )}
-                                  </div>
+                            {manufacturers.length > 0 && (
+                              <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                                <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 mb-3 uppercase">
+                                  Filtrar por Fabricante
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {manufacturers.map((manufacturer) => (
+                                    <button
+                                      key={manufacturer.id}
+                                      onClick={() => handleSelectAllByManufacturer(manufacturer.id, manufacturer.name)}
+                                      disabled={selectByManufacturerLoading !== null}
+                                      className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
+                                        areAllProductsSelectedByManufacturer(manufacturer.id)
+                                          ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700'
+                                          : 'bg-white text-zinc-600 border-zinc-200 hover:border-blue-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
+                                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                    >
+                                      {selectByManufacturerLoading === manufacturer.name ? (
+                                        <Loader2 size={12} className="animate-spin" />
+                                      ) : (
+                                        <>
+                                          {areAllProductsSelectedByManufacturer(manufacturer.id) ? <Check size={12} /> : <Plus size={12} />}
+                                          {manufacturer.name}
+                                        </>
+                                      )}
+                                    </button>
+                                  ))}
                                 </div>
-                              </motion.button>
-                            ))}
+                              </div>
+                            )}
                           </div>
 
-                          {/* Paginação de produtos */}
-                          {productsTotalPages > 1 && (
-                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
-                              <button
-                                onClick={() => fetchProducts(productsPage - 1, productSearch, productFilterType, productManufacturerFilter)}
-                                disabled={productsPage === 1}
-                                className="p-2 border border-zinc-300 dark:border-zinc-600 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 text-sm"
-                              >
-                                Anterior
-                              </button>
-                              <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                                Página {productsPage} de {productsTotalPages}
-                              </span>
-                              <button
-                                onClick={() => fetchProducts(productsPage + 1, productSearch, productFilterType, productManufacturerFilter)}
-                                disabled={productsPage === productsTotalPages}
-                                className="p-2 border border-zinc-300 dark:border-zinc-600 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 text-sm"
-                              >
-                                Próxima
-                              </button>
+                          {loadingAux ? (
+                            <div className="flex justify-center py-8">
+                              <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
                             </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
+                          ) : products.length === 0 ? (
+                            <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum produto encontrado.</p>
+                          ) : (
+                            <>
+                              {/* Contador de selecionados */}
+                              <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                                <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                                  🛒 {selectedProducts.length} produto(s) selecionado(s)
+                                </p>
+                              </div>
+
+                              {/* Grid de Cards de Produtos */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pr-2">
+                                {products.map((product) => (
+                                  <motion.button
+                                    key={product.id}
+                                    onClick={() => toggleProduct(product.id)}
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className={`p-4 rounded-xl border-2 transition-all duration-200 text-left group ${
+                                      selectedProducts.includes(product.id)
+                                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 shadow-md'
+                                        : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm'
+                                    }`}
+                                  >
+                                    <div className="flex items-start gap-3">
+                                      {/* Ícone do Produto */}
+                                      <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                                        selectedProducts.includes(product.id)
+                                          ? 'bg-blue-500 border-blue-400 text-white'
+                                          : 'bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400'
+                                      }`}>
+                                        <ShoppingBag size={24} />
+                                      </div>
+
+                                      {/* Informações */}
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-sm text-zinc-900 dark:text-white truncate">
+                                          {product.name}
+                                        </p>
+                                        <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
+                                          {product.barcode && (
+                                            <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
+                                              <div className="w-1 h-1 rounded-full bg-zinc-400" />
+                                              EAN: {product.barcode}
+                                            </span>
+                                          )}
+                                          {product.manufacturer && (
+                                            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                                              <div className="w-1 h-1 rounded-full bg-blue-500" />
+                                              {product.manufacturer.name}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Check de selecionado */}
+                                      <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                        selectedProducts.includes(product.id)
+                                          ? 'bg-blue-500 border-blue-500'
+                                          : 'border-zinc-300 dark:border-zinc-600 group-hover:border-blue-400'
+                                      }`}>
+                                        {selectedProducts.includes(product.id) && (
+                                          <Check size={14} className="text-white" />
+                                        )}
+                                      </div>
+                                    </div>
+                                  </motion.button>
+                                ))}
+                                </div>
+
+                                {/* Paginação de produtos */}
+                                {productsTotalPages > 1 && (
+                                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+                                    <button
+                                      type="button"
+                                      onClick={() => fetchProducts(productsPage - 1, productSearch, productFilterType, productManufacturerFilter)}
+                                      disabled={productsPage === 1}
+                                      className="p-2 border border-zinc-300 dark:border-zinc-600 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 text-sm"
+                                    >
+                                      Anterior
+                                    </button>
+                                    <span className="text-sm text-zinc-600 dark:text-zinc-400 font-medium">
+                                      Página {productsPage} de {productsTotalPages}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => fetchProducts(productsPage + 1, productSearch, productFilterType, productManufacturerFilter)}
+                                      disabled={productsPage === productsTotalPages}
+                                      className="p-2 border border-zinc-300 dark:border-zinc-600 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 text-sm"
+                                    >
+                                      Próxima
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                 {/* Footer Actions */}
                 <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex gap-3 flex-shrink-0">
