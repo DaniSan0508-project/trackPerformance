@@ -179,12 +179,19 @@ export const SurveysPage: React.FC = () => {
     }
   }, [token]);
 
+  // Resetar página quando a busca ou tipo de filtro mudarem
   useEffect(() => {
     if (isModalOpen && activeTab === 'users') {
       setUsersPage(1);
-      fetchUsers(1, debouncedUserSearch, userFilterType);
     }
-  }, [debouncedUserSearch, userFilterType, isModalOpen, activeTab]);
+  }, [debouncedUserSearch, userFilterType]);
+
+  // Buscar usuários quando a página, busca ou filtro mudarem
+  useEffect(() => {
+    if (isModalOpen && activeTab === 'users') {
+      fetchUsers(usersPage, debouncedUserSearch, userFilterType);
+    }
+  }, [usersPage, debouncedUserSearch, userFilterType, isModalOpen, activeTab]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
@@ -645,9 +652,11 @@ export const SurveysPage: React.FC = () => {
           await api.deleteSurvey(token, survey.id);
           addToast('success', 'Pesquisa excluída com sucesso!');
           fetchSurveys(currentPage, debouncedSearchTerm);
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
         } catch (error: any) {
           console.error('Error deleting survey:', error);
           addToast('error', error.message || 'Erro ao excluir pesquisa.');
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
         } finally {
           setConfirmModal(prev => ({ ...prev, isLoading: false }));
         }
