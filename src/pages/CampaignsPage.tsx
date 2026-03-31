@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Store as StoreIcon } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus } from '../types';
@@ -2146,114 +2146,69 @@ export const CampaignsPage: React.FC = () => {
                   </div>
 
                 {/* Footer Actions */}
-                <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex gap-3 flex-shrink-0">
+                <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex flex-wrap gap-3 flex-shrink-0">
                   {/* Botão Voltar */}
-                  {activeTab !== 'basic' && (
+                  {activeTab !== 'basic' ? (
                     <button
                       type="button"
                       onClick={() => setActiveTab(prev => {
-                        const isEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
-
                         if (prev === 'users') return 'basic';
-
-                        // Para engajamento: actions → users
-                        if (prev === 'actions') {
-                          return 'users';
-                        }
-
-                        // Para vendas: products → users
-                        if (prev === 'products') {
-                          return 'users';
-                        }
-
+                        if (prev === 'actions' || prev === 'products') return 'users';
                         return 'basic';
                       })}
                       className="px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors font-medium"
                     >
                       Voltar
                     </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleCloseModal}
+                      className="px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors font-medium"
+                    >
+                      Cancelar
+                    </button>
                   )}
-                  {/* Botão Próximo/Salvar */}
-                  {(() => {
-                    const isEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
-                    const isSales = editingCampaign?.type === 'sales' || (!editingCampaign && formData.type === 'sales');
 
-                    // Para engajamento: basic → users → actions → salvar
-                    if (isEngagement) {
-                      if (activeTab === 'basic') {
-                        return (
-                          <button
-                            type="button"
-                            onClick={() => setActiveTab('users')}
-                            className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium"
-                          >
-                            Próximo
-                          </button>
-                        );
-                      }
-                      if (activeTab === 'users') {
-                        return (
-                          <button
-                            type="button"
-                            onClick={() => setActiveTab('actions')}
-                            className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium"
-                          >
-                            Próximo
-                          </button>
-                        );
-                      }
-                      // activeTab === 'actions' (última aba)
-                      return (
-                        <button
-                          type="button"
-                          onClick={handleSubmit}
-                          disabled={saving}
-                          className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-                        >
-                          {saving ? 'Salvando...' : 'Salvar'}
-                        </button>
-                      );
-                    }
+                  <div className="flex-1 flex gap-3 justify-end">
+                    {/* Botão Próximo (apenas se não for a última aba) */}
+                    {((activeTab === 'basic' || activeTab === 'users')) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (activeTab === 'basic') setActiveTab('users');
+                          else if (activeTab === 'users') {
+                            const isEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
+                            setActiveTab(isEngagement ? 'actions' : 'products');
+                          }
+                        }}
+                        className="px-6 py-2.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors font-bold flex items-center gap-2"
+                      >
+                        Próximo
+                        <ChevronRight size={18} />
+                      </button>
+                    )}
 
-                    // Para vendas: basic → users → products → salvar
-                    if (isSales) {
-                      if (activeTab === 'basic') {
-                        return (
-                          <button
-                            type="button"
-                            onClick={() => setActiveTab('users')}
-                            className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium"
-                          >
-                            Próximo
-                          </button>
-                        );
-                      }
-                      if (activeTab === 'users') {
-                        return (
-                          <button
-                            type="button"
-                            onClick={() => setActiveTab('products')}
-                            className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium"
-                          >
-                            Próximo
-                          </button>
-                        );
-                      }
-                      // activeTab === 'products' (última aba)
-                      return (
-                        <button
-                          type="button"
-                          onClick={handleSubmit}
-                          disabled={saving}
-                          className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-                        >
-                          {saving ? 'Salvando...' : 'Salvar'}
-                        </button>
-                      );
-                    }
-
-                    return null;
-                  })()}
+                    {/* Botão Salvar (Sempre visível) */}
+                    <button
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={saving}
+                      className="px-8 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 size={20} className="animate-spin" />
+                          <span>Salvando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save size={20} />
+                          <span>{editingCampaign ? 'Salvar Alterações' : 'Criar Campanha'}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             </div>

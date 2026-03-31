@@ -496,6 +496,7 @@ export const api = {
   getCampaigns: async (token: string, page = 1, search = '') => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
+    queryParams.append('sort', '-created_at');
     if (search) {
       queryParams.append('filter[name]', search);
     }
