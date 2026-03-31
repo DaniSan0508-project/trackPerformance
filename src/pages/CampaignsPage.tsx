@@ -304,15 +304,19 @@ export const CampaignsPage: React.FC = () => {
     setActiveTab('basic');
     if (campaign) {
       setEditingCampaign(campaign);
-      // Fallback para campanhas antigas que usam is_active
-      const status = campaign.status || (campaign.is_active ? 'ativa' : 'pausada');
+      // Mapeia status antigos ou is_active para o novo padrão simplificado (ativa/inativa)
+      let currentStatus: CampaignStatus = 'inativa';
+      if (campaign.status === 'ativa' || (campaign.status as any) === 'active' || campaign.is_active === 1) {
+        currentStatus = 'ativa';
+      }
+
       setFormData({
         name: campaign.name,
         type: campaign.type,
         goal: campaign.goal ? String(campaign.goal) : '',
         start_date: campaign.start_date,
         end_date: campaign.end_date,
-        status: status,
+        status: currentStatus,
       });
 
       // Buscar usuários e produtos vinculados à campanha
@@ -1097,9 +1101,11 @@ export const CampaignsPage: React.FC = () => {
                 const typeLabel = campaignTypeLabels[campaign.type] || campaign.type;
                 const typeColor = campaignTypeColors[campaign.type] || 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300';
                 // Fallback para campanhas antigas que usam is_active
-                const statusFromCampaign = campaign.status || (campaign.is_active ? 'ativa' : 'pausada');
-                const statusLabel = campaignStatusLabels[statusFromCampaign] || statusFromCampaign;
-                const statusColor = campaignStatusColors[statusFromCampaign] || 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400';
+                const isAtiva = campaign.status === 'ativa' || (campaign.status as any) === 'active' || campaign.is_active === 1;
+                const statusLabel = isAtiva ? 'Ativa' : 'Inativa';
+                const statusColor = isAtiva 
+                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' 
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400';
 
                 return (
                   <motion.div
@@ -1226,7 +1232,7 @@ export const CampaignsPage: React.FC = () => {
 
                       <div className="flex items-center gap-2">
                         {/* Botão de ranking: apenas para campanhas ativas */}
-                        {statusFromCampaign === 'ativa' && (
+                        {isAtiva && (
                           <button
                             onClick={() => handleOpenRanking(campaign)}
                             className="p-2 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
@@ -1525,8 +1531,7 @@ export const CampaignsPage: React.FC = () => {
                           className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                         >
                           <option value="ativa">Ativa</option>
-                          <option value="pausada">Pausada</option>
-                          <option value="finalizada">Finalizada</option>
+                          <option value="inativa">Inativa</option>
                         </select>
                       </div>
                     </div>

@@ -164,7 +164,7 @@ export interface Reward {
 }
 
 export type CampaignType = 'sales' | 'engagement';
-export type CampaignStatus = 'ativa' | 'pausada' | 'finalizada';
+export type CampaignStatus = 'ativa' | 'inativa';
 
 export interface Campaign {
   id: number;
