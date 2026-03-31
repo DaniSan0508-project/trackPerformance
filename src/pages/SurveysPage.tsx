@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Layout } from '../components/Layout';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, FileText, Calendar, Eye, Users, CheckCircle, XCircle, Clock, EyeOff, Plus, Edit2, Trash2, X, Save, Check, User as UserIcon, Shield, User, BarChart3, PlusCircle, GripVertical, Copy, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -179,17 +179,21 @@ export const SurveysPage: React.FC = () => {
     }
   }, [token]);
 
-  // Resetar página quando a busca ou tipo de filtro mudarem
-  useEffect(() => {
-    if (isModalOpen && activeTab === 'users') {
-      setUsersPage(1);
-    }
-  }, [debouncedUserSearch, userFilterType]);
+  const lastSearchRef = useRef({ searchTerm: '', filterType: 'name' });
 
   // Buscar usuários quando a página, busca ou filtro mudarem
   useEffect(() => {
     if (isModalOpen && activeTab === 'users') {
-      fetchUsers(usersPage, debouncedUserSearch, userFilterType);
+      const searchChanged = lastSearchRef.current.searchTerm !== debouncedUserSearch || 
+                            lastSearchRef.current.filterType !== userFilterType;
+      
+      if (searchChanged) {
+        lastSearchRef.current = { searchTerm: debouncedUserSearch, filterType: userFilterType };
+        setUsersPage(1);
+        fetchUsers(1, debouncedUserSearch, userFilterType);
+      } else {
+        fetchUsers(usersPage, debouncedUserSearch, userFilterType);
+      }
     }
   }, [usersPage, debouncedUserSearch, userFilterType, isModalOpen, activeTab]);
 
