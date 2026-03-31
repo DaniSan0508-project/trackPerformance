@@ -8,8 +8,6 @@ import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 
-const API_BASE_URL = 'http://localhost:8010/api/v1';
-
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
   useEffect(() => {
@@ -225,18 +223,11 @@ export const SurveysPage: React.FC = () => {
       setIsModalOpen(true);
       try {
         // Busca detalhes completos com questões
-        const response = await fetch(`${API_BASE_URL}/surveys/${survey.id}?include=questions`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-        
-        if (!response.ok) throw new Error('Falha ao carregar detalhes da pesquisa');
-        const { data: detail } = await response.json();
+        const responseData = await api.getSurvey(token!, survey.id);
+        const detail = responseData.data || responseData;
 
         // Busca usuários separadamente da nova rota
-        const usersResponse = await api.getSurveyUsers(token, survey.id);
+        const usersResponse = await api.getSurveyUsers(token!, survey.id);
         const surveyUsers = usersResponse.data || [];
 
         setFormData({
@@ -312,23 +303,8 @@ export const SurveysPage: React.FC = () => {
     setLoadingSelectAllUsers(true);
     setSelectAllUsersProgress(null);
     try {
-      const queryParams = new URLSearchParams();
-      queryParams.append('page', '1');
-      queryParams.append('per_page', '100');
-      queryParams.append('include', 'store');
-      if (userSearch) {
-        queryParams.append(`filter[${userFilterType}]`, userSearch);
-      }
-
-      const firstResponse = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-      if (!firstResponse.ok) throw new Error('Falha ao carregar usuários');
-      const firstData = await firstResponse.json() as any;
-
+      // Busca a primeira página para saber o total
+      const firstData = await api.getUsers(token!, 1, userSearch, userFilterType);
       const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
       let allUsers: User[] = [...(firstData.data || [])];
 
@@ -337,23 +313,7 @@ export const SurveysPage: React.FC = () => {
       }
 
       for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
-        const nextPageParams = new URLSearchParams();
-        nextPageParams.append('page', currentPage.toString());
-        nextPageParams.append('per_page', '100');
-        nextPageParams.append('include', 'store');
-        if (userSearch) {
-          nextPageParams.append(`filter[${userFilterType}]`, userSearch);
-        }
-
-        const response = await fetch(`${API_BASE_URL}/users?${nextPageParams.toString()}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-        if (!response.ok) throw new Error('Falha ao carregar usuários');
-        const data = await response.json() as any;
-
+        const data = await api.getUsers(token!, currentPage, userSearch, userFilterType);
         allUsers.push(...(data.data || []));
         setSelectAllUsersProgress({ current: currentPage, total: totalPages });
       }
@@ -381,38 +341,13 @@ export const SurveysPage: React.FC = () => {
 
     setSelectByRoleLoading(role);
     try {
-      const queryParams = new URLSearchParams();
-      queryParams.append('page', '1');
-      queryParams.append('per_page', '100');
-      queryParams.append('include', 'store');
-
-      const firstResponse = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-      if (!firstResponse.ok) throw new Error('Falha ao carregar usuários');
-      const firstData = await firstResponse.json() as any;
-
+      // Busca a primeira página para saber o total
+      const firstData = await api.getUsers(token!, 1);
       const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
       let allUsers: User[] = [...(firstData.data || [])];
 
       for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
-        const nextPageParams = new URLSearchParams();
-        nextPageParams.append('page', currentPage.toString());
-        nextPageParams.append('per_page', '100');
-        nextPageParams.append('include', 'store');
-
-        const response = await fetch(`${API_BASE_URL}/users?${nextPageParams.toString()}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-        if (!response.ok) throw new Error('Falha ao carregar usuários');
-        const data = await response.json() as any;
-
+        const data = await api.getUsers(token!, currentPage);
         allUsers.push(...(data.data || []));
       }
 

@@ -610,7 +610,7 @@ export const api = {
   },
 
   getSurvey: async (token: string, id: number) => {
-    const response = await fetch(`${API_BASE_URL}/surveys/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/surveys/${id}?include=questions`, {
       headers: getHeaders(token),
     });
     return handleResponse(response);
