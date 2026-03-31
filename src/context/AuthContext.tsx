@@ -125,6 +125,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     sessionStorage.removeItem('track_performance_auth');
   }, []);
 
+  // Listen for unauthorized events from api service
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+    };
+
+    window.addEventListener('auth-unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth-unauthorized', handleUnauthorized);
+  }, [logout]);
+
   const refreshAccessToken = useCallback(async () => {
     if (!token) return;
 

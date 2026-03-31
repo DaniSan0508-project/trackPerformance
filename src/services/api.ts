@@ -2,41 +2,59 @@ import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedbac
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8010/api/v1';
 
+const handleResponse = async (response: Response) => {
+  if (response.status === 401) {
+    window.dispatchEvent(new CustomEvent('auth-unauthorized'));
+    throw new Error('Não autorizado');
+  }
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const error = new Error(errorData.message || 'Falha na requisição');
+    (error as any).response = { data: errorData, status: response.status };
+    throw error;
+  }
+
+  if (response.status === 204) return null;
+  return response.json();
+};
+
+const getHeaders = (token?: string, isMultipart = false) => {
+  const headers: any = {
+    'Accept': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  if (!isMultipart) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return headers;
+};
+
 export const api = {
   login: async (credentials: any) => {
     const response = await fetch(`${API_BASE_URL}/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(),
       body: JSON.stringify(credentials),
     });
-    if (!response.ok) throw new Error('Falha na autenticação');
-    return response.json();
+    return handleResponse(response);
   },
 
   refreshToken: async (token: string) => {
     const response = await fetch(`${API_BASE_URL}/refresh`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao atualizar token');
-    return response.json();
+    return handleResponse(response);
   },
 
   getUser: async (token: string, id: number) => {
     const response = await fetch(`${API_BASE_URL}/users/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar usuário');
-    return response.json();
+    return handleResponse(response);
   },
 
   getUsers: async (token: string, page = 1, search = '', filterType: 'name' | 'email' = 'name') => {
@@ -50,13 +68,9 @@ export const api = {
     }
 
     const response = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar usuários');
-    return response.json() as Promise<PaginatedResponse<User>>;
+    return handleResponse(response);
   },
 
   getProductsPaginated: async (token: string, page = 1, search = '', filterType: 'name' | 'barcode' = 'name', manufacturerId?: number) => {
@@ -71,27 +85,18 @@ export const api = {
     }
 
     const response = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar produtos');
-    return response.json() as Promise<PaginatedResponse<Product>>;
+    return handleResponse(response);
   },
 
   sendFeedback: async (token: string, data: { recipient_id: number; content: string; is_anonymous: boolean }) => {
     const response = await fetch(`${API_BASE_URL}/feedbacks`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Falha ao enviar feedback');
-    return response.json();
+    return handleResponse(response);
   },
 
   getFeedbacks: async (token: string, page = 1) => {
@@ -100,13 +105,9 @@ export const api = {
     queryParams.append('include', 'sender,recipient');
 
     const response = await fetch(`${API_BASE_URL}/feedbacks?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar feedbacks');
-    return response.json() as Promise<PaginatedResponse<Feedback>>;
+    return handleResponse(response);
   },
 
   getAllTenantFeedbacks: async (token: string, page = 1, searchName = '', filterType: 'sender_name' | 'recipient_name' = 'recipient_name') => {
@@ -118,13 +119,9 @@ export const api = {
     }
 
     const response = await fetch(`${API_BASE_URL}/feedbacks/tenant?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar feedbacks do tenant');
-    return response.json() as Promise<PaginatedResponse<Feedback>>;
+    return handleResponse(response);
   },
 
   getPosts: async (token: string, page = 1, filters: { userName?: string; createdAt?: string } = {}) => {
@@ -141,144 +138,78 @@ export const api = {
     }
 
     const response = await fetch(`${API_BASE_URL}/posts?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar posts');
-    return response.json() as Promise<PaginatedResponse<Post>>;
+    return handleResponse(response);
   },
 
   createPost: async (token: string, formData: FormData) => {
     const response = await fetch(`${API_BASE_URL}/posts`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token, true),
       body: formData,
     });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error = new Error('Falha ao criar post');
-      (error as any).response = { data: errorData, status: response.status };
-      throw error;
-    }
-    return response.json();
+    return handleResponse(response);
   },
 
   updatePost: async (token: string, id: number, data: Partial<Post>) => {
     const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Falha ao atualizar post');
-    return response.json();
+    return handleResponse(response);
   },
 
   updatePostWithMedia: async (token: string, id: number, formData: FormData) => {
     const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token, true),
       body: formData,
     });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error = new Error('Falha ao atualizar post');
-      (error as any).response = { data: errorData, status: response.status };
-      throw error;
-    }
-    return response.json();
+    return handleResponse(response);
   },
 
   deletePost: async (token: string, id: number) => {
     const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao excluir post');
-    if (response.status === 204) return;
-    return response.json();
+    return handleResponse(response);
   },
 
   deletePostComment: async (token: string, commentId: number) => {
     const response = await fetch(`${API_BASE_URL}/post-comments/${commentId}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error = new Error('Falha ao excluir comentário');
-      (error as any).response = { data: errorData, status: response.status };
-      throw error;
-    }
-    if (response.status === 204) return;
-    return response.json();
+    return handleResponse(response);
   },
 
   createUser: async (token: string, formData: FormData) => {
     const response = await fetch(`${API_BASE_URL}/users`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token, true),
       body: formData,
     });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error = new Error('Falha ao criar usuário');
-      (error as any).response = { data: errorData, status: response.status };
-      throw error;
-    }
-    return response.json();
+    return handleResponse(response);
   },
 
   updateUser: async (token: string, id: number, formData: FormData) => {
     const response = await fetch(`${API_BASE_URL}/users/update/${id}`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token, true),
       body: formData,
     });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error = new Error('Falha ao atualizar usuário');
-      (error as any).response = { data: errorData, status: response.status };
-      throw error;
-    }
-    return response.json();
+    return handleResponse(response);
   },
 
   deleteUser: async (token: string, id: number) => {
     const response = await fetch(`${API_BASE_URL}/users/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao excluir usuário');
-    if (response.status === 204) return;
-    return response.json();
+    return handleResponse(response);
   },
 
   getStores: async (token: string, page = 1, search = '') => {
@@ -286,7 +217,6 @@ export const api = {
     queryParams.append('page', page.toString());
     queryParams.append('include', 'tenant,group');
     if (search) {
-      // Se começar com número, busca por CNPJ; caso contrário, busca por nome
       const isNumeric = /^\d/.test(search.trim());
       if (isNumeric) {
         queryParams.append('filter[cnpj]', search);
@@ -296,24 +226,16 @@ export const api = {
     }
 
     const response = await fetch(`${API_BASE_URL}/stores?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar lojas');
-    return response.json() as Promise<PaginatedResponse<Store>>;
+    return handleResponse(response);
   },
 
   getStoreGroups: async (token: string) => {
     const response = await fetch(`${API_BASE_URL}/store-groups?per_page=100`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar grupos');
-    return response.json();
+    return handleResponse(response);
   },
 
   getTenantConfigs: async (token: string, page = 1, search = '') => {
@@ -324,116 +246,70 @@ export const api = {
     }
 
     const response = await fetch(`${API_BASE_URL}/tenant-configs?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar configurações');
-    return response.json() as Promise<PaginatedResponse<TenantConfig>>;
+    return handleResponse(response);
   },
 
   updateTenantConfig: async (token: string, id: number, data: Partial<TenantConfig>) => {
     const response = await fetch(`${API_BASE_URL}/tenant-configs/${id}`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Falha ao atualizar configuração');
-    return response.json();
+    return handleResponse(response);
   },
 
   createStore: async (token: string, data: Partial<Store>) => {
     const response = await fetch(`${API_BASE_URL}/stores`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Falha ao criar loja');
-    return response.json();
+    return handleResponse(response);
   },
 
   updateStore: async (token: string, id: number, data: Partial<Store>) => {
     const response = await fetch(`${API_BASE_URL}/stores/${id}`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Falha ao atualizar loja');
-    return response.json();
+    return handleResponse(response);
   },
 
   deleteStore: async (token: string, id: number) => {
     const response = await fetch(`${API_BASE_URL}/stores/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) {
-      if (response.status === 400) {
-        throw new Error('STORE_HAS_LINKED_USERS');
-      }
-      throw new Error('Falha ao excluir loja');
-    }
-    if (response.status === 204) {
-      return;
-    }
-    return response.json();
+    return handleResponse(response);
   },
 
   createStoreGroup: async (token: string, data: Partial<StoreGroup>) => {
     const response = await fetch(`${API_BASE_URL}/store-groups`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Falha ao criar grupo');
-    return response.json();
+    return handleResponse(response);
   },
 
   updateStoreGroup: async (token: string, id: number, data: Partial<StoreGroup>) => {
     const response = await fetch(`${API_BASE_URL}/store-groups/${id}`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Falha ao atualizar grupo');
-    return response.json();
+    return handleResponse(response);
   },
 
   deleteStoreGroup: async (token: string, id: number) => {
     const response = await fetch(`${API_BASE_URL}/store-groups/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao excluir grupo');
-    if (response.status === 204) return;
-    return response.json();
+    return handleResponse(response);
   },
 
   getRewards: async (token: string, page = 1, search = '') => {
@@ -445,52 +321,35 @@ export const api = {
     }
 
     const response = await fetch(`${API_BASE_URL}/rewards?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar recompensas');
-    return response.json() as Promise<PaginatedResponse<Reward>>;
+    return handleResponse(response);
   },
 
   createReward: async (token: string, formData: FormData) => {
     const response = await fetch(`${API_BASE_URL}/rewards`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token, true),
       body: formData,
     });
-    if (!response.ok) throw new Error('Falha ao criar recompensa');
-    return response.json();
+    return handleResponse(response);
   },
 
   updateReward: async (token: string, id: number, formData: FormData) => {
     const response = await fetch(`${API_BASE_URL}/rewards/${id}`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token, true),
       body: formData,
     });
-    if (!response.ok) throw new Error('Falha ao atualizar recompensa');
-    return response.json();
+    return handleResponse(response);
   },
 
   deleteReward: async (token: string, id: number) => {
     const response = await fetch(`${API_BASE_URL}/rewards/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao excluir recompensa');
-    if (response.status === 204) return;
-    return response.json();
+    return handleResponse(response);
   },
 
   getCampaigns: async (token: string, page = 1, search = '') => {
@@ -502,118 +361,63 @@ export const api = {
     }
 
     const response = await fetch(`${API_BASE_URL}/campaigns?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar campanhas');
-    return response.json() as Promise<PaginatedResponse<Campaign>>;
+    return handleResponse(response);
   },
 
   getCampaignsWithPodium: async (token: string) => {
     const response = await fetch(`${API_BASE_URL}/app/campaigns`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar campanhas com podium');
-    return response.json() as Promise<{ data: Campaign[] }>;
+    return handleResponse(response);
   },
 
   createCampaign: async (token: string, data: Partial<Campaign>) => {
     const response = await fetch(`${API_BASE_URL}/campaigns`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(data),
     });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error = new Error('Falha ao criar campanha');
-      (error as any).response = { data: errorData, status: response.status };
-      throw error;
-    }
-    return response.json();
+    return handleResponse(response);
   },
 
   updateCampaign: async (token: string, id: number, data: Partial<Campaign>) => {
     const response = await fetch(`${API_BASE_URL}/campaigns/${id}`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(data),
     });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error = new Error('Falha ao atualizar campanha');
-      (error as any).response = { data: errorData, status: response.status };
-      throw error;
-    }
-    return response.json();
+    return handleResponse(response);
   },
 
   deleteCampaign: async (token: string, id: number) => {
     const response = await fetch(`${API_BASE_URL}/campaigns/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-
-    if (!response.ok) {
-      // Tenta obter os dados de erro da resposta
-      const errorData = await response.json().catch(() => ({}));
-      const error = new Error(errorData.message || 'Falha ao excluir campanha');
-      error.response = { data: errorData, status: response.status };
-      throw error;
-    }
-
-    if (response.status === 204) return;
-    return response.json();
+    return handleResponse(response);
   },
 
   getCampaignUsers: async (token: string, campaignId: number) => {
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/users?per_page=99999999`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar usuários da campanha');
-    return response.json() as Promise<{ data: User[] }>;
+    return handleResponse(response);
   },
 
   getCampaignProducts: async (token: string, campaignId: number) => {
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/products?per_page=9999`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar produtos da campanha');
-    return response.json() as Promise<{ data: Product[] }>;
+    return handleResponse(response);
   },
 
   getCampaignActions: async (token: string, campaignId: number) => {
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/actions?per_page=9999`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar ações da campanha');
-    return response.json() as Promise<{ data: { id: number; description: string; coins: number }[] }>;
+    return handleResponse(response);
   },
 
   getAllUsers: async (token: string, page = 1, perPage = 10) => {
@@ -622,46 +426,34 @@ export const api = {
     queryParams.append('per_page', perPage.toString());
 
     const response = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar usuários');
-    return response.json() as Promise<PaginatedResponse<User>>;
+    return handleResponse(response);
   },
 
   getAllUsersComplete: async (token: string, search = '', filterType: 'name' | 'email' = 'name') => {
     const allUsers: User[] = [];
     let currentPage = 1;
-    const perPage = 100; // Busca 100 por página para ser mais eficiente
+    let lastPage = 1;
 
-    while (true) {
+    do {
       const queryParams = new URLSearchParams();
       queryParams.append('page', currentPage.toString());
-      queryParams.append('per_page', perPage.toString());
+      queryParams.append('per_page', '100');
       queryParams.append('include', 'store');
       if (search) {
         queryParams.append(`filter[${filterType}]`, search);
       }
 
       const response = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
+        headers: getHeaders(token),
       });
-      if (!response.ok) throw new Error('Falha ao carregar usuários');
-      const data = await response.json() as PaginatedResponse<User>;
+      const data = await handleResponse(response);
       
       allUsers.push(...(data.data || []));
-      
-      // Se não houver mais páginas, interrompe
-      if (currentPage >= (data.meta?.last_page || data.last_page || 1)) {
-        break;
-      }
+      lastPage = data.meta?.last_page || data.last_page || 1;
       currentPage++;
-    }
+    } while (currentPage <= lastPage);
 
     return allUsers;
   },
@@ -672,45 +464,33 @@ export const api = {
     queryParams.append('per_page', perPage.toString());
 
     const response = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar produtos');
-    return response.json() as Promise<PaginatedResponse<Product>>;
+    return handleResponse(response);
   },
 
   getAllProductsComplete: async (token: string, search = '', filterType: 'name' | 'barcode' = 'name') => {
     const allProducts: Product[] = [];
     let currentPage = 1;
-    const perPage = 100; // Busca 100 por página para ser mais eficiente
+    let lastPage = 1;
 
-    while (true) {
+    do {
       const queryParams = new URLSearchParams();
       queryParams.append('page', currentPage.toString());
-      queryParams.append('per_page', perPage.toString());
+      queryParams.append('per_page', '100');
       if (search) {
         queryParams.append(`filter[${filterType}]`, search);
       }
 
       const response = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
+        headers: getHeaders(token),
       });
-      if (!response.ok) throw new Error('Falha ao carregar produtos');
-      const data = await response.json() as PaginatedResponse<Product>;
+      const data = await handleResponse(response);
       
       allProducts.push(...(data.data || []));
-      
-      // Se não houver mais páginas, interrompe
-      if (currentPage >= (data.meta?.last_page || data.last_page || 1)) {
-        break;
-      }
+      lastPage = data.meta?.last_page || data.last_page || 1;
       currentPage++;
-    }
+    } while (currentPage <= lastPage);
 
     return allProducts;
   },
@@ -718,334 +498,197 @@ export const api = {
   getAllManufacturers: async (token: string) => {
     const allManufacturers: any[] = [];
     let currentPage = 1;
-    const perPage = 100;
+    let lastPage = 1;
 
-    while (true) {
+    do {
       const queryParams = new URLSearchParams();
       queryParams.append('page', currentPage.toString());
-      queryParams.append('per_page', perPage.toString());
+      queryParams.append('per_page', '100');
 
       const response = await fetch(`${API_BASE_URL}/manufacturers?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
+        headers: getHeaders(token),
       });
-      if (!response.ok) throw new Error('Falha ao carregar fabricantes');
-      const data = await response.json() as PaginatedResponse<any>;
+      const data = await handleResponse(response);
       
       allManufacturers.push(...(data.data || []));
-      
-      if (currentPage >= (data.meta?.last_page || data.last_page || 1)) {
-        break;
-      }
+      lastPage = data.meta?.last_page || data.last_page || 1;
       currentPage++;
-    }
+    } while (currentPage <= lastPage);
 
     return allManufacturers;
   },
 
-  getCoinStatements: async (
-    token: string,
-    userId: number,
-    page = 1,
-    filters?: {
-      start_date?: string;
-      end_date?: string;
-      created_at?: string;
-    }
-  ) => {
+  getCoinStatements: async (token: string, userId: number, page = 1, filters?: any) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
     queryParams.append('filter[user_id]', userId.toString());
 
-    if (filters?.start_date) {
-      queryParams.append('filter[start_date]', filters.start_date);
-    }
-    if (filters?.end_date) {
-      queryParams.append('filter[end_date]', filters.end_date);
-    }
-    if (filters?.created_at) {
-      queryParams.append('filter[created_at]', filters.created_at);
-    }
+    if (filters?.start_date) queryParams.append('filter[start_date]', filters.start_date);
+    if (filters?.end_date) queryParams.append('filter[end_date]', filters.end_date);
+    if (filters?.created_at) queryParams.append('filter[created_at]', filters.created_at);
 
     const response = await fetch(`${API_BASE_URL}/coin-statements?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar extrato');
-    return response.json() as Promise<CoinStatementResponse>;
+    return handleResponse(response);
   },
 
   getCampaignRanking: async (token: string, campaignId: number) => {
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/ranking`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar ranking');
-    return response.json() as Promise<{ data: CampaignRanking[] }>;
+    return handleResponse(response);
   },
 
   createRedemption: async (token: string, data: { items: { reward_id: number; quantity: number }[] }) => {
     const response = await fetch(`${API_BASE_URL}/redemptions`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Falha ao criar redenção');
-    }
-    return response.json();
+    return handleResponse(response);
   },
 
-  getRedemptions: async (
-    token: string,
-    page = 1,
-    filters: {
-      status?: RedemptionStatus;
-      user_id?: number;
-      per_page?: number;
-    } = {}
-  ) => {
+  getRedemptions: async (token: string, page = 1, filters: any = {}) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
-    
-    if (filters.status) {
-      queryParams.append('filter[status]', filters.status);
-    }
-    if (filters.user_id) {
-      queryParams.append('filter[user_id]', filters.user_id.toString());
-    }
-    if (filters.per_page) {
-      queryParams.append('per_page', filters.per_page.toString());
-    }
-    
+    if (filters.status) queryParams.append('filter[status]', filters.status);
+    if (filters.user_id) queryParams.append('filter[user_id]', filters.user_id.toString());
+    if (filters.per_page) queryParams.append('per_page', filters.per_page.toString());
     queryParams.append('include', 'user,items,items.reward');
 
     const response = await fetch(`${API_BASE_URL}/redemptions?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar resgates');
-    return response.json() as Promise<PaginatedResponse<Redemption>>;
+    return handleResponse(response);
   },
 
   updateRedemptionStatus: async (token: string, id: number, status: RedemptionStatus, notes?: string) => {
     const response = await fetch(`${API_BASE_URL}/redemptions/${id}`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
       body: JSON.stringify({ status, notes }),
     });
-    if (!response.ok) throw new Error('Falha ao atualizar resgate');
-    return response.json();
+    return handleResponse(response);
   },
 
   approveRedemption: async (token: string, id: number) => {
     const response = await fetch(`${API_BASE_URL}/redemptions/${id}/approve`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao aprovar resgate');
-    return response.json();
+    return handleResponse(response);
   },
 
   rejectRedemption: async (token: string, id: number) => {
     const response = await fetch(`${API_BASE_URL}/redemptions/${id}/reject`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao rejeitar resgate');
-    return response.json();
+    return handleResponse(response);
   },
 
   completeRedemption: async (token: string, id: number) => {
     const response = await fetch(`${API_BASE_URL}/redemptions/${id}/complete`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao concluir resgate');
-    return response.json();
+    return handleResponse(response);
   },
 
   getSurveys: async (token: string, page = 1, search = '', status?: SurveyStatus | 'all', published?: 'all' | 'true' | 'false') => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
-    if (search) {
-      queryParams.append('filter[title]', search);
-    }
-    if (status && status !== 'all') {
-      queryParams.append('filter[status]', status);
-    }
-    if (published && published !== 'all') {
-      queryParams.append('filter[is_published]', published);
-    }
+    if (search) queryParams.append('filter[title]', search);
+    if (status && status !== 'all') queryParams.append('filter[status]', status);
+    if (published && published !== 'all') queryParams.append('filter[is_published]', published);
 
     const response = await fetch(`${API_BASE_URL}/surveys?${queryParams.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar pesquisas');
-    return response.json() as Promise<PaginatedResponse<Survey>>;
+    return handleResponse(response);
   },
 
   getSurvey: async (token: string, id: number) => {
     const response = await fetch(`${API_BASE_URL}/surveys/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar pesquisa');
-    return response.json();
+    return handleResponse(response);
   },
 
   createSurvey: async (token: string, data: any) => {
     const response = await fetch(`${API_BASE_URL}/surveys`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Falha ao criar pesquisa');
-    return response.json();
+    return handleResponse(response);
   },
 
   updateSurvey: async (token: string, id: number, data: any) => {
     const response = await fetch(`${API_BASE_URL}/surveys/${id}`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Falha ao atualizar pesquisa');
-    return response.json();
+    return handleResponse(response);
   },
 
   deleteSurvey: async (token: string, id: number) => {
     const response = await fetch(`${API_BASE_URL}/surveys/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao excluir pesquisa');
-    if (response.status === 204) return;
-    return response.json();
+    return handleResponse(response);
   },
 
   getSurveyResults: async (token: string, surveyId: number) => {
     const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/results`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar resultados da pesquisa');
-    return response.json();
+    return handleResponse(response);
   },
 
   getSurveyUsers: async (token: string, surveyId: number) => {
     const response = await fetch(`${API_BASE_URL}/app/surveys/${surveyId}/users?per_page=9999`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar usuários da pesquisa');
-    return response.json();
+    return handleResponse(response);
   },
 
-  // Dashboard summary metrics
   getDashboard: async (token: string) => {
     const response = await fetch(`${API_BASE_URL}/dashboard`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar dashboard');
-    return response.json();
+    return handleResponse(response);
   },
 
-  // Active campaigns for dashboard
   getActiveCampaigns: async (token: string) => {
     const response = await fetch(`${API_BASE_URL}/dashboard/active-campaigns`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar campanhas ativas');
-    return response.json();
+    return handleResponse(response);
   },
 
-  // Engagement index per store for dashboard
   getEngagementIndex: async (token: string) => {
     const response = await fetch(`${API_BASE_URL}/dashboard/engagement-index`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar índice de engajamento');
-    return response.json();
+    return handleResponse(response);
   },
 
-  // Top collaborators (podium) - retorna array dos top colaboradores
   getTopCollaborators: async (token: string) => {
     const response = await fetch(`${API_BASE_URL}/dashboard/top-collaborators`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar top collaborators');
-    return response.json();
+    return handleResponse(response);
   },
 
-  // Engagement actions summary for dashboard (supports period query: current_day, current_week, current_month)
   getEngagementActionsSummary: async (token: string, period?: string) => {
     const query = period ? `?period=${encodeURIComponent(period)}` : '';
     const response = await fetch(`${API_BASE_URL}/dashboard/engagement-actions-summary${query}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: getHeaders(token),
     });
-    if (!response.ok) throw new Error('Falha ao carregar resumo de ações de engajamento');
-    return response.json();
+    return handleResponse(response);
   },
 };
