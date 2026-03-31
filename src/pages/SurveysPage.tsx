@@ -24,10 +24,11 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 interface Question {
+  id?: number;
   question: string;
   type: 'choice' | 'text';
   order: number;
-  options?: Array<{ option_text: string }>;
+  options?: Array<{ id?: number; option_text: string }>;
   required?: boolean;
 }
 
@@ -65,7 +66,12 @@ export const SurveysPage: React.FC = () => {
     is_anonymous: false,
     is_published: false,
     survey_type: '' as 'choice' | 'text' | '',
+    status: 'draft' as SurveyStatus,
+    coins_reward: false,
   });
+
+  const isReadOnly = !!editingSurvey && (editingSurvey.status === 'active' || editingSurvey.status === 'closed');
+  const canPublish = formData.status !== 'draft';
 
   // Valida se Dados Básicos estão completos
   const isBasicDataComplete = () => {
@@ -73,8 +79,9 @@ export const SurveysPage: React.FC = () => {
     const hasType = formData.survey_type;
     const hasStartDate = formData.starts_at;
     const hasEndDate = formData.ends_at;
+    const hasStatus = formData.status;
     
-    return hasTitle && hasType && hasStartDate && hasEndDate;
+    return hasTitle && hasType && hasStartDate && hasEndDate && hasStatus;
   };
 
   // Usuários
@@ -174,9 +181,10 @@ export const SurveysPage: React.FC = () => {
 
   useEffect(() => {
     if (isModalOpen && activeTab === 'users') {
-      fetchUsers(usersPage, debouncedUserSearch, userFilterType);
+      setUsersPage(1);
+      fetchUsers(1, debouncedUserSearch, userFilterType);
     }
-  }, [debouncedUserSearch, userFilterType, isModalOpen, activeTab, usersPage]);
+  }, [debouncedUserSearch, userFilterType, isModalOpen, activeTab]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
@@ -196,19 +204,63 @@ export const SurveysPage: React.FC = () => {
     fetchSurveys(currentPage, debouncedSearchTerm);
   };
 
-  const handleOpenModal = (survey?: Survey) => {
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  const handleOpenModal = async (survey?: Survey) => {
     setActiveTab('basic');
     if (survey) {
       setEditingSurvey(survey);
-      setFormData({
-        title: survey.title,
-        starts_at: survey.starts_at.split('T')[0],
-        ends_at: survey.ends_at.split('T')[0],
-        is_anonymous: survey.is_anonymous,
-        is_published: survey.is_published,
-        survey_type: '',
-      });
-      // TODO: Carregar usuários e questões da pesquisa existente
+      setLoadingDetail(true);
+      setIsModalOpen(true);
+      try {
+        // Busca detalhes completos com questões
+        const response = await fetch(`${API_BASE_URL}/surveys/${survey.id}?include=questions`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+        });
+        
+        if (!response.ok) throw new Error('Falha ao carregar detalhes da pesquisa');
+        const { data: detail } = await response.json();
+
+        // Busca usuários separadamente da nova rota
+        const usersResponse = await api.getSurveyUsers(token, survey.id);
+        const surveyUsers = usersResponse.data || [];
+
+        setFormData({
+          title: detail.title,
+          starts_at: detail.starts_at.split('T')[0],
+          ends_at: detail.ends_at.split('T')[0],
+          is_anonymous: detail.is_anonymous,
+          is_published: detail.is_published,
+          survey_type: detail.questions?.[0]?.type || 'text',
+          status: detail.status,
+          coins_reward: detail.coins_reward || false,
+        });
+
+        // Mapeia as questões
+        if (detail.questions) {
+          const mappedQuestions: Question[] = detail.questions.map((q: any) => ({
+            id: q.id,
+            question: q.question,
+            type: q.type,
+            order: q.order,
+            options: q.options?.map((o: any) => ({ id: o.id, option_text: o.option_text })) || []
+          }));
+          setQuestions(mappedQuestions);
+        }
+
+        // Mapeia os usuários selecionados da nova rota
+        setSelectedUsers(surveyUsers.map((u: any) => u.id));
+
+      } catch (error: any) {
+        console.error('Error loading survey details:', error);
+        addToast('error', 'Não foi possível carregar todos os dados da pesquisa.');
+        handleCloseModal();
+      } finally {
+        setLoadingDetail(false);
+      }
     } else {
       setEditingSurvey(null);
       setFormData({
@@ -218,11 +270,13 @@ export const SurveysPage: React.FC = () => {
         is_anonymous: false,
         is_published: false,
         survey_type: '',
+        status: 'draft',
+        coins_reward: false,
       });
       setSelectedUsers([]);
       setQuestions([]);
+      setIsModalOpen(true);
     }
-    setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
@@ -392,6 +446,23 @@ export const SurveysPage: React.FC = () => {
     );
   };
 
+  // Atualiza as tags de cargos selecionados automaticamente
+  useEffect(() => {
+    if (!isModalOpen || users.length === 0) return;
+
+    const roles = ['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor', 'Gerente', 'Coordenador'];
+    const newFullySelectedRoles = new Set<string>();
+
+    roles.forEach(role => {
+      const usersInRole = users.filter(u => u.role === role);
+      if (usersInRole.length > 0 && usersInRole.every(u => selectedUsers.includes(u.id))) {
+        newFullySelectedRoles.add(role);
+      }
+    });
+
+    setFullySelectedRoles(newFullySelectedRoles);
+  }, [selectedUsers, users, isModalOpen]);
+
   const addQuestion = () => {
     const newOrder = questions.length + 1;
     // Usa o tipo definido no survey_type
@@ -538,6 +609,8 @@ export const SurveysPage: React.FC = () => {
         ends_at: formData.ends_at,
         is_anonymous: formData.is_anonymous,
         is_published: formData.is_published,
+        status: formData.status,
+        coins_reward: formData.coins_reward,
         users: selectedUsers,
         questions: questionsToSave,
       };
@@ -715,6 +788,26 @@ export const SurveysPage: React.FC = () => {
                                 Não Publicada
                               </span>
                             )}
+
+                            {/* Badge de Status */}
+                            {survey.status === 'draft' && (
+                              <span className="px-2 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                                <Clock size={12} />
+                                Rascunho
+                              </span>
+                            )}
+                            {survey.status === 'active' && (
+                              <span className="px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                                <Check size={12} />
+                                Ativa
+                              </span>
+                            )}
+                            {survey.status === 'closed' && (
+                              <span className="px-2 py-1 rounded-full text-xs font-bold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 flex items-center gap-1">
+                                <X size={12} />
+                                Encerrada
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex flex-wrap gap-4 mt-3 text-sm">
@@ -846,15 +939,8 @@ export const SurveysPage: React.FC = () => {
                   Dados Básicos
                 </button>
                 <button
-                  onClick={() => {
-                    if (!isBasicDataComplete()) {
-                      addToast('warning', 'Preencha todos os campos de Dados Básicos para continuar.');
-                      return;
-                    }
-                    setActiveTab('users');
-                  }}
-                  disabled={!isBasicDataComplete()}
-                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  onClick={() => setActiveTab('users')}
+                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                     activeTab === 'users'
                       ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
                       : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
@@ -863,19 +949,8 @@ export const SurveysPage: React.FC = () => {
                   Participantes ({selectedUsers.length})
                 </button>
                 <button
-                  onClick={() => {
-                    if (!isBasicDataComplete()) {
-                      addToast('warning', 'Preencha todos os campos de Dados Básicos primeiro.');
-                      return;
-                    }
-                    if (selectedUsers.length === 0) {
-                      addToast('warning', 'Selecione pelo menos 1 participante.');
-                      return;
-                    }
-                    setActiveTab('questions');
-                  }}
-                  disabled={!isBasicDataComplete() || selectedUsers.length === 0}
-                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  onClick={() => setActiveTab('questions')}
+                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                     activeTab === 'questions'
                       ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
                       : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
@@ -886,21 +961,54 @@ export const SurveysPage: React.FC = () => {
               </div>
 
               {/* Conteúdo das Tabs */}
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 overflow-y-auto p-6 relative min-h-0">
+                {loadingDetail && (
+                  <div className="absolute inset-0 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10 flex items-center justify-center">
+                    <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
+                  </div>
+                )}
+
+                {isReadOnly && (
+                  <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl flex items-center gap-2">
+                    <Shield size={16} className="text-blue-600 dark:text-blue-400" />
+                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                      Esta pesquisa está {formData.status === 'active' ? 'Ativa' : 'Encerrada'} e não pode ser editada, apenas visualizada.
+                    </p>
+                  </div>
+                )}
+                
                 {/* Tab Dados Básicos */}
                 {activeTab === 'basic' && (
                   <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                        Título da Pesquisa *
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        placeholder="Ex: Pesquisa de Clima Organizacional"
-                        className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                          Título da Pesquisa *
+                        </label>
+                        <input
+                          type="text"
+                          disabled={isReadOnly}
+                          value={formData.title}
+                          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                          placeholder="Ex: Pesquisa de Clima Organizacional"
+                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                          Status da Pesquisa *
+                        </label>
+                        <select
+                          value={formData.status}
+                          disabled={isReadOnly}
+                          onChange={(e) => setFormData({ ...formData, status: e.target.value as SurveyStatus })}
+                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
+                        >
+                          <option value="draft">Rascunho</option>
+                          <option value="active">Ativa</option>
+                          <option value="closed">Encerrada</option>
+                        </select>
+                      </div>
                     </div>
 
                     {/* Tipo de Pesquisa */}
@@ -914,7 +1022,9 @@ export const SurveysPage: React.FC = () => {
                       <div className="grid grid-cols-2 gap-3">
                         <button
                           type="button"
+                          disabled={isReadOnly}
                           onClick={() => {
+                            if (isReadOnly) return;
                             setFormData({ ...formData, survey_type: 'choice' });
                             // Limpa questões existentes se mudar o tipo
                             setQuestions([]);
@@ -923,7 +1033,7 @@ export const SurveysPage: React.FC = () => {
                             formData.survey_type === 'choice'
                               ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md'
                               : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
-                          }`}
+                          } ${isReadOnly ? 'cursor-not-allowed' : ''} ${isReadOnly && formData.survey_type !== 'choice' ? 'opacity-40' : ''}`}
                         >
                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                             formData.survey_type === 'choice'
@@ -939,7 +1049,9 @@ export const SurveysPage: React.FC = () => {
                         </button>
                         <button
                           type="button"
+                          disabled={isReadOnly}
                           onClick={() => {
+                            if (isReadOnly) return;
                             setFormData({ ...formData, survey_type: 'text' });
                             // Limpa questões existentes se mudar o tipo
                             setQuestions([]);
@@ -948,7 +1060,7 @@ export const SurveysPage: React.FC = () => {
                             formData.survey_type === 'text'
                               ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-md'
                               : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
-                          }`}
+                          } ${isReadOnly ? 'cursor-not-allowed' : ''} ${isReadOnly && formData.survey_type !== 'text' ? 'opacity-40' : ''}`}
                         >
                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                             formData.survey_type === 'text'
@@ -1037,12 +1149,13 @@ export const SurveysPage: React.FC = () => {
                     </div>
 
                     <div className="space-y-3">
-                      <label className="flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                      <label className={`flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}>
                         <input
                           type="checkbox"
+                          disabled={isReadOnly}
                           checked={formData.is_anonymous}
                           onChange={(e) => setFormData({ ...formData, is_anonymous: e.target.checked })}
-                          className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500"
+                          className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 disabled:opacity-50"
                         />
                         <div>
                           <p className="font-medium text-zinc-900 dark:text-white">Pesquisa Anônima</p>
@@ -1050,16 +1163,33 @@ export const SurveysPage: React.FC = () => {
                         </div>
                       </label>
 
-                      <label className="flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                      <label className={`flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${(!canPublish || isReadOnly) ? 'opacity-60 cursor-not-allowed' : ''}`}>
                         <input
                           type="checkbox"
+                          disabled={!canPublish || isReadOnly}
                           checked={formData.is_published}
                           onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })}
-                          className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500"
+                          className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 disabled:opacity-50"
                         />
                         <div>
                           <p className="font-medium text-zinc-900 dark:text-white">Publicar Imediatamente</p>
-                          <p className="text-sm text-zinc-500 dark:text-zinc-400">A pesquisa ficará visível para os participantes</p>
+                          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                            {!canPublish ? 'Pesquisas rascunho não podem ser publicadas diretamente' : 'A pesquisa ficará visível para os participantes'}
+                          </p>
+                        </div>
+                      </label>
+
+                      <label className={`flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                        <input
+                          type="checkbox"
+                          disabled={isReadOnly}
+                          checked={formData.coins_reward}
+                          onChange={(e) => setFormData({ ...formData, coins_reward: e.target.checked })}
+                          className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 disabled:opacity-50"
+                        />
+                        <div>
+                          <p className="font-medium text-zinc-900 dark:text-white">Recompensar com Moedas</p>
+                          <p className="text-sm text-zinc-500 dark:text-zinc-400">Os participantes ganharão moedas ao responder</p>
                         </div>
                       </label>
                     </div>
@@ -1069,16 +1199,20 @@ export const SurveysPage: React.FC = () => {
                 {/* Tab Usuários */}
                 {activeTab === 'users' && (
                   <div className="space-y-4">
-                    {/* Filtros */}
-                    <div className="flex items-center gap-2">
-                      {/* Filtro de Tipo */}
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                      Selecione os usuários que participarão desta pesquisa:
+                    </p>
+
+                    {/* Filtros e busca de usuários */}
+                    <div className="flex gap-2 mb-4">
+                      {/* Tipo de busca */}
                       <select
                         value={userFilterType}
                         onChange={(e) => {
                           setUserFilterType(e.target.value as 'name' | 'email');
                           setUsersPage(1);
                         }}
-                        className="px-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm whitespace-nowrap"
                       >
                         <option value="name">Nome</option>
                         <option value="email">E-mail</option>
@@ -1097,158 +1231,62 @@ export const SurveysPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Seleção Rápida por Cargo */}
-                    <div className="border-t border-zinc-200 dark:border-zinc-700 pt-4 mb-3">
-                      <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">
-                        👥 Seleção Rápida por Cargo
-                      </p>
-                      <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-3">
-                        Clique para selecionar/desmarcar todos os usuários do cargo selecionado
-                      </p>
-                      <div className="flex flex-wrap gap-2">
+                    {/* Seleção Rápida */}
+                    <div className="border-t border-zinc-200 dark:border-zinc-700 pt-5 mb-4 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
+                          👥 Seleção Rápida
+                        </p>
                         <button
                           onClick={handleSelectAllUsers}
-                          disabled={loadingSelectAllUsers}
-                          className="px-4 py-2 text-sm font-semibold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 shadow-sm"
+                          disabled={loadingSelectAllUsers || isReadOnly}
+                          className={`px-4 py-2 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm border ${
+                            selectedUsers.length > 0
+                              ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
+                              : 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-700 shadow-emerald-500/20'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                           {loadingSelectAllUsers ? (
                             <>
                               <Loader2 size={16} className="animate-spin" />
-                              {selectAllUsersProgress ? `Página ${selectAllUsersProgress.current}/${selectAllUsersProgress.total}` : 'Carregando...'}
+                              <span>{selectAllUsersProgress ? `Pág ${selectAllUsersProgress.current}/${selectAllUsersProgress.total}` : 'Processando...'}</span>
                             </>
                           ) : (
                             <>
-                              <Users size={16} />
+                              {selectedUsers.length > 0 ? <X size={18} /> : <Users size={18} />}
                               {selectedUsers.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
                             </>
                           )}
                         </button>
-                        <button
-                          onClick={() => handleSelectAllByRole('Atendente')}
-                          disabled={selectByRoleLoading !== null}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
-                            areAllUsersSelectedByRole('Atendente')
-                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {selectByRoleLoading === 'Atendente' ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <>
-                              <Check size={14} className={areAllUsersSelectedByRole('Atendente') ? '' : 'invisible'} />
-                              {areAllUsersSelectedByRole('Atendente') ? '✓ Atendente' : '+ Atendente'}
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleSelectAllByRole('Vendedor')}
-                          disabled={selectByRoleLoading !== null}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
-                            areAllUsersSelectedByRole('Vendedor')
-                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {selectByRoleLoading === 'Vendedor' ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <>
-                              <Check size={14} className={areAllUsersSelectedByRole('Vendedor') ? '' : 'invisible'} />
-                              {areAllUsersSelectedByRole('Vendedor') ? '✓ Vendedor' : '+ Vendedor'}
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleSelectAllByRole('Representante')}
-                          disabled={selectByRoleLoading !== null}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
-                            areAllUsersSelectedByRole('Representante')
-                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {selectByRoleLoading === 'Representante' ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <>
-                              <Check size={14} className={areAllUsersSelectedByRole('Representante') ? '' : 'invisible'} />
-                              {areAllUsersSelectedByRole('Representante') ? '✓ Representante' : '+ Representante'}
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleSelectAllByRole('Consultor')}
-                          disabled={selectByRoleLoading !== null}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
-                            areAllUsersSelectedByRole('Consultor')
-                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {selectByRoleLoading === 'Consultor' ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <>
-                              <Check size={14} className={areAllUsersSelectedByRole('Consultor') ? '' : 'invisible'} />
-                              {areAllUsersSelectedByRole('Consultor') ? '✓ Consultor' : '+ Consultor'}
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleSelectAllByRole('Supervisor')}
-                          disabled={selectByRoleLoading !== null}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
-                            areAllUsersSelectedByRole('Supervisor')
-                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {selectByRoleLoading === 'Supervisor' ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <>
-                              <Check size={14} className={areAllUsersSelectedByRole('Supervisor') ? '' : 'invisible'} />
-                              {areAllUsersSelectedByRole('Supervisor') ? '✓ Supervisor' : '+ Supervisor'}
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleSelectAllByRole('Gerente')}
-                          disabled={selectByRoleLoading !== null}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
-                            areAllUsersSelectedByRole('Gerente')
-                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {selectByRoleLoading === 'Gerente' ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <>
-                              <Check size={14} className={areAllUsersSelectedByRole('Gerente') ? '' : 'invisible'} />
-                              {areAllUsersSelectedByRole('Gerente') ? '✓ Gerente' : '+ Gerente'}
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleSelectAllByRole('Coordenador')}
-                          disabled={selectByRoleLoading !== null}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm ${
-                            areAllUsersSelectedByRole('Coordenador')
-                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {selectByRoleLoading === 'Coordenador' ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <>
-                              <Check size={14} className={areAllUsersSelectedByRole('Coordenador') ? '' : 'invisible'} />
-                              {areAllUsersSelectedByRole('Coordenador') ? '✓ Coordenador' : '+ Coordenador'}
-                            </>
-                          )}
-                        </button>
+                      </div>
+
+                      <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                        <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 mb-3 uppercase">
+                          Filtrar por Cargo
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor', 'Gerente', 'Coordenador'].map((role) => (
+                            <button
+                              key={role}
+                              onClick={() => handleSelectAllByRole(role)}
+                              disabled={selectByRoleLoading !== null || isReadOnly}
+                              className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
+                                areAllUsersSelectedByRole(role)
+                                  ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
+                                  : 'bg-white text-zinc-600 border-zinc-200 hover:border-emerald-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
+                              } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            >
+                              {selectByRoleLoading === role ? (
+                                <Loader2 size={12} className="animate-spin" />
+                              ) : (
+                                <>
+                                  {areAllUsersSelectedByRole(role) ? <Check size={12} /> : <Plus size={12} />}
+                                  {role}
+                                </>
+                              )}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
@@ -1265,20 +1303,20 @@ export const SurveysPage: React.FC = () => {
                         <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pr-2">
                         {users.map((user) => {
                           const isSelected = selectedUsers.includes(user.id);
                           return (
                             <motion.button
                               key={user.id}
-                              onClick={() => toggleUser(user.id)}
+                              onClick={() => !isReadOnly && toggleUser(user.id)}
                               initial={{ opacity: 0, scale: 0.95 }}
                               animate={{ opacity: 1, scale: 1 }}
                               className={`p-4 rounded-xl border-2 transition-all duration-200 text-left group ${
                                 isSelected
                                   ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 shadow-md'
                                   : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm'
-                              }`}
+                              } ${isReadOnly ? 'cursor-default' : ''}`}
                             >
                               <div className="flex items-start gap-3">
                                 {/* Avatar */}
@@ -1301,7 +1339,12 @@ export const SurveysPage: React.FC = () => {
                                   <p className="font-bold text-sm text-zinc-900 dark:text-white truncate">
                                     {user.name}
                                   </p>
-                                  <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                                  {user.role && (
+                                    <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-0.5">
+                                      {user.role}
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
                                     {user.email}
                                   </p>
                                   {user.store && (
@@ -1325,17 +1368,12 @@ export const SurveysPage: React.FC = () => {
 
                               {/* Badges */}
                               <div className="mt-3 flex items-center gap-2 flex-wrap">
-                                {user.role && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
-                                    <Shield size={10} className="mr-1" />
-                                    {user.role}
-                                  </span>
-                                )}
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
                                   user.user_type_id === 1
                                     ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800'
                                     : 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/20 dark:text-teal-400 dark:border-teal-800'
                                 }`}>
+                                  <Shield size={10} className="mr-1" />
                                   {user.user_type_id === 1 ? 'Administrador' : 'Colaborador'}
                                 </span>
                                 {user.coin_balance !== undefined && user.coin_balance > 0 && (
@@ -1406,22 +1444,25 @@ export const SurveysPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Botão adicionar questão */}
-                    <button
-                      onClick={addQuestion}
-                      className="w-full border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-xl p-4 text-zinc-500 dark:text-zinc-400 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center justify-center gap-2 font-medium"
-                    >
-                      <PlusCircle size={20} />
-                      Adicionar Nova Questão
-                    </button>
-
                     {questions.length === 0 ? (
                       <div className="text-center py-12 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl bg-zinc-50 dark:bg-zinc-800/30">
                         <FileText className="w-16 h-16 text-zinc-300 dark:text-zinc-600 mx-auto mb-4" />
                         <p className="text-zinc-500 dark:text-zinc-400 font-medium">Nenhuma questão adicionada</p>
-                        <p className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
-                          Clique em "Adicionar Nova Questão" para começar
-                        </p>
+                        {!isReadOnly && (
+                          <>
+                            <p className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
+                              Clique em "Adicionar Nova Questão" para começar
+                            </p>
+                            <button
+                              type="button"
+                              onClick={addQuestion}
+                              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-medium"
+                            >
+                              <PlusCircle size={18} />
+                              Adicionar Primeira Questão
+                            </button>
+                          </>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -1446,26 +1487,34 @@ export const SurveysPage: React.FC = () => {
                                   Questão {question.order}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => {
-                                    const newQuestion = { ...question, order: questions.length + 1 };
-                                    setQuestions([...questions, newQuestion]);
-                                    addToast('success', 'Questão duplicada!');
-                                  }}
-                                  className="p-2 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-                                  title="Duplicar questão"
-                                >
-                                  <Copy size={16} />
-                                </button>
-                                <button
-                                  onClick={() => removeQuestion(qIndex)}
-                                  className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                                  title="Excluir questão"
-                                >
-                                  <Trash2 size={18} />
-                                </button>
-                              </div>
+                              {!isReadOnly && (
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => {
+                                      // Deep clone para evitar que mudanças na cópia afetem a original (especialmente options)
+                                      // Remove o id para que o backend trate como uma nova questão
+                                      const { id, ...rest } = question;
+                                      const newQuestion: Question = { 
+                                        ...JSON.parse(JSON.stringify(rest)), 
+                                        order: questions.length + 1 
+                                      };
+                                      setQuestions([...questions, newQuestion]);
+                                      addToast('success', 'Questão duplicada!');
+                                    }}
+                                    className="p-2 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                                    title="Duplicar questão"
+                                  >
+                                    <Copy size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => removeQuestion(qIndex)}
+                                    className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                    title="Excluir questão"
+                                  >
+                                    <Trash2 size={18} />
+                                  </button>
+                                </div>
+                              )}
                             </div>
 
                             <div className="space-y-4">
@@ -1475,11 +1524,12 @@ export const SurveysPage: React.FC = () => {
                                   Pergunta <span className="text-red-500">*</span>
                                 </label>
                                 <textarea
+                                  disabled={isReadOnly}
                                   value={question.question}
                                   onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
                                   placeholder="Digite sua pergunta aqui..."
                                   rows={2}
-                                  className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white resize-none"
+                                  className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white resize-none disabled:opacity-60"
                                 />
                               </div>
 
@@ -1502,28 +1552,33 @@ export const SurveysPage: React.FC = () => {
                                       </div>
                                       <input
                                         type="text"
+                                        disabled={isReadOnly}
                                         value={option.option_text}
                                         onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
                                         placeholder={`Opção ${oIndex + 1}`}
-                                        className="flex-1 px-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
+                                        className="flex-1 px-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm disabled:opacity-60"
                                       />
-                                      <button
-                                        onClick={() => removeOption(qIndex, oIndex)}
-                                        className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                                        title="Remover opção"
-                                      >
-                                        <X size={18} />
-                                      </button>
+                                      {!isReadOnly && (
+                                        <button
+                                          onClick={() => removeOption(qIndex, oIndex)}
+                                          className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                          title="Remover opção"
+                                        >
+                                          <X size={18} />
+                                        </button>
+                                      )}
                                     </div>
                                   ))}
 
-                                  <button
-                                    onClick={() => addOption(qIndex)}
-                                    className="w-full py-2.5 border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-500 dark:text-zinc-400 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center justify-center gap-2 text-sm font-medium"
-                                  >
-                                    <Plus size={16} />
-                                    Adicionar Opção
-                                  </button>
+                                  {!isReadOnly && (
+                                    <button
+                                      onClick={() => addOption(qIndex)}
+                                      className="w-full py-2.5 border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-500 dark:text-zinc-400 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center justify-center gap-2 text-sm font-medium"
+                                    >
+                                      <Plus size={16} />
+                                      Adicionar Opção
+                                    </button>
+                                  )}
                                 </div>
                               )}
 
@@ -1539,6 +1594,18 @@ export const SurveysPage: React.FC = () => {
                             </div>
                           </motion.div>
                         ))}
+
+                        {/* Botão adicionar questão ao final da lista - ESCONDIDO se ReadOnly */}
+                        {!isReadOnly && (
+                          <button
+                            type="button"
+                            onClick={addQuestion}
+                            className="w-full border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-xl p-4 text-zinc-500 dark:text-zinc-400 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center justify-center gap-2 font-medium bg-zinc-50/30 dark:bg-zinc-800/10"
+                          >
+                            <PlusCircle size={20} />
+                            Adicionar Nova Questão
+                          </button>
+                        )}
                       </div>
                     )}
 
@@ -1565,56 +1632,85 @@ export const SurveysPage: React.FC = () => {
               </div>
 
               {/* Footer Actions */}
-              <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex gap-3">
-                {activeTab !== 'basic' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (activeTab === 'users') setActiveTab('basic');
-                      if (activeTab === 'questions') setActiveTab('users');
-                    }}
-                    className="px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors font-medium"
-                  >
-                    Voltar
-                  </button>
-                )}
-                {activeTab !== 'questions' ? (
-                  <div className="flex-1">
+              <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex flex-col sm:flex-row gap-3 items-center justify-between">
+                <div className="flex gap-3 w-full sm:w-auto">
+                  {activeTab !== 'basic' && (
                     <button
                       type="button"
                       onClick={() => {
-                        if (activeTab === 'basic' && !isBasicDataComplete()) {
-                          addToast('warning', 'Preencha todos os campos de Dados Básicos para continuar.');
-                          return;
-                        }
-                        if (activeTab === 'basic') setActiveTab('users');
-                        else if (activeTab === 'users') setActiveTab('questions');
+                        if (activeTab === 'users') setActiveTab('basic');
+                        if (activeTab === 'questions') setActiveTab('users');
                       }}
-                      disabled={
-                        (activeTab === 'basic' && !isBasicDataComplete()) ||
-                        (activeTab === 'users' && selectedUsers.length === 0)
-                      }
-                      className="w-full px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium disabled:hover:bg-emerald-600"
+                      className="px-6 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all font-bold flex items-center gap-2"
                     >
-                      Próximo
+                      <ChevronLeft size={18} />
+                      Voltar
                     </button>
-                    {activeTab === 'basic' && !isBasicDataComplete() && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5 text-center flex items-center justify-center gap-1">
-                        <Shield size={12} />
-                        Preencha todos os campos acima para continuar
-                      </p>
-                    )}
-                  </div>
-                ) : (
+                  )}
+                  {activeTab === 'questions' && !isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={addQuestion}
+                      className="px-6 py-2.5 border border-emerald-500 text-emerald-600 dark:text-emerald-400 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all font-bold flex items-center gap-2"
+                    >
+                      <PlusCircle size={18} />
+                      Nova Questão
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex gap-3 w-full sm:w-auto justify-end">
                   <button
                     type="button"
-                    onClick={handleSubmit}
-                    disabled={saving || questions.length === 0}
-                    className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium disabled:hover:bg-emerald-600"
+                    onClick={handleCloseModal}
+                    className="px-6 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all font-bold"
                   >
-                    {saving ? 'Salvando...' : 'Salvar'}
+                    Cancelar
                   </button>
-                )}
+
+                  {activeTab !== 'questions' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (activeTab === 'basic') {
+                          if (!isBasicDataComplete()) {
+                            addToast('warning', 'Preencha os dados básicos antes de prosseguir.');
+                            return;
+                          }
+                          setActiveTab('users');
+                        } else if (activeTab === 'users') {
+                          setActiveTab('questions');
+                        }
+                      }}
+                      className="px-6 py-2.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all font-bold flex items-center gap-2"
+                    >
+                      Próximo
+                      <ChevronRight size={18} />
+                    </button>
+                  )}
+
+                  {/* Botão Salvar (Visível em Questions ou sempre em edição - ESCONDIDO se ReadOnly) */}
+                  {(activeTab === 'questions' || editingSurvey) && !isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={saving || (activeTab === 'questions' && questions.length === 0)}
+                      className="px-8 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 size={20} className="animate-spin" />
+                          <span>Salvando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save size={18} />
+                          <span>{editingSurvey ? 'Salvar Alterações' : 'Criar Pesquisa'}</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             </motion.div>
           </div>

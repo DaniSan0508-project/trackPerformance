@@ -941,7 +941,7 @@ export const api = {
 
   updateSurvey: async (token: string, id: number, data: any) => {
     const response = await fetch(`${API_BASE_URL}/surveys/${id}`, {
-      method: 'PUT',
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -974,6 +974,17 @@ export const api = {
       },
     });
     if (!response.ok) throw new Error('Falha ao carregar resultados da pesquisa');
+    return response.json();
+  },
+
+  getSurveyUsers: async (token: string, surveyId: number) => {
+    const response = await fetch(`${API_BASE_URL}/app/surveys/${surveyId}/users?per_page=9999`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Falha ao carregar usuários da pesquisa');
     return response.json();
   },
 
