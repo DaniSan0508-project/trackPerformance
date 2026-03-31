@@ -93,9 +93,19 @@ export const TeamPage: React.FC = () => {
     if (value.length > 0) {
       maskedValue = `(${value.slice(0, 2)}`;
       if (value.length > 2) {
-        maskedValue += `) ${value.slice(2, 7)}`;
-        if (value.length > 7) {
-          maskedValue += `-${value.slice(7, 11)}`;
+        maskedValue += `) `;
+        if (value.length <= 10) {
+          // Formato Fixo: (XX) XXXX-XXXX
+          maskedValue += value.slice(2, 6);
+          if (value.length > 6) {
+            maskedValue += `-${value.slice(6, 10)}`;
+          }
+        } else {
+          // Formato Celular: (XX) XXXXX-XXXX
+          maskedValue += value.slice(2, 7);
+          if (value.length > 7) {
+            maskedValue += `-${value.slice(7, 11)}`;
+          }
         }
       }
     } else {

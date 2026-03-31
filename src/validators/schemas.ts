@@ -31,7 +31,7 @@ export const userSchema = z.object({
   phone: z
     .string()
     .optional()
-    .refine((val) => !val || /^\(\d{2}\)\s?\d{4,5}-?\d{4}$/.test(val), {
+    .refine((val) => !val || /^\(\d{2}\)\s?\d{4,5}-\d{4}$/.test(val), {
       message: 'Telefone inválido',
     }),
 });
@@ -52,7 +52,7 @@ export const userUpdateSchema = z.object({
   phone: z
     .string()
     .optional()
-    .refine((val) => !val || /^\(\d{2}\)\s?\d{4,5}-?\d{4}$/.test(val), {
+    .refine((val) => !val || /^\(\d{2}\)\s?\d{4,5}-\d{4}$/.test(val), {
       message: 'Telefone inválido',
     }),
 });
@@ -74,7 +74,7 @@ export const storeSchema = z.object({
     .or(z.literal('')),
   phone: z
     .string()
-    .regex(/^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/, 'Telefone inválido')
+    .regex(/^\(\d{2}\)\s?\d{4,5}-\d{4}$/, 'Telefone inválido')
     .optional()
     .or(z.literal('')),
   active: z.boolean(),
@@ -122,7 +122,7 @@ export const tenantConfigSchema = z.object({
 export const tenantConfigValidations = {
   cnpj: z.string().regex(/^\d{14}$/, 'CNPJ deve conter 14 dígitos'),
   email: z.string().email('E-mail inválido'),
-  phone: z.string().regex(/^\(\d{2}\)\s?\d{4,5}-?\d{4}$/, 'Telefone inválido'),
+  phone: z.string().regex(/^\(\d{2}\)\s?\d{4,5}-\d{4}$/, 'Telefone inválido'),
   timezone: z.string().min(1, 'Fuso horário é obrigatório'),
   date_format: z.string().min(1, 'Formato de data é obrigatório'),
   webhook_url: z.string().url('URL inválida').or(z.literal('')),
