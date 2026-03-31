@@ -665,7 +665,7 @@ export const CampaignsPage: React.FC = () => {
           'The end date field is required.': 'A data de término é obrigatória.',
           'The goal field is required.': 'O campo meta é obrigatório.',
           'The end date must be a date after or equal to start date.': 'A data de término deve ser posterior ou igual à data de início.',
-          'One or more actions are already active in another engagement campaign.': 'Uma ou mais ações já estão em uso em outra campanha ativa.',
+          'One or more actions are already active in another engagement campaign.': 'Uma ou mais ações selecionadas já estão em uso em outra campanha ativa.',
         };
 
         Object.entries(apiErrors).forEach(([key, messages]: [string, any]) => {
@@ -677,11 +677,15 @@ export const CampaignsPage: React.FC = () => {
         
         setFormErrors(formattedErrors);
         
-        const apiMessage = error.response.data.message === 'Validation error' 
-          ? 'Erro de validação nos campos abaixo.' 
-          : error.response.data.message;
-          
-        addToast('error', apiMessage);
+        // Se houver erro nas ações, exibe um Toast bem específico
+        if (apiErrors.actions) {
+          addToast('error', translations[apiErrors.actions[0]] || apiErrors.actions[0]);
+        } else {
+          const apiMessage = error.response.data.message === 'Validation error' 
+            ? 'Erro de validação nos campos abaixo.' 
+            : error.response.data.message;
+          addToast('error', apiMessage);
+        }
       } else {
         addToast('error', error.message || 'Erro ao salvar campanha.');
       }
@@ -1815,6 +1819,15 @@ export const CampaignsPage: React.FC = () => {
                           ? 'Selecione as ações e defina quantos coins serão ganhos (obrigatório para campanhas de engajamento):'
                           : 'Selecione as ações e defina quantos coins serão ganhos:'}
                       </p>
+
+                      {/* Mensagem de Erro de Validação de Ações */}
+                      {formErrors.actions && (
+                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-4">
+                          <p className="text-sm text-red-700 dark:text-red-400 font-semibold flex items-center gap-2">
+                            ⚠️ {formErrors.actions}
+                          </p>
+                        </div>
+                      )}
 
                       {/* Filtro de busca de ações */}
                       <div className="relative">
