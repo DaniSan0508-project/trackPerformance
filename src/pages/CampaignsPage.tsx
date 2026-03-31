@@ -300,11 +300,56 @@ export const CampaignsPage: React.FC = () => {
     }
   }, [debouncedProductSearch, productFilterType, productManufacturerFilter, isModalOpen]);
 
+  const updateSelectionBadges = (currentSelectedUsers: number[], currentSelectedProducts: number[], allUsersList: UserType[], allProductsList: Product[]) => {
+    // Calcular cargos totalmente selecionados
+    const roles = ['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor'];
+    const newFullySelectedRoles = new Set<string>();
+    
+    const isEngagement = editingCampaign?.type === 'engagement' || formData.type === 'engagement';
+
+    roles.forEach(role => {
+      const usersInRole = allUsersList.filter(u => u.role === role);
+      // Para engajamento, consideramos apenas user_type_id === 2
+      const validUsersInRole = isEngagement 
+        ? usersInRole.filter(u => u.user_type_id === 2)
+        : usersInRole;
+
+      if (validUsersInRole.length > 0 && validUsersInRole.every(u => currentSelectedUsers.includes(u.id))) {
+        newFullySelectedRoles.add(role);
+      }
+    });
+    setFullySelectedRoles(newFullySelectedRoles);
+
+    // Calcular fabricantes totalmente selecionados
+    const newFullySelectedManufacturers = new Set<number>();
+    manufacturers.forEach(m => {
+      const productsInManufacturer = allProductsList.filter(p => p.manufacturer_id === m.id);
+      if (productsInManufacturer.length > 0 && productsInManufacturer.every(p => currentSelectedProducts.includes(p.id))) {
+        newFullySelectedManufacturers.add(m.id);
+      }
+    });
+    setFullySelectedManufacturers(newFullySelectedManufacturers);
+  };
+
   const handleOpenModal = async (campaign?: Campaign) => {
     setActiveTab('basic');
+    setIsModalOpen(true);
+    
+    // Resetar estados de busca e paginação
+    setUsersPage(1);
+    setProductsPage(1);
+    setUserSearch('');
+    setProductSearch('');
+    setProductManufacturerFilter('all');
+    setActionSearch('');
+    setFullySelectedRoles(new Set());
+    setFullySelectedManufacturers(new Set());
+    setFormErrors({});
+
     if (campaign) {
       setEditingCampaign(campaign);
-      // Mapeia status antigos ou is_active para o novo padrão simplificado (ativa/inativa)
+      
+      // Mapeia status
       let currentStatus: CampaignStatus = 'inativa';
       if (campaign.status === 'ativa' || (campaign.status as any) === 'active' || campaign.is_active === 1) {
         currentStatus = 'ativa';
@@ -319,94 +364,75 @@ export const CampaignsPage: React.FC = () => {
         status: currentStatus,
       });
 
-      // Buscar usuários e produtos vinculados à campanha
       if (token) {
+        setLoadingAux(true);
         try {
-          // Buscar usuários da campanha
-          const usersResponse = await api.getCampaignUsers(token, campaign.id);
-          const campaignUsers = usersResponse.data || [];
+          // Busca dados vinculados e listas auxiliares em paralelo
+          const [usersRes, productsRes, actionsRes, allUsersList, allProductsList, manufacturersData] = await Promise.all([
+            api.getCampaignUsers(token, campaign.id).catch(() => ({ data: [] })),
+            campaign.type === 'sales' ? api.getCampaignProducts(token, campaign.id).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+            campaign.type === 'engagement' ? api.getCampaignActions(token, campaign.id).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+            api.getAllUsersComplete(token).catch(() => []),
+            api.getAllProductsComplete(token).catch(() => []),
+            api.getAllManufacturers(token).catch(() => []),
+          ]);
+
+          // Processar Fabricantes
+          if (manufacturersData) setManufacturers(manufacturersData);
+
+          // Processar Usuários
+          const campaignUserIds = (usersRes.data || []).map((u: any) => u.id);
+          setSelectedUsers(campaignUserIds);
+          setUsers(allUsersList.slice(0, 10)); // Mostra os primeiros 10 na lista auxiliar
           
-          // Para engagement: filtrar apenas user_type_id = 2 (se o campo existir)
-          // Para sales: todos os usuários
-          let validUsers;
+          // Processar Produtos/Ações
+          const campaignProductIds = (productsRes.data || []).map((p: any) => p.id);
+          setSelectedProducts(campaignProductIds);
+          
           if (campaign.type === 'engagement') {
-            // Tenta filtrar por user_type_id, se não existir usa todos
-            const filtered = campaignUsers.filter(u => u.user_type_id === 2);
-            validUsers = filtered.length > 0 
-              ? filtered.map(u => u.id)
-              : campaignUsers.map(u => u.id); // Fallback: usa todos se não tiver user_type_id
-          } else {
-            validUsers = campaignUsers.map(u => u.id);
-          }
-          setSelectedUsers(validUsers);
-
-          // Buscar dados específicos por tipo de campanha
-          if (campaign.type === 'sales') {
-            // Buscar produtos da campanha
-            const productsResponse = await api.getCampaignProducts(token, campaign.id);
-            const campaignProducts = productsResponse.data || [];
-            setSelectedProducts(campaignProducts.map(p => p.id));
-            setSelectedActions([]);
+            const campaignActions = (actionsRes.data || []).map((a: any) => ({ 
+              id: a.id, 
+              coins: parseInt(a.coins) || 0 
+            }));
+            setSelectedActions(campaignActions);
             
-            // Carregar todos os usuários para a lista auxiliar (sales pode ter qualquer usuário)
-            const allUsersResponse = await api.getAllUsersComplete(token);
-            setUsers(allUsersResponse);
-          } else if (campaign.type === 'engagement') {
-            // Buscar ações da campanha
-            const actionsResponse = await api.getCampaignActions(token, campaign.id);
-            const campaignActions = actionsResponse.data || [];
-            const actionsWithCoins = campaignActions.map(a => ({ id: a.id, coins: parseInt(a.coins) || 0 }));
-            setSelectedActions(actionsWithCoins);
-            setSelectedProducts([]);
-
-            // Popular o estado local dos inputs com os valores das ações
             const coinsInputsMap: { [key: number]: string } = {};
-            actionsWithCoins.forEach(a => {
-              coinsInputsMap[a.id] = a.coins.toString();
-            });
+            campaignActions.forEach(a => { coinsInputsMap[a.id] = a.coins.toString(); });
             setActionCoinsInputs(coinsInputsMap);
-
-            // Carregar TODOS os usuários para a lista auxiliar (engagement precisa de user_type_id = 2)
-            const allUsersResponse = await api.getAllUsersComplete(token);
-            setUsers(allUsersResponse);
           }
-        } catch (error) {
-          console.error('Error fetching campaign data:', error);
-          addToast('error', 'Erro ao carregar dados da campanha.');
-          // Fallback para os dados locais se a API falhar
-          const validUsers = campaign.type === 'engagement'
-            ? (campaign.users?.filter(u => u.user_type_id === 2).map(u => u.id) || [])
-            : (campaign.users?.map(u => u.id) || []);
-          setSelectedUsers(validUsers);
-          setSelectedProducts(campaign.products?.map(p => p.product_id) || []);
-          const fallbackActions = campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || [];
-          setSelectedActions(fallbackActions);
-          
-          // Popular estado local no fallback
-          const fallbackCoinsInputs: { [key: number]: string } = {};
-          fallbackActions.forEach(a => {
-            fallbackCoinsInputs[a.id] = a.coins.toString();
+
+          // CALCULAR TAGS DE SELEÇÃO
+          const roles = ['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor'];
+          const newFullySelectedRoles = new Set<string>();
+          roles.forEach(role => {
+            const usersInRole = allUsersList.filter(u => u.role === role);
+            const validUsersInRole = campaign.type === 'engagement' 
+              ? usersInRole.filter(u => u.user_type_id === 2)
+              : usersInRole;
+            if (validUsersInRole.length > 0 && validUsersInRole.every(u => campaignUserIds.includes(u.id))) {
+              newFullySelectedRoles.add(role);
+            }
           });
-          setActionCoinsInputs(fallbackCoinsInputs);
+          setFullySelectedRoles(newFullySelectedRoles);
+
+          const newFullySelectedManufacturers = new Set<number>();
+          (manufacturersData || []).forEach((m: any) => {
+            const productsInManufacturer = allProductsList.filter(p => p.manufacturer_id === m.id);
+            if (productsInManufacturer.length > 0 && productsInManufacturer.every(p => campaignProductIds.includes(p.id))) {
+              newFullySelectedManufacturers.add(m.id);
+            }
+          });
+          setFullySelectedManufacturers(newFullySelectedManufacturers);
+
+        } catch (error) {
+          console.error('Error initializing campaign modal:', error);
+          addToast('error', 'Erro ao carregar dados completos da campanha.');
+        } finally {
+          setLoadingAux(false);
         }
-      } else {
-        // Fallback sem token
-        const validUsers = campaign.type === 'engagement'
-          ? (campaign.users?.filter(u => u.user_type_id === 2).map(u => u.id) || [])
-          : (campaign.users?.map(u => u.id) || []);
-        setSelectedUsers(validUsers);
-        setSelectedProducts(campaign.products?.map(p => p.product_id) || []);
-        const fallbackActions = campaign.actions?.map(a => ({ id: a.action_id, coins: a.coins })) || [];
-        setSelectedActions(fallbackActions);
-        
-        // Popular estado local no fallback
-        const fallbackCoinsInputs: { [key: number]: string } = {};
-        fallbackActions.forEach(a => {
-          fallbackCoinsInputs[a.id] = a.coins.toString();
-        });
-        setActionCoinsInputs(fallbackCoinsInputs);
       }
     } else {
+      // Criação de nova campanha
       setEditingCampaign(null);
       setFormData({
         name: '',
@@ -419,18 +445,8 @@ export const CampaignsPage: React.FC = () => {
       setSelectedUsers([]);
       setSelectedProducts([]);
       setSelectedActions([]);
+      fetchAuxiliaryData();
     }
-    setIsModalOpen(true);
-    fetchAuxiliaryData();
-    // Inicializar paginação e filtros
-    setUsersPage(1);
-    setProductsPage(1);
-    setUserSearch('');
-    setProductSearch('');
-    setProductManufacturerFilter('all');
-    setActionSearch('');
-    setFullySelectedRoles(new Set());
-    setFullySelectedManufacturers(new Set());
   };
 
   const handleCloseModal = () => {
