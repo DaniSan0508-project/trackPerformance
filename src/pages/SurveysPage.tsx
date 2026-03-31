@@ -64,12 +64,11 @@ export const SurveysPage: React.FC = () => {
     is_anonymous: false,
     is_published: false,
     survey_type: '' as 'choice' | 'text' | '',
-    status: 'draft' as SurveyStatus,
-    coins_reward: false,
+    status: '' as SurveyStatus | '',
   });
 
   const isReadOnly = !!editingSurvey && (editingSurvey.status === 'active' || editingSurvey.status === 'closed');
-  const canPublish = formData.status !== 'draft';
+  const canPublish = formData.status === 'active';
 
   // Valida se Dados Básicos estão completos
   const isBasicDataComplete = () => {
@@ -238,7 +237,6 @@ export const SurveysPage: React.FC = () => {
           is_published: detail.is_published,
           survey_type: detail.questions?.[0]?.type || 'text',
           status: detail.status,
-          coins_reward: detail.coins_reward || false,
         });
 
         // Mapeia as questões
@@ -272,8 +270,7 @@ export const SurveysPage: React.FC = () => {
         is_anonymous: false,
         is_published: false,
         survey_type: '',
-        status: 'draft',
-        coins_reward: false,
+        status: '',
       });
       setSelectedUsers([]);
       setQuestions([]);
@@ -409,6 +406,21 @@ export const SurveysPage: React.FC = () => {
     setFullySelectedRoles(newFullySelectedRoles);
   }, [selectedUsers, users, isModalOpen]);
 
+  const questionsContainerRef = useRef<HTMLDivElement>(null);
+
+  const focusLastQuestion = () => {
+    setTimeout(() => {
+      if (questionsContainerRef.current) {
+        const lastQuestion = questionsContainerRef.current.lastElementChild as HTMLElement;
+        if (lastQuestion) {
+          lastQuestion.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const textarea = lastQuestion.querySelector('textarea');
+          if (textarea) textarea.focus();
+        }
+      }
+    }, 100);
+  };
+
   const addQuestion = () => {
     const newOrder = questions.length + 1;
     // Usa o tipo definido no survey_type
@@ -419,6 +431,8 @@ export const SurveysPage: React.FC = () => {
       order: newOrder,
       options: questionType === 'choice' ? [{ option_text: '' }, { option_text: '' }] : []
     }]);
+
+    focusLastQuestion();
   };
 
   const removeQuestion = (index: number) => {
@@ -556,7 +570,6 @@ export const SurveysPage: React.FC = () => {
         is_anonymous: formData.is_anonymous,
         is_published: formData.is_published,
         status: formData.status,
-        coins_reward: formData.coins_reward,
         users: selectedUsers,
         questions: questionsToSave,
       };
@@ -944,17 +957,29 @@ export const SurveysPage: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                          Status da Pesquisa *
+                          Situação *
                         </label>
                         <select
                           value={formData.status}
-                          disabled={isReadOnly}
-                          onChange={(e) => setFormData({ ...formData, status: e.target.value as SurveyStatus })}
+                          disabled={isReadOnly && formData.status === editingSurvey?.status && formData.status === 'closed'}
+                          onChange={(e) => {
+                            const newStatus = e.target.value as SurveyStatus;
+                            setFormData({ 
+                              ...formData, 
+                              status: newStatus,
+                              is_published: newStatus === 'active'
+                            });
+                          }}
                           className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
                         >
-                          <option value="draft">Rascunho</option>
+                          <option value="" disabled>Selecione a situação</option>
+                          {(!editingSurvey || (editingSurvey.status !== 'active' && editingSurvey.status !== 'closed')) && (
+                            <option value="draft">Rascunho</option>
+                          )}
                           <option value="active">Ativa</option>
-                          <option value="closed">Encerrada</option>
+                          {(editingSurvey || formData.status === 'closed') && (
+                            <option value="closed">Encerrada</option>
+                          )}
                         </select>
                       </div>
                     </div>
@@ -1034,41 +1059,6 @@ export const SurveysPage: React.FC = () => {
                           Selecione um tipo para continuar
                         </p>
                       )}
-                      
-                      {/* Checklist do que falta preencher */}
-                      {!isBasicDataComplete() && (
-                        <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
-                          <p className="text-xs font-semibold text-amber-800 dark:text-amber-400 mb-2">
-                            📋 Preencha os campos obrigatórios:
-                          </p>
-                          <div className="space-y-1">
-                            {!formData.title.trim() && (
-                              <p className="text-xs text-amber-700 dark:text-amber-500 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                Título da pesquisa
-                              </p>
-                            )}
-                            {!formData.survey_type && (
-                              <p className="text-xs text-amber-700 dark:text-amber-500 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                Tipo de pesquisa
-                              </p>
-                            )}
-                            {!formData.starts_at && (
-                              <p className="text-xs text-amber-700 dark:text-amber-500 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                Data de início
-                              </p>
-                            )}
-                            {!formData.ends_at && (
-                              <p className="text-xs text-amber-700 dark:text-amber-500 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                Data de término
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -1078,9 +1068,10 @@ export const SurveysPage: React.FC = () => {
                         </label>
                         <input
                           type="date"
+                          disabled={isReadOnly}
                           value={formData.starts_at}
                           onChange={(e) => setFormData({ ...formData, starts_at: e.target.value })}
-                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
                         />
                       </div>
                       <div>
@@ -1089,9 +1080,10 @@ export const SurveysPage: React.FC = () => {
                         </label>
                         <input
                           type="date"
+                          disabled={isReadOnly}
                           value={formData.ends_at}
                           onChange={(e) => setFormData({ ...formData, ends_at: e.target.value })}
-                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
                         />
                       </div>
                     </div>
@@ -1122,22 +1114,8 @@ export const SurveysPage: React.FC = () => {
                         <div>
                           <p className="font-medium text-zinc-900 dark:text-white">Publicar Imediatamente</p>
                           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                            {!canPublish ? 'Pesquisas rascunho não podem ser publicadas diretamente' : 'A pesquisa ficará visível para os participantes'}
+                            {formData.status !== 'active' ? 'Selecione a situação "Ativa" para habilitar a publicação' : 'A pesquisa ficará visível para os participantes'}
                           </p>
-                        </div>
-                      </label>
-
-                      <label className={`flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}>
-                        <input
-                          type="checkbox"
-                          disabled={isReadOnly}
-                          checked={formData.coins_reward}
-                          onChange={(e) => setFormData({ ...formData, coins_reward: e.target.checked })}
-                          className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 disabled:opacity-50"
-                        />
-                        <div>
-                          <p className="font-medium text-zinc-900 dark:text-white">Recompensar com Moedas</p>
-                          <p className="text-sm text-zinc-500 dark:text-zinc-400">Os participantes ganharão moedas ao responder</p>
                         </div>
                       </label>
                     </div>
@@ -1413,13 +1391,17 @@ export const SurveysPage: React.FC = () => {
                         )}
                       </div>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-4" ref={questionsContainerRef}>
                         {questions.map((question, qIndex) => (
                           <motion.div
                             key={qIndex}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-5 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md transition-all"
+                            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            className={`border-2 transition-all duration-500 rounded-xl p-5 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md ${
+                              qIndex === questions.length - 1 && !editingSurvey
+                                ? 'border-emerald-500/50 dark:border-emerald-500/30 ring-4 ring-emerald-500/10'
+                                : 'border-zinc-200 dark:border-zinc-700'
+                            }`}
                           >
                             {/* Header da questão */}
                             <div className="flex items-center justify-between mb-4">
@@ -1448,6 +1430,7 @@ export const SurveysPage: React.FC = () => {
                                       };
                                       setQuestions([...questions, newQuestion]);
                                       addToast('success', 'Questão duplicada!');
+                                      focusLastQuestion();
                                     }}
                                     className="p-2 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
                                     title="Duplicar questão"
@@ -1637,8 +1620,8 @@ export const SurveysPage: React.FC = () => {
                     </button>
                   )}
 
-                  {/* Botão Salvar (Visível em Questions ou sempre em edição - ESCONDIDO se ReadOnly) */}
-                  {(activeTab === 'questions' || editingSurvey) && !isReadOnly && (
+                  {/* Botão Salvar (Visível em Questions ou sempre em edição - ESCONDIDO se ReadOnly, EXCETO se mudou o status) */}
+                  {(activeTab === 'questions' || editingSurvey) && (!isReadOnly || formData.status !== editingSurvey?.status) && (
                     <button
                       type="button"
                       onClick={handleSubmit}
