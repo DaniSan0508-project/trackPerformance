@@ -238,20 +238,28 @@ export const campaignSchema = z.object({
   }, {
   message: 'Deve ser um número válido',
   path: ['goal'],
-  }).refine((data) => {
-  // Valida formato numérico se goal_campaign estiver presente
-  if (data.goal_campaign && data.goal_campaign.trim() !== '') {
-    if (data.type === 'sales') {
-      return /^\d+(\.\d{1,2})?$/.test(data.goal_campaign);
-    } else if (data.type === 'engagement') {
-      return /^\d+$/.test(data.goal_campaign);
-    }
-  }
-  return true;
-  }, {
-  message: 'Deve ser um número válido',
-  path: ['goal_campaign'],
-  });
+});
+
+// Schema para Produto
+export const productSchema = z.object({
+  name: z
+    .string()
+    .min(1, 'Nome é obrigatório')
+    .min(3, 'Nome deve ter no mínimo 3 caracteres'),
+  barcode: z
+    .string()
+    .min(1, 'Código de barras é obrigatório'),
+  manufacturer_id: z
+    .number()
+    .min(1, 'Selecione um fabricante')
+    .nullable()
+    .optional(),
+  product_group_id: z
+    .number()
+    .nullable()
+    .optional(),
+});
+
 // Tipos inferidos dos schemas
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type UserFormData = z.infer<typeof userSchema>;
@@ -262,3 +270,4 @@ export type PostFormData = z.infer<typeof postSchema>;
 export type RewardFormData = z.infer<typeof rewardSchema>;
 export type RewardUpdateFormData = z.infer<typeof rewardUpdateSchema>;
 export type CampaignFormData = z.infer<typeof campaignSchema>;
+export type ProductFormData = z.infer<typeof productSchema>;

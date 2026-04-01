@@ -1,0 +1,655 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Layout } from '../components/Layout';
+import {
+  Search,
+  Loader2,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  Package,
+  Hash,
+  Factory,
+  Tag,
+  Plus,
+  X,
+  Save,
+  Settings,
+  Building2,
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../context/AuthContext';
+import { Product, Manufacturer, ProductGroup } from '../types';
+import { api } from '../services/api';
+import { useToast } from '../context/ToastContext';
+import { productSchema } from '../validators/schemas';
+
+// ─── Debounce hook (same pattern as TeamPage) ────────────────────────────────
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
+// ─── Page Component ───────────────────────────────────────────────────────────
+export const ProductsPage: React.FC = () => {
+  const { token } = useAuth();
+  const { addToast } = useToast();
+
+  // ── List state ──────────────────────────────────────────────────────────────
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Search / filter
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<'name' | 'barcode'>('name');
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [fromItem, setFromItem] = useState(0);
+  const [toItem, setToItem] = useState(0);
+
+  // ── Modal state ─────────────────────────────────────────────────────────────
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isManagingManufacturers, setIsManagingManufacturers] = useState(false);
+  const [isManagingProductGroups, setIsManagingProductGroups] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const [formData, setFormData] = useState({
+    name: '',
+    barcode: '',
+    manufacturer_id: '' as number | '',
+    product_group_id: '' as number | '',
+  });
+
+  // ── Dropdown data ───────────────────────────────────────────────────────────
+  const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
+  const [productGroups, setProductGroups] = useState<ProductGroup[]>([]);
+  const [loadingManufacturers, setLoadingManufacturers] = useState(false);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+
+  // ─── Fetch products ──────────────────────────────────────────────────────────
+  const fetchProducts = useCallback(
+    async (page = 1, search = '', type: 'name' | 'barcode' = 'name') => {
+      if (!token) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await api.getProductsPaginated(token, page, search, type);
+        setProducts(data.data);
+        setCurrentPage(data.meta?.current_page ?? data.current_page ?? 1);
+        setTotalPages(data.meta?.last_page ?? data.last_page ?? 1);
+        setTotalItems(data.meta?.total ?? data.total ?? 0);
+        setFromItem(data.meta?.from ?? data.from ?? 0);
+        setToItem(data.meta?.to ?? data.to ?? 0);
+      } catch (err: any) {
+        console.error('Error fetching products:', err);
+        setError(err.message || 'Não foi possível carregar os produtos.');
+        addToast('error', err.message || 'Não foi possível carregar os produtos.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [token]
+  );
+
+  // ─── Fetch manufacturers ─────────────────────────────────────────────────────
+  const fetchManufacturers = useCallback(async () => {
+    if (!token) return;
+    setLoadingManufacturers(true);
+    try {
+      const data = await api.getAllManufacturers(token);
+      setManufacturers(data);
+    } catch (err) {
+      console.error('Error fetching manufacturers:', err);
+    } finally {
+      setLoadingManufacturers(false);
+    }
+  }, [token]);
+
+  // ─── Fetch product groups ────────────────────────────────────────────────────
+  const fetchProductGroups = useCallback(async () => {
+    if (!token) return;
+    setLoadingGroups(true);
+    try {
+      const data = await api.getAllProductGroups(token);
+      setProductGroups(data);
+    } catch (err) {
+      console.error('Error fetching product groups:', err);
+    } finally {
+      setLoadingGroups(false);
+    }
+  }, [token]);
+
+  // Trigger list fetch on page / search / filterType change
+  useEffect(() => {
+    fetchProducts(currentPage, debouncedSearchTerm, filterType);
+  }, [fetchProducts, currentPage, debouncedSearchTerm, filterType]);
+
+  // Reset to page 1 whenever search term or filter type changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, filterType]);
+
+  // Load dropdown data only when modal opens
+  useEffect(() => {
+    if (isModalOpen) {
+      fetchManufacturers();
+      fetchProductGroups();
+    }
+  }, [isModalOpen, fetchManufacturers, fetchProductGroups]);
+
+  // ─── Modal Handlers ──────────────────────────────────────────────────────────
+  const handleFilterTypeChange = (newType: 'name' | 'barcode') => {
+    setFilterType(newType);
+    setSearchTerm('');
+  };
+
+  const handleOpenModal = () => {
+    setFormData({ name: '', barcode: '', manufacturer_id: '', product_group_id: '' });
+    setFormErrors({});
+    setIsManagingManufacturers(false);
+    setIsManagingProductGroups(false);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setIsManagingManufacturers(false);
+    setIsManagingProductGroups(false);
+    setFormData({ name: '', barcode: '', manufacturer_id: '', product_group_id: '' });
+    setFormErrors({});
+  };
+
+  // ─── Submit ──────────────────────────────────────────────────────────────────
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    setFormErrors({});
+
+    const parsed = {
+      name: formData.name,
+      barcode: formData.barcode,
+      manufacturer_id: formData.manufacturer_id === '' ? undefined : Number(formData.manufacturer_id),
+      product_group_id: formData.product_group_id === '' ? null : Number(formData.product_group_id),
+    };
+
+    const result = productSchema.safeParse(parsed);
+    if (!result.success) {
+      const errors = result.error.flatten().fieldErrors;
+      const formattedErrors: { [key: string]: string } = {};
+      Object.entries(errors).forEach(([key, messages]) => {
+        if (messages?.length) formattedErrors[key] = messages[0];
+      });
+      setFormErrors(formattedErrors);
+      addToast('error', 'Verifique os campos obrigatórios.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.createProduct(token, {
+        name: formData.name,
+        barcode: formData.barcode,
+        manufacturer_id: formData.manufacturer_id === '' ? null : Number(formData.manufacturer_id),
+        product_group_id: formData.product_group_id === '' ? null : Number(formData.product_group_id),
+      });
+      addToast('success', 'Produto criado com sucesso!');
+      await fetchProducts(currentPage, debouncedSearchTerm, filterType);
+      handleCloseModal();
+    } catch (error: any) {
+      console.error('Error creating product:', error);
+      if (error.response?.data?.errors) {
+        const apiErrors = error.response.data.errors;
+        const formattedErrors: { [key: string]: string } = {};
+        Object.entries(apiErrors).forEach(([key, messages]: [string, any]) => {
+          const msg = Array.isArray(messages) ? messages[0] : messages;
+          if (typeof msg === 'string') formattedErrors[key] = msg;
+        });
+        setFormErrors(formattedErrors);
+      }
+      addToast('error', error.message || 'Erro ao criar produto.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
+  return (
+    <Layout>
+      <div className="p-4 md:p-8 space-y-6">
+
+        {/* ── Header ─────────────────────────────────────────────────────────── */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Produtos</h1>
+            <p className="text-zinc-500 dark:text-zinc-400">
+              Gerencie os produtos utilizados nas campanhas.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => fetchProducts(currentPage, debouncedSearchTerm, filterType)}
+              className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-2 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all"
+              title="Atualizar conteúdo"
+            >
+              <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button
+              onClick={handleOpenModal}
+              className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
+            >
+              <Plus size={18} />
+              Novo Produto
+            </button>
+          </div>
+        </div>
+
+        {/* ── Filters ────────────────────────────────────────────────────────── */}
+        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 flex flex-col md:flex-row gap-3 items-center transition-colors duration-200">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={20} />
+            <input
+              type="text"
+              placeholder={
+                filterType === 'name'
+                  ? 'Buscar por nome do produto...'
+                  : 'Buscar por código de barras...'
+              }
+              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <select
+            value={filterType}
+            onChange={(e) => handleFilterTypeChange(e.target.value as 'name' | 'barcode')}
+            className="w-full md:w-52 p-2.5 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white transition-colors duration-200 cursor-pointer"
+          >
+            <option value="name">Filtrar por Nome</option>
+            <option value="barcode">Filtrar por Cód. de Barras</option>
+          </select>
+        </div>
+
+        {/* ── Content ────────────────────────────────────────────────────────── */}
+        {loading && products.length === 0 ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
+            {error}
+            <button
+              onClick={() => fetchProducts(currentPage, debouncedSearchTerm, filterType)}
+              className="block mx-auto mt-2 text-sm font-semibold hover:underline"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+
+            {/* ── Product Cards Grid ─────────────────────────────────────────── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {products.map((product) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-all duration-200 flex flex-col"
+                >
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0 border border-emerald-200 dark:border-emerald-800">
+                      <Package size={22} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3
+                        className="font-bold text-zinc-900 dark:text-white line-clamp-2 leading-snug"
+                        title={product.name}
+                      >
+                        {product.name}
+                      </h3>
+                    </div>
+                  </div>
+                  <div className="space-y-2.5 flex-1">
+                    <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                      <Hash size={15} className="text-zinc-400 flex-shrink-0" />
+                      <span
+                        className="font-mono text-xs bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-700 truncate"
+                        title={product.barcode || '—'}
+                      >
+                        {product.barcode || '—'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                      <Factory size={15} className="text-zinc-400 flex-shrink-0" />
+                      <span className="truncate" title={product.manufacturer?.name ?? '—'}>
+                        {product.manufacturer?.name ?? '—'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                      <Tag size={15} className="text-zinc-400 flex-shrink-0" />
+                      <span className="truncate" title={product.group?.name ?? '—'}>
+                        {product.group?.name ?? '—'}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* ── Empty State ───────────────────────────────────────────────── */}
+            {products.length === 0 && (
+              <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors duration-200">
+                <Package className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+                <h3 className="text-lg font-medium text-zinc-900 dark:text-white">
+                  Nenhum produto encontrado
+                </h3>
+                <p className="text-zinc-500 dark:text-zinc-400">Tente ajustar os filtros de busca.</p>
+              </div>
+            )}
+
+            {/* ── Pagination ────────────────────────────────────────────────── */}
+            {totalItems > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 gap-3 transition-colors duration-200">
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  Mostrando{' '}
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">{fromItem}</span>
+                  {' '}até{' '}
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">{toItem}</span>
+                  {' '}de{' '}
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">{totalItems}</span>
+                  {' '}resultados
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 transition-colors"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <span className="text-sm font-medium px-2 text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 transition-colors"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* ── Create Product Modal ──────────────────────────────────────────── */}
+        <AnimatePresence>
+          {isModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-zinc-200 dark:border-zinc-800"
+              >
+                {/* Modal Header */}
+                <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
+                  <div className="flex items-center gap-2">
+                    {(isManagingManufacturers || isManagingProductGroups) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsManagingManufacturers(false);
+                          setIsManagingProductGroups(false);
+                        }}
+                        className="mr-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                        title="Voltar ao formulário"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                    )}
+                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+                      {isManagingManufacturers
+                        ? 'Fabricantes Cadastrados'
+                        : isManagingProductGroups
+                        ? 'Grupos de Produtos'
+                        : 'Novo Produto'}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                {/* ── Manufacturers list panel ──────────────────────────────── */}
+                {isManagingManufacturers ? (
+                  <div className="p-6 max-h-[60vh] overflow-y-auto">
+                    {loadingManufacturers ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                      </div>
+                    ) : manufacturers.length === 0 ? (
+                      <p className="text-center text-zinc-500 dark:text-zinc-400 py-6">
+                        Nenhum fabricante cadastrado.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {manufacturers.map((m) => (
+                          <div
+                            key={m.id}
+                            className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700"
+                          >
+                            <div className="w-9 h-9 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Building2 size={15} className="text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate">
+                                {m.name}
+                              </p>
+                              {m.tax_id && (
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono truncate">
+                                  {m.tax_id}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : isManagingProductGroups ? (
+                  /* ── Product groups list panel ──────────────────────────── */
+                  <div className="p-6 max-h-[60vh] overflow-y-auto">
+                    {loadingGroups ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                      </div>
+                    ) : productGroups.length === 0 ? (
+                      <p className="text-center text-zinc-500 dark:text-zinc-400 py-6">
+                        Nenhum grupo cadastrado.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {productGroups.map((g) => (
+                          <div
+                            key={g.id}
+                            className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700"
+                          >
+                            <div className="w-9 h-9 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Tag size={15} className="text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate">
+                                {g.name}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* ── Product form ─────────────────────────────────────────── */
+                  <form onSubmit={handleSubmit} className="p-6 space-y-4">
+
+                    {/* Nome */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Nome *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="Ex: Dipirona Sódica 1g 10 Comprimidos"
+                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                          formErrors.name
+                            ? 'border-red-500 focus:ring-red-500'
+                            : 'border-zinc-300 dark:border-zinc-600'
+                        }`}
+                      />
+                      {formErrors.name && (
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.name}</p>
+                      )}
+                    </div>
+
+                    {/* Código de Barras */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Código de Barras *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.barcode}
+                        onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                        placeholder="Ex: 7896004710011"
+                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 font-mono ${
+                          formErrors.barcode
+                            ? 'border-red-500 focus:ring-red-500'
+                            : 'border-zinc-300 dark:border-zinc-600'
+                        }`}
+                      />
+                      {formErrors.barcode && (
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.barcode}</p>
+                      )}
+                    </div>
+
+                    {/* Fabricante (Opcional) */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Fabricante{' '}
+                        <span className="text-zinc-400 font-normal">(Opcional)</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <select
+                          value={formData.manufacturer_id}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              manufacturer_id: e.target.value ? Number(e.target.value) : '',
+                            })
+                          }
+                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                        >
+                          <option value="">
+                            {loadingManufacturers ? 'Carregando...' : 'Selecione um fabricante (opcional)'}
+                          </option>
+                          {manufacturers.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setIsManagingManufacturers(true)}
+                          className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors flex-shrink-0"
+                          title="Ver fabricantes cadastrados"
+                        >
+                          <Settings size={20} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Grupo de Produtos (Opcional) */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Grupo de Produtos{' '}
+                        <span className="text-zinc-400 font-normal">(Opcional)</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <select
+                          value={formData.product_group_id}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              product_group_id: e.target.value ? Number(e.target.value) : '',
+                            })
+                          }
+                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                        >
+                          <option value="">
+                            {loadingGroups ? 'Carregando...' : 'Selecione um grupo (opcional)'}
+                          </option>
+                          {productGroups.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setIsManagingProductGroups(true)}
+                          className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors flex-shrink-0"
+                          title="Ver grupos de produtos"
+                        >
+                          <Settings size={20} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="pt-2 flex gap-3">
+                      <button
+                        type="button"
+                        onClick={handleCloseModal}
+                        className="flex-1 px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 font-medium rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="flex-1 px-4 py-2.5 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+                      >
+                        {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+                        {saving ? 'Salvando...' : 'Salvar'}
+                      </button>
+                    </div>
+
+                  </form>
+                )}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+      </div>
+    </Layout>
+  );
+};
+

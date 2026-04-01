@@ -204,16 +204,24 @@ export interface CampaignProduct {
   product?: Product;
 }
 
+export interface ProductGroup {
+  id: number;
+  name: string;
+}
+
 export interface Product {
   id: number;
+  tenant_id?: number;
   name: string;
   description?: string;
   price?: number;
   barcode?: string;
-  created_at?: string;
-  updated_at?: string;
+  created_at?: string | null;
+  updated_at?: string | null;
   manufacturer_id?: number | null;
   manufacturer?: Manufacturer | null;
+  group_id?: number | null;
+  group?: ProductGroup | null;
 }
 
 export interface Manufacturer {
