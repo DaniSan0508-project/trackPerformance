@@ -129,6 +129,7 @@ export const CampaignsPage: React.FC = () => {
     name: '',
     type: '' as CampaignType | '',
     goal: '',
+    goal_campaign: '',
     start_date: '',
     end_date: '',
     status: 'ativa' as CampaignStatus,
@@ -359,6 +360,7 @@ export const CampaignsPage: React.FC = () => {
         name: campaign.name,
         type: campaign.type,
         goal: campaign.goal ? String(campaign.goal) : '',
+        goal_campaign: campaign.goal_campaign ? String(campaign.goal_campaign) : '',
         start_date: campaign.start_date,
         end_date: campaign.end_date,
         status: currentStatus,
@@ -438,6 +440,7 @@ export const CampaignsPage: React.FC = () => {
         name: '',
         type: '',
         goal: '',
+        goal_campaign: '',
         start_date: '',
         end_date: '',
         status: 'ativa',
@@ -457,6 +460,7 @@ export const CampaignsPage: React.FC = () => {
       name: '',
       type: '',
       goal: '',
+      goal_campaign: '',
       start_date: '',
       end_date: '',
       status: 'ativa',
@@ -629,11 +633,17 @@ export const CampaignsPage: React.FC = () => {
         // Goal para vendas e engajamento
         if (formData.type === 'sales') {
           dataToSave.goal = parseFloat(formData.goal);
+          if (formData.goal_campaign) {
+            dataToSave.goal_campaign = parseFloat(formData.goal_campaign);
+          }
           dataToSave.start_date = formData.start_date;
           dataToSave.end_date = formData.end_date;
           dataToSave.products = selectedProducts;
         } else if (formData.type === 'engagement') {
           dataToSave.goal = parseFloat(formData.goal);
+          if (formData.goal_campaign) {
+            dataToSave.goal_campaign = parseFloat(formData.goal_campaign);
+          }
           dataToSave.start_date = formData.start_date;
           dataToSave.end_date = formData.end_date;
           dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
@@ -1043,6 +1053,17 @@ export const CampaignsPage: React.FC = () => {
     setFormData({ ...formData, goal: numericValue });
   };
 
+  const handleGoalCampaignChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (formData.type === 'sales') {
+      const formatted = formatCurrencyInput(value);
+      const numericValue = formatted.replace(/\./g, '').replace(',', '.');
+      setFormData({ ...formData, goal_campaign: numericValue });
+    } else {
+      setFormData({ ...formData, goal_campaign: value });
+    }
+  };
+
   // Obtém data mínima (hoje) no formato YYYY-MM-DD
   const getMinDate = () => {
     const today = new Date();
@@ -1433,14 +1454,25 @@ export const CampaignsPage: React.FC = () => {
                               </p>
                             </div>
                             <div>
-                              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta</label>
+                              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta Individual</label>
                               <p className="text-sm font-medium text-zinc-900 dark:text-white">
                                 {editingCampaign.type === 'engagement'
-                                  ? `${Math.floor(editingCampaign.goal || 0)} coins`
-                                  : formatCurrency(formData.goal)
+                                  ? `${Math.floor(Number(editingCampaign.goal) || 0)} coins`
+                                  : formatCurrency(String(editingCampaign.goal))
                                 }
                               </p>
                             </div>
+                            {editingCampaign.goal_campaign && (
+                              <div>
+                                <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta Campanha</label>
+                                <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                                  {editingCampaign.type === 'engagement'
+                                    ? `${Math.floor(Number(editingCampaign.goal_campaign) || 0)} coins`
+                                    : formatCurrency(String(editingCampaign.goal_campaign))
+                                  }
+                                </p>
+                              </div>
+                            )}
                             <div>
                               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Início</label>
                               <p className="text-sm font-medium text-zinc-900 dark:text-white">
@@ -1475,39 +1507,67 @@ export const CampaignsPage: React.FC = () => {
 
                           {/* Meta para campanhas de vendas (editável) */}
                           {formData.type === 'sales' && (
-                            <div>
-                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta (R$) *</label>
-                              <input
-                                type="text"
-                                value={formData.goal ? formatCurrencyInput(formData.goal.replace(/\./g, '').replace(',', '.')) : ''}
-                                onChange={handleGoalChange}
-                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
-                                  formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                                }`}
-                                placeholder="R$ 0,00"
-                              />
-                              {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta Individual (R$) *</label>
+                                <input
+                                  type="text"
+                                  value={formData.goal ? formatCurrencyInput(formData.goal.replace(/\./g, '').replace(',', '.')) : ''}
+                                  onChange={handleGoalChange}
+                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                    formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                  }`}
+                                  placeholder="R$ 0,00"
+                                />
+                                {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta Campanha (R$) (Opcional)</label>
+                                <input
+                                  type="text"
+                                  value={formData.goal_campaign ? formatCurrencyInput(formData.goal_campaign.replace(/\./g, '').replace(',', '.')) : ''}
+                                  onChange={handleGoalCampaignChange}
+                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                    formErrors.goal_campaign ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                  }`}
+                                  placeholder="R$ 0,00"
+                                />
+                                {formErrors.goal_campaign && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal_campaign}</p>}
+                              </div>
                             </div>
                           )}
 
                           {/* Meta para campanhas de engajamento (editável) */}
                           {formData.type === 'engagement' && (
-                            <div>
-                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta (Coins) *</label>
-                              <input
-                                type="number"
-                                value={formData.goal}
-                                onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
-                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
-                                  formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                                }`}
-                                placeholder="Ex: 100"
-                                min="0"
-                              />
-                              {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
-                              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                Defina a meta de coins que os participantes devem alcançar
-                              </p>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta Individual (Coins) *</label>
+                                <input
+                                  type="number"
+                                  value={formData.goal}
+                                  onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
+                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                    formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                  }`}
+                                  placeholder="Ex: 100"
+                                  min="0"
+                                />
+                                {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta Campanha (Coins) (Opcional)</label>
+                                <input
+                                  type="number"
+                                  value={formData.goal_campaign}
+                                  onChange={handleGoalCampaignChange}
+                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                    formErrors.goal_campaign ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                  }`}
+                                  placeholder="Ex: 500"
+                                  min="0"
+                                />
+                                {formErrors.goal_campaign && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal_campaign}</p>}
+                              </div>
                             </div>
                           )}
 

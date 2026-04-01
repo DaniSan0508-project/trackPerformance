@@ -181,6 +181,7 @@ export interface Campaign {
   name: string;
   type: CampaignType;
   goal: string;
+  goal_campaign?: string | number | null;
   start_date: string;
   end_date: string;
   status: CampaignStatus;
@@ -263,6 +264,7 @@ export interface Campaign {
   name: string;
   type: CampaignType;
   goal: string;
+  goal_campaign?: string | number | null;
   start_date: string;
   end_date: string;
   status: CampaignStatus;

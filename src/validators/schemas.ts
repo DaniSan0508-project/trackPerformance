@@ -198,6 +198,9 @@ export const campaignSchema = z.object({
   goal: z
     .string()
     .optional(),
+  goal_campaign: z
+    .string()
+    .optional(),
   start_date: z
     .string()
     .min(1, 'Data de início é obrigatória'),
@@ -210,7 +213,7 @@ export const campaignSchema = z.object({
     .refine((val) => val === 'ativa' || val === 'pausada' || val === 'finalizada', {
       message: 'Status inválido',
     }),
-}).refine((data) => {
+  }).refine((data) => {
   // Goal é obrigatório para sales e engagement
   if (data.type === 'sales' && (!data.goal || data.goal.trim() === '')) {
     return false;
@@ -219,10 +222,10 @@ export const campaignSchema = z.object({
     return false;
   }
   return true;
-}, {
+  }, {
   message: 'Meta é obrigatória',
   path: ['goal'],
-}).refine((data) => {
+  }).refine((data) => {
   // Valida formato numérico se goal estiver presente
   if (data.goal && data.goal.trim() !== '') {
     if (data.type === 'sales') {
@@ -232,11 +235,23 @@ export const campaignSchema = z.object({
     }
   }
   return true;
-}, {
+  }, {
   message: 'Deve ser um número válido',
   path: ['goal'],
-});
-
+  }).refine((data) => {
+  // Valida formato numérico se goal_campaign estiver presente
+  if (data.goal_campaign && data.goal_campaign.trim() !== '') {
+    if (data.type === 'sales') {
+      return /^\d+(\.\d{1,2})?$/.test(data.goal_campaign);
+    } else if (data.type === 'engagement') {
+      return /^\d+$/.test(data.goal_campaign);
+    }
+  }
+  return true;
+  }, {
+  message: 'Deve ser um número válido',
+  path: ['goal_campaign'],
+  });
 // Tipos inferidos dos schemas
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type UserFormData = z.infer<typeof userSchema>;
