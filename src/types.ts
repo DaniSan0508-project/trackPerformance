@@ -27,6 +27,14 @@ export interface PaginatedResponse<T> {
   total: number;
 }
 
+export interface Role {
+  id: number;
+  tenant_id: number;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface User {
   id: number;
   name: string;
@@ -37,6 +45,7 @@ export interface User {
   user_type_id: number;
   profile_image_url: string | null;
   coin_balance?: number;
+  role_id?: number | null;
   role?: string | null;
   description?: string | null;
   external_id?: string | null;

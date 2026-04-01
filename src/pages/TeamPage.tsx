@@ -30,6 +30,7 @@ export const TeamPage: React.FC = () => {
   const { addToast } = useToast();
   const [users, setUsers] = useState<UserType[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -80,7 +81,7 @@ export const TeamPage: React.FC = () => {
     password: '',
     user_type_id: 2,
     store_id: '' as number | '',
-    role: '',
+    role_id: '' as number | '',
     description: '',
     photo: null as File | null
   });
@@ -151,6 +152,16 @@ export const TeamPage: React.FC = () => {
     }
   }, [token]);
 
+  const fetchRoles = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await api.getRoles(token);
+      setRoles(data.data);
+    } catch (error) {
+      console.error('Error fetching roles', error);
+    }
+  }, [token]);
+
   useEffect(() => {
     fetchUsers(currentPage, debouncedSearchTerm);
   }, [fetchUsers, currentPage, debouncedSearchTerm]);
@@ -162,8 +173,9 @@ export const TeamPage: React.FC = () => {
   useEffect(() => {
     if (isAdmin) {
       fetchStores();
+      fetchRoles();
     }
-  }, [isAdmin, fetchStores]);
+  }, [isAdmin, fetchStores, fetchRoles]);
 
   const handleOpenModal = (user?: UserType) => {
     if (user) {
@@ -175,7 +187,7 @@ export const TeamPage: React.FC = () => {
         password: '', // Password not populated on edit
         user_type_id: user.user_type_id,
         store_id: user.store_id || '',
-        role: user.role || '',
+        role_id: user.role_id || '',
         description: user.description || '',
         photo: null
       });
@@ -188,7 +200,7 @@ export const TeamPage: React.FC = () => {
         password: '',
         user_type_id: 2,
         store_id: '',
-        role: '',
+        role_id: '',
         description: '',
         photo: null
       });
@@ -215,7 +227,7 @@ export const TeamPage: React.FC = () => {
       password: '',
       user_type_id: 2,
       store_id: '',
-      role: '',
+      role_id: '',
       description: '',
       photo: null
     });
@@ -235,7 +247,7 @@ export const TeamPage: React.FC = () => {
       password: formData.password,
       user_type_id: String(formData.user_type_id),
       store_id: formData.store_id === '' ? undefined : String(formData.store_id),
-      role: formData.role || undefined,
+      role_id: formData.role_id === '' ? undefined : String(formData.role_id),
       description: formData.description || undefined,
     });
 
@@ -267,8 +279,8 @@ export const TeamPage: React.FC = () => {
       if (formData.store_id) {
         data.append('store_id', String(formData.store_id));
       }
-      if (formData.role) {
-        data.append('role', formData.role);
+      if (formData.role_id) {
+        data.append('role_id', String(formData.role_id));
       }
       if (formData.description) {
         data.append('description', formData.description);
@@ -754,13 +766,16 @@ export const TeamPage: React.FC = () => {
 
                     <div>
                       <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Cargo (Opcional)</label>
-                      <input
-                        type="text"
-                        value={formData.role}
-                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                        placeholder="Ex: Gerente, Vendedor, etc."
+                      <select
+                        value={formData.role_id}
+                        onChange={(e) => setFormData({ ...formData, role_id: e.target.value ? Number(e.target.value) : '' })}
                         className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                      />
+                      >
+                        <option value="">Selecione um cargo</option>
+                        {roles.map(role => (
+                          <option key={role.id} value={role.id}>{role.description}</option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>

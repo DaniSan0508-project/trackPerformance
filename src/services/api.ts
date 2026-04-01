@@ -57,6 +57,13 @@ export const api = {
     return handleResponse(response);
   },
 
+  getRoles: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/roles?per_page=100`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
   getUsers: async (token: string, page = 1, search = '', filterType: 'name' | 'email' = 'name') => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
@@ -196,8 +203,8 @@ export const api = {
   },
 
   updateUser: async (token: string, id: number, formData: FormData) => {
-    const response = await fetch(`${API_BASE_URL}/users/update/${id}`, {
-      method: 'POST',
+    const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+      method: 'PUT',
       headers: getHeaders(token, true),
       body: formData,
     });
