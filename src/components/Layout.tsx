@@ -20,7 +20,8 @@ import {
   FileText,
   Sun,
   Moon,
-  Trophy
+  Trophy,
+    LucidePackage
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -103,6 +104,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             icon={<Flag size={20} />}
             label="Campanhas"
             active={location.pathname === '/campaigns'}
+          />
+            <NavItem
+            to="/products"
+            icon={<LucidePackage size={20} />}
+            label="Produtos"
+            active={location.pathname === '/products'}
           />
           <NavItem
             to="/surveys"
