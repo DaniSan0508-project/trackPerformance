@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus } from '../types';
@@ -90,6 +90,13 @@ export const CampaignsPage: React.FC = () => {
   const debouncedUserSearch = useDebounce(userSearch, 500);
   const [productSearch, setProductSearch] = useState('');
   const debouncedProductSearch = useDebounce(productSearch, 500);
+  const [rewardSearch, setRewardSearch] = useState('');
+  const debouncedRewardSearch = useDebounce(rewardSearch, 500);
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
+  const [rewardsPage, setRewardsPage] = useState(1);
+  const [rewardsTotalPages, setRewardsTotalPages] = useState(1);
+  const [loadingRewards, setLoadingRewards] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -133,6 +140,7 @@ export const CampaignsPage: React.FC = () => {
     start_date: '',
     end_date: '',
     status: 'ativa' as CampaignStatus,
+    reward_id: '' as number | '',
   });
 
   // Seleções
@@ -257,6 +265,21 @@ export const CampaignsPage: React.FC = () => {
     }
   }, [token]);
 
+  const fetchRewardsPaginated = useCallback(async (page = 1, search = '') => {
+    if (!token) return;
+    setLoadingRewards(true);
+    try {
+      const response = await api.getRewards(token, page, search, 'campaign');
+      setRewards(response.data || []);
+      setRewardsTotalPages(response.meta?.last_page || response.last_page || 1);
+      setRewardsPage(response.meta?.current_page || response.current_page || 1);
+    } catch (error) {
+      console.error('Error fetching rewards:', error);
+    } finally {
+      setLoadingRewards(false);
+    }
+  }, [token]);
+
   const fetchCampaigns = useCallback(async (page = 1, search = '') => {
     if (!token) return;
     setLoading(true);
@@ -300,6 +323,13 @@ export const CampaignsPage: React.FC = () => {
       fetchProducts(1, debouncedProductSearch, productFilterType, productManufacturerFilter);
     }
   }, [debouncedProductSearch, productFilterType, productManufacturerFilter, isModalOpen]);
+
+  useEffect(() => {
+    if (isRewardModalOpen) {
+      setRewardsPage(1);
+      fetchRewardsPaginated(1, debouncedRewardSearch);
+    }
+  }, [debouncedRewardSearch, isRewardModalOpen]);
 
   const updateSelectionBadges = (currentSelectedUsers: number[], currentSelectedProducts: number[], allUsersList: UserType[], allProductsList: Product[]) => {
     // Calcular cargos totalmente selecionados
@@ -364,6 +394,7 @@ export const CampaignsPage: React.FC = () => {
         start_date: campaign.start_date,
         end_date: campaign.end_date,
         status: currentStatus,
+        reward_id: campaign.reward_id || '',
       });
 
       if (token) {
@@ -391,6 +422,9 @@ export const CampaignsPage: React.FC = () => {
           const campaignProductIds = (productsRes.data || []).map((p: any) => p.id);
           setSelectedProducts(campaignProductIds);
           
+          // Carregar prêmios
+          fetchRewardsPaginated(1);
+
           if (campaign.type === 'engagement') {
             const campaignActions = (actionsRes.data || []).map((a: any) => ({ 
               id: a.id, 
@@ -444,11 +478,13 @@ export const CampaignsPage: React.FC = () => {
         start_date: '',
         end_date: '',
         status: 'ativa',
+        reward_id: '',
       });
       setSelectedUsers([]);
       setSelectedProducts([]);
       setSelectedActions([]);
       fetchAuxiliaryData();
+      fetchRewardsPaginated(1);
     }
   };
 
@@ -464,6 +500,7 @@ export const CampaignsPage: React.FC = () => {
       start_date: '',
       end_date: '',
       status: 'ativa',
+      reward_id: '',
     });
     setSelectedUsers([]);
     setSelectedProducts([]);
@@ -609,6 +646,8 @@ export const CampaignsPage: React.FC = () => {
           dataToSave.users = selectedUsers;
         }
 
+        dataToSave.reward_id = formData.reward_id || null;
+
         // NÃO envia goal na edição (somente na criação)
 
         // Envia conforme o tipo da campanha
@@ -636,6 +675,7 @@ export const CampaignsPage: React.FC = () => {
           if (formData.goal_campaign) {
             dataToSave.goal_campaign = parseFloat(formData.goal_campaign);
           }
+          dataToSave.reward_id = formData.reward_id || null;
           dataToSave.start_date = formData.start_date;
           dataToSave.end_date = formData.end_date;
           dataToSave.products = selectedProducts;
@@ -644,6 +684,7 @@ export const CampaignsPage: React.FC = () => {
           if (formData.goal_campaign) {
             dataToSave.goal_campaign = parseFloat(formData.goal_campaign);
           }
+          dataToSave.reward_id = formData.reward_id || null;
           dataToSave.start_date = formData.start_date;
           dataToSave.end_date = formData.end_date;
           dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
@@ -1614,6 +1655,41 @@ export const CampaignsPage: React.FC = () => {
                           <option value="inativa">Inativa</option>
                         </select>
                       </div>
+
+                      {/* Card de Prêmio da Campanha */}
+                      <div className="pt-2">
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Prêmio da Campanha (Opcional)</label>
+                        <div className={`p-4 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center min-h-[140px] ${formData.reward_id ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-900/10' : 'border-zinc-200 dark:border-zinc-700'}`}>
+                          {(() => {
+                            const selectedReward = rewards.find(r => r.id === formData.reward_id);
+                            if (selectedReward) {
+                              return (
+                                <div className="flex flex-col items-center text-center space-y-2 w-full">
+                                  <div className="w-16 h-16 rounded-xl overflow-hidden border border-emerald-200 dark:border-emerald-800 shadow-sm bg-white dark:bg-zinc-800">
+                                    {selectedReward.images?.[0]?.image_full_url ? (
+                                      <img src={selectedReward.images[0].image_full_url} alt={selectedReward.name} className="w-full h-full object-cover" />
+                                    ) : <div className="w-full h-full flex items-center justify-center text-zinc-300"><ShoppingBag /></div>}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-bold text-zinc-900 dark:text-white">{selectedReward.name}</p>
+                                    <div className="flex gap-3 justify-center mt-1">
+                                      <button type="button" onClick={() => setIsRewardModalOpen(true)} className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline uppercase">Trocar</button>
+                                      <button type="button" onClick={() => setFormData({ ...formData, reward_id: '' })} className="text-[10px] font-bold text-red-500 hover:underline uppercase">Remover</button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="text-center space-y-2">
+                                <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto text-zinc-400"><Gift size={20} /></div>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">Nenhum prêmio vinculado</p>
+                                <button type="button" onClick={() => setIsRewardModalOpen(true)} className="px-4 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg text-[10px] font-bold hover:opacity-90 transition-all">Vincular Prêmio</button>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -2299,6 +2375,85 @@ export const CampaignsPage: React.FC = () => {
                     </button>
                   </div>
                 </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Modal de Seleção de Recompensa */}
+        <AnimatePresence>
+          {isRewardModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden border border-zinc-200 dark:border-zinc-800 flex flex-col max-h-[90vh]"
+              >
+                <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
+                  <h3 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                    <Gift className="text-emerald-500" />
+                    Selecionar Prêmio
+                  </h3>
+                  <button onClick={() => setIsRewardModalOpen(false)} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="p-6 flex-1 overflow-y-auto space-y-6">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={20} />
+                    <input
+                      type="text"
+                      placeholder="Buscar prêmio por nome..."
+                      className="w-full pl-10 pr-4 py-3 border border-zinc-200 dark:border-zinc-700 rounded-2xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                      value={rewardSearch}
+                      onChange={(e) => setRewardSearch(e.target.value)}
+                    />
+                  </div>
+
+                  {loadingRewards ? (
+                    <div className="flex justify-center py-12"><Loader2 className="animate-spin text-emerald-500" size={40} /></div>
+                  ) : rewards.length === 0 ? (
+                    <div className="text-center py-12 text-zinc-500">Nenhum prêmio encontrado.</div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {rewards.map(reward => (
+                        <button
+                          key={reward.id}
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, reward_id: reward.id });
+                            setIsRewardModalOpen(false);
+                          }}
+                          className={`group relative flex flex-col p-3 rounded-2xl border-2 transition-all ${
+                            formData.reward_id === reward.id
+                              ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 shadow-md'
+                              : 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-800 hover:border-emerald-300'
+                          }`}
+                        >
+                          <div className="aspect-square rounded-xl bg-zinc-100 dark:bg-zinc-900 mb-2 overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                            {reward.images?.[0]?.image_full_url ? (
+                              <img src={reward.images[0].image_full_url} alt={reward.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                            ) : <div className="w-full h-full flex items-center justify-center text-zinc-400"><ShoppingBag size={24} /></div>}
+                          </div>
+                          <p className="text-xs font-bold text-zinc-900 dark:text-white line-clamp-2 text-center">{reward.name}</p>
+                          {formData.reward_id === reward.id && (
+                            <div className="absolute top-2 right-2 bg-emerald-500 text-white p-1 rounded-full shadow-lg"><Check size={12} /></div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {rewardsTotalPages > 1 && (
+                  <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-center gap-4">
+                    <button type="button" onClick={() => fetchRewardsPaginated(rewardsPage - 1, rewardSearch)} disabled={rewardsPage === 1} className="p-2 border rounded-lg disabled:opacity-50"><ChevronLeft /></button>
+                    <span className="flex items-center text-sm font-medium">Página {rewardsPage} de {rewardsTotalPages}</span>
+                    <button type="button" onClick={() => fetchRewardsPaginated(rewardsPage + 1, rewardSearch)} disabled={rewardsPage === rewardsTotalPages} className="p-2 border rounded-lg disabled:opacity-50"><ChevronRight /></button>
+                  </div>
+                )}
               </motion.div>
             </div>
           )}
