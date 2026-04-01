@@ -5,6 +5,7 @@ import {useAuth} from '../context/AuthContext';
 import {useTheme} from '../context/ThemeContext';
 import {api} from '../services/api';
 import {getFullImageUrl} from '../utils/formatters';
+import { motion } from 'motion/react';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -165,12 +166,16 @@ export const DashboardPage = () => {
     return (
         <Layout>
             <div className="p-4 md:p-8 space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <motion.div
+                    initial={{opacity: 0, y: -10}}
+                    animate={{opacity: 1, y: 0}}
+                    transition={{duration: 0.4, ease: 'easeOut'}}
+                    className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Bem-vindo, {user.name.split(' ')[0]}!</h1>
                         <p className="text-zinc-500 dark:text-zinc-400">Veja como o seu time está se saindo hoje</p>
                     </div>
-                </div>
+                </motion.div>
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -179,31 +184,35 @@ export const DashboardPage = () => {
                         value={stats.active_users ? String(stats.active_users.value) : loadingStats ? 'Carregando...' : '-'}
                         change={stats.active_users && stats.active_users.growth_percentage !== null && stats.active_users.growth_percentage !== undefined ? `${stats.active_users.growth_percentage > 0 ? '+' : ''}${stats.active_users.growth_percentage}%` : '--'}
                         positive={!!(stats.active_users && typeof stats.active_users.growth_percentage === 'number' && stats.active_users.growth_percentage > 0)}
+                        delay={0}
                     />
-
                     <StatCard
                         label="Engajamento Geral"
                         value={stats.engagement ? String(stats.engagement.value) : loadingStats ? 'Carregando...' : '-'}
                         change={stats.engagement && stats.engagement.growth_percentage !== null && stats.engagement.growth_percentage !== undefined ? `${stats.engagement.growth_percentage > 0 ? '+' : ''}${stats.engagement.growth_percentage}%` : '--'}
                         positive={!!(stats.engagement && typeof stats.engagement.growth_percentage === 'number' && stats.engagement.growth_percentage > 0)}
+                        delay={0.08}
                     />
-
                     <StatCard
                         label={`${(coinName || 'coins').charAt(0).toUpperCase() + (coinName || 'coins').slice(1)} Geradas`}
                         value={stats.coins_generated ? String(stats.coins_generated.value) : loadingStats ? 'Carregando...' : '-'}
                         change={stats.coins_generated && stats.coins_generated.growth_percentage !== null && stats.coins_generated.growth_percentage !== undefined ? `${stats.coins_generated.growth_percentage > 0 ? '+' : ''}${stats.coins_generated.growth_percentage}%` : '--'}
                         positive={!!(stats.coins_generated && typeof stats.coins_generated.growth_percentage === 'number' && stats.coins_generated.growth_percentage > 0)}
+                        delay={0.16}
                     />
-
                     <StatCard
                         label="Resgates Realizados"
                         value={stats.redemptions ? String(stats.redemptions.value) : loadingStats ? 'Carregando...' : '-'}
                         change={stats.redemptions && stats.redemptions.growth_percentage !== null && stats.redemptions.growth_percentage !== undefined ? `${stats.redemptions.growth_percentage > 0 ? '+' : ''}${stats.redemptions.growth_percentage}%` : '--'}
                         positive={!!(stats.redemptions && typeof stats.redemptions.growth_percentage === 'number' && stats.redemptions.growth_percentage > 0)}
+                        delay={0.24}
                     />
                 </div>
 
-                <div
+                <motion.div
+                    initial={{opacity: 0, y: 16}}
+                    animate={{opacity: 1, y: 0}}
+                    transition={{duration: 0.5, delay: 0.3, ease: 'easeOut'}}
                     className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
                     {/* Header: title + period selector */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
@@ -306,151 +315,167 @@ export const DashboardPage = () => {
                             </div>
                         );
                     })()}
-                </div>
+                </motion.div>
 
                 {/* Top Colaboradores - lista com barras de progresso */}
-                <div className="mt-6">
+                <motion.div
+                    initial={{opacity: 0, y: 16}}
+                    animate={{opacity: 1, y: 0}}
+                    transition={{duration: 0.5, delay: 0.38, ease: 'easeOut'}}
+                    className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
+                    <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-zinc-900 dark:text-white">
+                        <User size={20} className="text-emerald-600"/>
+                        Top Jogadores
+                    </h3>
+                    {loadingTop ? (
+                        <div className="text-zinc-400">Carregando...</div>
+                    ) : (
+                        (() => {
+                            const podium = [...top].sort((a, b) => a.position - b.position).slice(0, 3);
+                            const maxCoins = podium.length ? Math.max(...podium.map(p => p.total_coins)) : 1;
+                            const fmt = (n: number) => new Intl.NumberFormat('pt-BR').format(n);
 
-                    <div
-                        className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
-                        <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-zinc-900 dark:text-white">
-                            <User size={20} className="text-emerald-600"/>
-                            Top
-                            Jogadores</h3>
-                        {loadingTop ? (
-                            <div className="text-zinc-400">Carregando...</div>
-                        ) : (
-                            (() => {
-                                // Prepare top 3 ordered by position
-                                const podium = [...top].sort((a, b) => a.position - b.position).slice(0, 3);
-                                const maxCoins = podium.length ? Math.max(...podium.map(p => p.total_coins)) : 1;
-                                const fmt = (n: number) => new Intl.NumberFormat('pt-BR').format(n);
-
-                                return (
-                                    <div className="space-y-6">
-                                        {podium.map((p) => {
-                                            const percent = Math.round((p.total_coins / (maxCoins || 1)) * 100);
-                                            const medal = p.position === 1 ? '🥇' : p.position === 2 ? '🥈' : '🥉';
-                                            return (
-                                                <div key={p.user_id}>
-                                                    <div className="flex items-center justify-between">
+                            return (
+                                <div className="space-y-6">
+                                    {podium.map((p, i) => {
+                                        const percent = Math.round((p.total_coins / (maxCoins || 1)) * 100);
+                                        const medal = p.position === 1 ? '🥇' : p.position === 2 ? '🥈' : '🥉';
+                                        return (
+                                            <motion.div
+                                                key={p.user_id}
+                                                initial={{opacity: 0, x: -12}}
+                                                animate={{opacity: 1, x: 0}}
+                                                transition={{duration: 0.4, delay: 0.45 + i * 0.1, ease: 'easeOut'}}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xl">{medal}</span>
                                                         <div className="flex items-center gap-3">
-                                                            <span className="text-xl">{medal}</span>
-                                                            <div className="flex items-center gap-3">
-                                                                <div
-                                                                    className="w-14 h-14 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 overflow-hidden border-2 border-emerald-200 dark:border-emerald-800 flex-shrink-0">
-                                                                    {p.profile_image_url ? (
-                                                                        <img
-                                                                            src={getFullImageUrl(p.profile_image_url) || ''}
-                                                                            alt={p.name}
-                                                                            className="w-full h-full object-cover"/>
-                                                                    ) : (
-                                                                        <User size={28}/>
-                                                                    )}
-                                                                </div>
-                                                                <span
-                                                                    className="text-sm font-medium text-zinc-900 dark:text-white">{p.name}</span>
+                                                            <div
+                                                                className="w-14 h-14 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 overflow-hidden border-2 border-emerald-200 dark:border-emerald-800 flex-shrink-0">
+                                                                {p.profile_image_url ? (
+                                                                    <img
+                                                                        src={getFullImageUrl(p.profile_image_url) || ''}
+                                                                        alt={p.name}
+                                                                        className="w-full h-full object-cover"/>
+                                                                ) : (
+                                                                    <User size={28}/>
+                                                                )}
                                                             </div>
+                                                            <span
+                                                                className="text-sm font-medium text-zinc-900 dark:text-white">{p.name}</span>
                                                         </div>
-                                                        <div
-                                                            className="text-sm font-semibold text-zinc-900 dark:text-white">{fmt(p.total_coins)} {coinName || 'coins'}</div>
                                                     </div>
                                                     <div
-                                                        className="mt-2 h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-emerald-500 dark:bg-emerald-600"
-                                                             style={{width: `${percent}%`}}/>
-                                                    </div>
+                                                        className="text-sm font-semibold text-zinc-900 dark:text-white">{fmt(p.total_coins)} {coinName || 'coins'}</div>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                );
-                            })()
-                        )}
-                    </div>
-                </div>
+                                                <div className="mt-2 h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                                    <motion.div
+                                                        className="h-full bg-emerald-500 dark:bg-emerald-600"
+                                                        initial={{width: 0}}
+                                                        animate={{width: `${percent}%`}}
+                                                        transition={{duration: 0.9, delay: 0.55 + i * 0.1, ease: 'easeOut'}}
+                                                    />
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()
+                    )}
+                </motion.div>
 
-                {/* Info Section */}
                 {/* Active Campaigns Section */}
-                <div
+                <motion.div
+                    initial={{opacity: 0, y: 16}}
+                    animate={{opacity: 1, y: 0}}
+                    transition={{duration: 0.5, delay: 0.46, ease: 'easeOut'}}
                     className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
                     <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-zinc-900 dark:text-white">
                         <ChartNoAxesColumn size={20} className="text-emerald-600"/>
-                        Campanhas</h3>
+                        Campanhas
+                    </h3>
                     {loadingCampaigns ? (
                         <div className="text-zinc-400">Carregando...</div>
                     ) : (
                         <div className="space-y-4">
-                            {campaigns.map(c => {
+                            {campaigns.map((c, i) => {
                                 const fmt = (n: number) => new Intl.NumberFormat('pt-BR').format(n);
                                 const participantLabel = c.type === 'sales' ? 'vendedores' : 'colaboradores';
                                 const goalLabel = c.type === 'engagement' ? `${fmt(c.goal)} ${coinName || 'coins'}` : fmt(c.goal);
                                 return (
-                                    <div key={c.id} className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
+                                    <motion.div
+                                        key={c.id}
+                                        initial={{opacity: 0, x: -12}}
+                                        animate={{opacity: 1, x: 0}}
+                                        transition={{duration: 0.4, delay: 0.52 + i * 0.08, ease: 'easeOut'}}
+                                        className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg"
+                                    >
                                         <div className="font-semibold dark:text-white">{c.name}</div>
-                                        <div
-                                            className="text-sm text-zinc-600 dark:text-zinc-400">Meta: {goalLabel}</div>
+                                        <div className="text-sm text-zinc-600 dark:text-zinc-400">Meta: {goalLabel}</div>
                                         <div className="text-sm text-zinc-600 dark:text-zinc-400">
                                             <div className="flex items-center gap-3">
                                                 <span>Progresso:</span>
                                                 <div className="flex-1">
-                                                    <div
-                                                        className="w-full h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-emerald-500 dark:bg-emerald-600"
-                                                             style={{width: `${c.progress_percentage}%`}}/>
+                                                    <div className="w-full h-3 bg-zinc-100 dark:bg-zinc-700 rounded-full overflow-hidden">
+                                                        <motion.div
+                                                            className="h-full bg-emerald-500 dark:bg-emerald-600"
+                                                            initial={{width: 0}}
+                                                            animate={{width: `${c.progress_percentage}%`}}
+                                                            transition={{duration: 0.9, delay: 0.62 + i * 0.08, ease: 'easeOut'}}
+                                                        />
                                                     </div>
                                                 </div>
                                                 <span className="w-12 text-right">{c.progress_percentage}%</span>
                                             </div>
                                         </div>
-                                        <div
-                                            className="text-sm text-zinc-600 dark:text-zinc-400">Participantes: {fmt(c.participants_count)} {participantLabel}</div>
-                                    </div>
+                                        <div className="text-sm text-zinc-600 dark:text-zinc-400">Participantes: {fmt(c.participants_count)} {participantLabel}</div>
+                                    </motion.div>
                                 );
                             })}
                         </div>
                     )}
-                </div>
+                </motion.div>
                 {/* Engagement Index per store */}
-                <div
+                <motion.div
+                    initial={{opacity: 0, y: 16}}
+                    animate={{opacity: 1, y: 0}}
+                    transition={{duration: 0.5, delay: 0.54, ease: 'easeOut'}}
                     className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
                     <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-zinc-900 dark:text-white">
                         <ChartNoAxesColumn size={20} className="text-emerald-600"/>
-                        Índice de Engajamento por
-                        Loja</h3>
+                        Índice de Engajamento por Loja
+                    </h3>
                     {loadingEngagementIndex ? (
                         <div className="text-zinc-400">Carregando...</div>
                     ) : (
                         (() => {
-                            if (!engagementIndex.length) return <div className="text-zinc-500">Nenhuma loja
-                                encontrada</div>;
+                            if (!engagementIndex.length) return <div className="text-zinc-500">Nenhuma loja encontrada</div>;
                             const maxScore = Math.max(...engagementIndex.map(e => e.score));
                             const fmt = (n: number) => new Intl.NumberFormat('pt-BR').format(n);
                             return (
                                 <div className="space-y-3">
-                                    {engagementIndex.map(store => (
-                                        <div key={store.store_id}
-                                             className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
+                                    {engagementIndex.map((store, i) => (
+                                        <motion.div
+                                            key={store.store_id}
+                                            initial={{opacity: 0, x: -12}}
+                                            animate={{opacity: 1, x: 0}}
+                                            transition={{duration: 0.4, delay: 0.6 + i * 0.07, ease: 'easeOut'}}
+                                            className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg"
+                                        >
                                             <div className="flex items-center justify-between mb-2">
-                                                <div
-                                                    className="font-semibold text-sm text-zinc-900 dark:text-white">{store.store_name}</div>
-                                                <div
-                                                    className="text-xs text-zinc-600 dark:text-zinc-400">Pontuação: {fmt(store.score)} • {fmt(store.participants)} participantes
-                                                </div>
+                                                <div className="font-semibold text-sm text-zinc-900 dark:text-white">{store.store_name}</div>
+                                                <div className="text-xs text-zinc-600 dark:text-zinc-400">Pontuação: {fmt(store.score)} • {fmt(store.participants)} participantes</div>
                                             </div>
                                             <div className="relative">
-                                                <div
-                                                    className="w-full h-4 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-emerald-500 dark:bg-emerald-600 transition-all"
-                                                        style={{width: `${(store.score / (maxScore || 1)) * 100}%`}}/>
-                                                </div>
-                                                {/* Tooltip on hover - show breakdown */}
-                                                <div className="absolute left-0 top-0 w-full h-full">
-                                                    <div className="w-full h-full"
-                                                         title={JSON.stringify(store.breakdown)}>
-                                                        {/* Invisible overlay to enable hover */}
-                                                    </div>
+                                                <div className="w-full h-4 bg-zinc-100 dark:bg-zinc-700 rounded-full overflow-hidden">
+                                                    <motion.div
+                                                        className="h-full bg-emerald-500 dark:bg-emerald-600"
+                                                        initial={{width: 0}}
+                                                        animate={{width: `${(store.score / (maxScore || 1)) * 100}%`}}
+                                                        transition={{duration: 0.9, delay: 0.7 + i * 0.07, ease: 'easeOut'}}
+                                                    />
                                                 </div>
                                             </div>
                                             <details className="mt-2 text-xs text-zinc-700 dark:text-zinc-300">
@@ -474,33 +499,41 @@ export const DashboardPage = () => {
                                                     })()}
                                                 </div>
                                             </details>
-                                        </div>
+                                        </motion.div>
                                     ))}
                                 </div>
                             );
                         })()
                     )}
-                </div>
+                </motion.div>
             </div>
         </Layout>
     );
 };
 
-const StatCard = ({label, value, change, positive}: {
+const StatCard = ({label, value, change, positive, delay = 0}: {
     label: string;
     value: string;
     change: string;
-    positive?: boolean
+    positive?: boolean;
+    delay?: number;
 }) => (
-    <div
-        className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
+    <motion.div
+        initial={{opacity: 0, y: 20}}
+        animate={{opacity: 1, y: 0}}
+        whileHover={{y: -4, boxShadow: '0 8px 24px -4px rgba(0,0,0,0.10)'}}
+        transition={{duration: 0.45, delay, ease: 'easeOut'}}
+        className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-200 cursor-default">
         <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-1">{label}</p>
         <div className="flex items-end justify-between">
             <h4 className="text-2xl font-bold text-zinc-900 dark:text-white">{value}</h4>
-            <span
+            <motion.span
+                initial={{scale: 0.8, opacity: 0}}
+                animate={{scale: 1, opacity: 1}}
+                transition={{duration: 0.3, delay: delay + 0.2}}
                 className={`text-xs font-bold px-2 py-1 rounded-lg ${positive ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}`}>
-        {change}
-      </span>
+                {change}
+            </motion.span>
         </div>
-    </div>
+    </motion.div>
 );
