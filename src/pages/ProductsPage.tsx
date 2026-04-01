@@ -11,12 +11,17 @@ import {
   Factory,
   Tag,
   Plus,
+  X,
+  Save,
+  Settings,
+  Building2,
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Product } from '../types';
+import { Product, Manufacturer, ProductGroup } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { productSchema } from '../validators/schemas';
 
 // ─── Debounce hook (same pattern as TeamPage) ────────────────────────────────
 function useDebounce<T>(value: T, delay: number): T {
@@ -33,23 +38,43 @@ export const ProductsPage: React.FC = () => {
   const { token } = useAuth();
   const { addToast } = useToast();
 
+  // ── List state ──────────────────────────────────────────────────────────────
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Search / filter state
+  // Search / filter
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'name' | 'barcode'>('name');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-  // Pagination state
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [fromItem, setFromItem] = useState(0);
   const [toItem, setToItem] = useState(0);
 
-  // ─── Fetch ──────────────────────────────────────────────────────────────────
+  // ── Modal state ─────────────────────────────────────────────────────────────
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isManagingManufacturers, setIsManagingManufacturers] = useState(false);
+  const [isManagingProductGroups, setIsManagingProductGroups] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const [formData, setFormData] = useState({
+    name: '',
+    barcode: '',
+    manufacturer_id: '' as number | '',
+    product_group_id: '' as number | '',
+  });
+
+  // ── Dropdown data ───────────────────────────────────────────────────────────
+  const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
+  const [productGroups, setProductGroups] = useState<ProductGroup[]>([]);
+  const [loadingManufacturers, setLoadingManufacturers] = useState(false);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+
+  // ─── Fetch products ──────────────────────────────────────────────────────────
   const fetchProducts = useCallback(
     async (page = 1, search = '', type: 'name' | 'barcode' = 'name') => {
       if (!token) return;
@@ -74,7 +99,35 @@ export const ProductsPage: React.FC = () => {
     [token]
   );
 
-  // Trigger fetch on page / search / filterType change
+  // ─── Fetch manufacturers ─────────────────────────────────────────────────────
+  const fetchManufacturers = useCallback(async () => {
+    if (!token) return;
+    setLoadingManufacturers(true);
+    try {
+      const data = await api.getAllManufacturers(token);
+      setManufacturers(data);
+    } catch (err) {
+      console.error('Error fetching manufacturers:', err);
+    } finally {
+      setLoadingManufacturers(false);
+    }
+  }, [token]);
+
+  // ─── Fetch product groups ────────────────────────────────────────────────────
+  const fetchProductGroups = useCallback(async () => {
+    if (!token) return;
+    setLoadingGroups(true);
+    try {
+      const data = await api.getAllProductGroups(token);
+      setProductGroups(data);
+    } catch (err) {
+      console.error('Error fetching product groups:', err);
+    } finally {
+      setLoadingGroups(false);
+    }
+  }, [token]);
+
+  // Trigger list fetch on page / search / filterType change
   useEffect(() => {
     fetchProducts(currentPage, debouncedSearchTerm, filterType);
   }, [fetchProducts, currentPage, debouncedSearchTerm, filterType]);
@@ -84,13 +137,90 @@ export const ProductsPage: React.FC = () => {
     setCurrentPage(1);
   }, [debouncedSearchTerm, filterType]);
 
-  // ─── Handlers ───────────────────────────────────────────────────────────────
+  // Load dropdown data only when modal opens
+  useEffect(() => {
+    if (isModalOpen) {
+      fetchManufacturers();
+      fetchProductGroups();
+    }
+  }, [isModalOpen, fetchManufacturers, fetchProductGroups]);
+
+  // ─── Modal Handlers ──────────────────────────────────────────────────────────
   const handleFilterTypeChange = (newType: 'name' | 'barcode') => {
     setFilterType(newType);
     setSearchTerm('');
   };
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+  const handleOpenModal = () => {
+    setFormData({ name: '', barcode: '', manufacturer_id: '', product_group_id: '' });
+    setFormErrors({});
+    setIsManagingManufacturers(false);
+    setIsManagingProductGroups(false);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setIsManagingManufacturers(false);
+    setIsManagingProductGroups(false);
+    setFormData({ name: '', barcode: '', manufacturer_id: '', product_group_id: '' });
+    setFormErrors({});
+  };
+
+  // ─── Submit ──────────────────────────────────────────────────────────────────
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    setFormErrors({});
+
+    const parsed = {
+      name: formData.name,
+      barcode: formData.barcode,
+      manufacturer_id: formData.manufacturer_id === '' ? undefined : Number(formData.manufacturer_id),
+      product_group_id: formData.product_group_id === '' ? null : Number(formData.product_group_id),
+    };
+
+    const result = productSchema.safeParse(parsed);
+    if (!result.success) {
+      const errors = result.error.flatten().fieldErrors;
+      const formattedErrors: { [key: string]: string } = {};
+      Object.entries(errors).forEach(([key, messages]) => {
+        if (messages?.length) formattedErrors[key] = messages[0];
+      });
+      setFormErrors(formattedErrors);
+      addToast('error', 'Verifique os campos obrigatórios.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.createProduct(token, {
+        name: formData.name,
+        barcode: formData.barcode,
+        manufacturer_id: formData.manufacturer_id === '' ? null : Number(formData.manufacturer_id),
+        product_group_id: formData.product_group_id === '' ? null : Number(formData.product_group_id),
+      });
+      addToast('success', 'Produto criado com sucesso!');
+      await fetchProducts(currentPage, debouncedSearchTerm, filterType);
+      handleCloseModal();
+    } catch (error: any) {
+      console.error('Error creating product:', error);
+      if (error.response?.data?.errors) {
+        const apiErrors = error.response.data.errors;
+        const formattedErrors: { [key: string]: string } = {};
+        Object.entries(apiErrors).forEach(([key, messages]: [string, any]) => {
+          const msg = Array.isArray(messages) ? messages[0] : messages;
+          if (typeof msg === 'string') formattedErrors[key] = msg;
+        });
+        setFormErrors(formattedErrors);
+      }
+      addToast('error', error.message || 'Erro ao criar produto.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
   return (
     <Layout>
       <div className="p-4 md:p-8 space-y-6">
@@ -112,6 +242,7 @@ export const ProductsPage: React.FC = () => {
               <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
             </button>
             <button
+              onClick={handleOpenModal}
               className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
             >
               <Plus size={18} />
@@ -122,12 +253,8 @@ export const ProductsPage: React.FC = () => {
 
         {/* ── Filters ────────────────────────────────────────────────────────── */}
         <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 flex flex-col md:flex-row gap-3 items-center transition-colors duration-200">
-          {/* Search input */}
           <div className="relative flex-1 w-full">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"
-              size={20}
-            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={20} />
             <input
               type="text"
               placeholder={
@@ -140,8 +267,6 @@ export const ProductsPage: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-
-          {/* Filter type selector */}
           <select
             value={filterType}
             onChange={(e) => handleFilterTypeChange(e.target.value as 'name' | 'barcode')}
@@ -179,7 +304,6 @@ export const ProductsPage: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-all duration-200 flex flex-col"
                 >
-                  {/* Card header — icon + product name */}
                   <div className="flex items-start gap-3 mb-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0 border border-emerald-200 dark:border-emerald-800">
                       <Package size={22} />
@@ -193,11 +317,7 @@ export const ProductsPage: React.FC = () => {
                       </h3>
                     </div>
                   </div>
-
-                  {/* Card details */}
                   <div className="space-y-2.5 flex-1">
-
-                    {/* Barcode */}
                     <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                       <Hash size={15} className="text-zinc-400 flex-shrink-0" />
                       <span
@@ -207,29 +327,18 @@ export const ProductsPage: React.FC = () => {
                         {product.barcode || '—'}
                       </span>
                     </div>
-
-                    {/* Manufacturer */}
                     <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                       <Factory size={15} className="text-zinc-400 flex-shrink-0" />
-                      <span
-                        className="truncate"
-                        title={product.manufacturer?.name ?? '—'}
-                      >
+                      <span className="truncate" title={product.manufacturer?.name ?? '—'}>
                         {product.manufacturer?.name ?? '—'}
                       </span>
                     </div>
-
-                    {/* Group */}
                     <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                       <Tag size={15} className="text-zinc-400 flex-shrink-0" />
-                      <span
-                        className="truncate"
-                        title={product.group?.name ?? '—'}
-                      >
+                      <span className="truncate" title={product.group?.name ?? '—'}>
                         {product.group?.name ?? '—'}
                       </span>
                     </div>
-
                   </div>
                 </motion.div>
               ))}
@@ -242,9 +351,7 @@ export const ProductsPage: React.FC = () => {
                 <h3 className="text-lg font-medium text-zinc-900 dark:text-white">
                   Nenhum produto encontrado
                 </h3>
-                <p className="text-zinc-500 dark:text-zinc-400">
-                  Tente ajustar os filtros de busca.
-                </p>
+                <p className="text-zinc-500 dark:text-zinc-400">Tente ajustar os filtros de busca.</p>
               </div>
             )}
 
@@ -284,6 +391,262 @@ export const ProductsPage: React.FC = () => {
 
           </div>
         )}
+
+        {/* ── Create Product Modal ──────────────────────────────────────────── */}
+        <AnimatePresence>
+          {isModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-zinc-200 dark:border-zinc-800"
+              >
+                {/* Modal Header */}
+                <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
+                  <div className="flex items-center gap-2">
+                    {(isManagingManufacturers || isManagingProductGroups) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsManagingManufacturers(false);
+                          setIsManagingProductGroups(false);
+                        }}
+                        className="mr-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                        title="Voltar ao formulário"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                    )}
+                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+                      {isManagingManufacturers
+                        ? 'Fabricantes Cadastrados'
+                        : isManagingProductGroups
+                        ? 'Grupos de Produtos'
+                        : 'Novo Produto'}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                {/* ── Manufacturers list panel ──────────────────────────────── */}
+                {isManagingManufacturers ? (
+                  <div className="p-6 max-h-[60vh] overflow-y-auto">
+                    {loadingManufacturers ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                      </div>
+                    ) : manufacturers.length === 0 ? (
+                      <p className="text-center text-zinc-500 dark:text-zinc-400 py-6">
+                        Nenhum fabricante cadastrado.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {manufacturers.map((m) => (
+                          <div
+                            key={m.id}
+                            className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700"
+                          >
+                            <div className="w-9 h-9 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Building2 size={15} className="text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate">
+                                {m.name}
+                              </p>
+                              {m.tax_id && (
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono truncate">
+                                  {m.tax_id}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : isManagingProductGroups ? (
+                  /* ── Product groups list panel ──────────────────────────── */
+                  <div className="p-6 max-h-[60vh] overflow-y-auto">
+                    {loadingGroups ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                      </div>
+                    ) : productGroups.length === 0 ? (
+                      <p className="text-center text-zinc-500 dark:text-zinc-400 py-6">
+                        Nenhum grupo cadastrado.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {productGroups.map((g) => (
+                          <div
+                            key={g.id}
+                            className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700"
+                          >
+                            <div className="w-9 h-9 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Tag size={15} className="text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate">
+                                {g.name}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* ── Product form ─────────────────────────────────────────── */
+                  <form onSubmit={handleSubmit} className="p-6 space-y-4">
+
+                    {/* Nome */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Nome *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="Ex: Dipirona Sódica 1g 10 Comprimidos"
+                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                          formErrors.name
+                            ? 'border-red-500 focus:ring-red-500'
+                            : 'border-zinc-300 dark:border-zinc-600'
+                        }`}
+                      />
+                      {formErrors.name && (
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.name}</p>
+                      )}
+                    </div>
+
+                    {/* Código de Barras */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Código de Barras *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.barcode}
+                        onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                        placeholder="Ex: 7896004710011"
+                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 font-mono ${
+                          formErrors.barcode
+                            ? 'border-red-500 focus:ring-red-500'
+                            : 'border-zinc-300 dark:border-zinc-600'
+                        }`}
+                      />
+                      {formErrors.barcode && (
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.barcode}</p>
+                      )}
+                    </div>
+
+                    {/* Fabricante (Opcional) */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Fabricante{' '}
+                        <span className="text-zinc-400 font-normal">(Opcional)</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <select
+                          value={formData.manufacturer_id}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              manufacturer_id: e.target.value ? Number(e.target.value) : '',
+                            })
+                          }
+                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                        >
+                          <option value="">
+                            {loadingManufacturers ? 'Carregando...' : 'Selecione um fabricante (opcional)'}
+                          </option>
+                          {manufacturers.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setIsManagingManufacturers(true)}
+                          className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors flex-shrink-0"
+                          title="Ver fabricantes cadastrados"
+                        >
+                          <Settings size={20} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Grupo de Produtos (Opcional) */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Grupo de Produtos{' '}
+                        <span className="text-zinc-400 font-normal">(Opcional)</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <select
+                          value={formData.product_group_id}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              product_group_id: e.target.value ? Number(e.target.value) : '',
+                            })
+                          }
+                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                        >
+                          <option value="">
+                            {loadingGroups ? 'Carregando...' : 'Selecione um grupo (opcional)'}
+                          </option>
+                          {productGroups.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setIsManagingProductGroups(true)}
+                          className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors flex-shrink-0"
+                          title="Ver grupos de produtos"
+                        >
+                          <Settings size={20} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="pt-2 flex gap-3">
+                      <button
+                        type="button"
+                        onClick={handleCloseModal}
+                        className="flex-1 px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 font-medium rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="flex-1 px-4 py-2.5 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+                      >
+                        {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+                        {saving ? 'Salvando...' : 'Salvar'}
+                      </button>
+                    </div>
+
+                  </form>
+                )}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
       </div>
     </Layout>
