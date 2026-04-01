@@ -260,6 +260,14 @@ export const productSchema = z.object({
     .optional(),
 });
 
+// Schema para Cargos
+export const roleSchema = z.object({
+  description: z
+    .string()
+    .min(1, 'Descrição é obrigatória')
+    .max(100, 'Descrição muito longa'),
+});
+
 // Tipos inferidos dos schemas
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type UserFormData = z.infer<typeof userSchema>;
@@ -271,3 +279,4 @@ export type RewardFormData = z.infer<typeof rewardSchema>;
 export type RewardUpdateFormData = z.infer<typeof rewardUpdateSchema>;
 export type CampaignFormData = z.infer<typeof campaignSchema>;
 export type ProductFormData = z.infer<typeof productSchema>;
+export type RoleFormData = z.infer<typeof roleSchema>;

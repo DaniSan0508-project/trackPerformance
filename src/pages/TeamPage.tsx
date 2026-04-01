@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera, LogOut, Store as StoreIcon, FileText, Eye, EyeOff } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera, LogOut, Store as StoreIcon, FileText, Eye, EyeOff, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { User as UserType } from '../types';
+import { User as UserType, Role } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { userSchema, userUpdateSchema } from '../validators/schemas';
+import { userSchema, userUpdateSchema, roleSchema } from '../validators/schemas';
 import { getFullImageUrl } from '../utils';
 import { CoinStatementModal } from '../components/Team';
 
@@ -45,11 +45,26 @@ export const TeamPage: React.FC = () => {
 
   // Modal & Form state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRolesModalOpen, setIsRolesModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
+  const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingRole, setSavingRole] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const [roleFormErrors, setRoleFormErrors] = useState<{ [key: string]: string }>({});
   const [showPassword, setShowPassword] = useState(false);
+
+  // Roles list state
+  const [rolesPage, setRolesPage] = useState(1);
+  const [rolesTotalPages, setRolesTotalPages] = useState(1);
+  const [loadingRoles, setLoadingRoles] = useState(false);
+  const [rolesSearch, setRolesSearch] = useState('');
+  const debouncedRolesSearch = useDebounce(rolesSearch, 500);
+
+  const [roleFormData, setRoleFormData] = useState({
+    description: ''
+  });
   
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -155,12 +170,34 @@ export const TeamPage: React.FC = () => {
   const fetchRoles = useCallback(async () => {
     if (!token) return;
     try {
-      const data = await api.getRoles(token);
+      const data = await api.getRoles(token, 1, ''); // Busca primeira página para o select
       setRoles(data.data);
     } catch (error) {
       console.error('Error fetching roles', error);
     }
   }, [token]);
+
+  const fetchRolesPaginated = useCallback(async (page = 1, search = '') => {
+    if (!token) return;
+    setLoadingRoles(true);
+    try {
+      const data = await api.getRoles(token, page, search);
+      setRoles(data.data);
+      setRolesPage(data.current_page || 1);
+      setRolesTotalPages(data.last_page || 1);
+    } catch (error) {
+      console.error('Error fetching roles paginated', error);
+      addToast('error', 'Erro ao carregar lista de cargos.');
+    } finally {
+      setLoadingRoles(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (isRolesModalOpen) {
+      fetchRolesPaginated(1, debouncedRolesSearch);
+    }
+  }, [debouncedRolesSearch, isRolesModalOpen, fetchRolesPaginated]);
 
   useEffect(() => {
     fetchUsers(currentPage, debouncedSearchTerm);
@@ -230,6 +267,83 @@ export const TeamPage: React.FC = () => {
       role_id: '',
       description: '',
       photo: null
+    });
+  };
+
+  const handleOpenRolesModal = () => {
+    setIsRolesModalOpen(true);
+    setRoleFormData({ description: '' });
+    setEditingRole(null);
+    setRoleFormErrors({});
+  };
+
+  const handleCloseRolesModal = () => {
+    setIsRolesModalOpen(false);
+    setEditingRole(null);
+    setRoleFormData({ description: '' });
+    setRoleFormErrors({});
+    fetchRoles(); // Atualiza a lista do select no form de usuários
+  };
+
+  const handleEditRole = (role: Role) => {
+    setEditingRole(role);
+    setRoleFormData({ description: role.description });
+    setRoleFormErrors({});
+  };
+
+  const handleSubmitRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    setRoleFormErrors({});
+
+    const result = roleSchema.safeParse(roleFormData);
+    if (!result.success) {
+      const errors = result.error.flatten().fieldErrors;
+      const formattedErrors: { [key: string]: string } = {};
+      Object.entries(errors).forEach(([key, messages]) => {
+        if (messages?.length) formattedErrors[key] = messages[0];
+      });
+      setRoleFormErrors(formattedErrors);
+      return;
+    }
+
+    setSavingRole(true);
+    try {
+      if (editingRole) {
+        await api.updateRole(token, editingRole.id, roleFormData);
+        addToast('success', 'Cargo atualizado com sucesso!');
+      } else {
+        await api.createRole(token, roleFormData);
+        addToast('success', 'Cargo criado com sucesso!');
+      }
+      setRoleFormData({ description: '' });
+      setEditingRole(null);
+      fetchRolesPaginated(rolesPage, rolesSearch);
+    } catch (error: any) {
+      addToast('error', error.message || 'Erro ao salvar cargo.');
+    } finally {
+      setSavingRole(false);
+    }
+  };
+
+  const executeDeleteRole = async (id: number) => {
+    if (!token) return;
+    try {
+      await api.deleteRole(token, id);
+      addToast('success', 'Cargo excluído com sucesso!');
+      fetchRolesPaginated(rolesPage, rolesSearch);
+    } catch (error: any) {
+      addToast('error', error.message || 'Erro ao excluir cargo. Verifique se existem usuários vinculados.');
+    }
+  };
+
+  const handleDeleteRole = (role: Role) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Excluir Cargo',
+      message: `Tem certeza que deseja excluir o cargo "${role.description}"?`,
+      onConfirm: async () => await executeDeleteRole(role.id),
+      isLoading: false,
     });
   };
 
@@ -764,21 +878,33 @@ export const TeamPage: React.FC = () => {
                       </select>
                     </div>
 
-                    <div>
+                    <div className="col-span-2">
                       <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Cargo (Opcional)</label>
-                      <select
-                        value={formData.role_id}
-                        onChange={(e) => setFormData({ ...formData, role_id: e.target.value ? Number(e.target.value) : '' })}
-                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                      >
-                        <option value="">Selecione um cargo</option>
-                        {roles.map(role => (
-                          <option key={role.id} value={role.id}>{role.description}</option>
-                        ))}
-                      </select>
+                      <div className="flex gap-2">
+                        <select
+                          value={formData.role_id}
+                          onChange={(e) => setFormData({ ...formData, role_id: e.target.value ? Number(e.target.value) : '' })}
+                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                        >
+                          <option value="">Selecione um cargo</option>
+                          {roles.map(role => (
+                            <option key={role.id} value={role.id}>{role.description}</option>
+                          ))}
+                        </select>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={handleOpenRolesModal}
+                            className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 transition-colors flex-shrink-0"
+                            title="Gerenciar Cargos"
+                          >
+                            <Settings size={20} />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
-                    <div>
+                    <div className="col-span-2">
                       <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Descrição (Opcional)</label>
                       <textarea
                         value={formData.description}
@@ -813,6 +939,139 @@ export const TeamPage: React.FC = () => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Modal de Gestão de Cargos */}
+      <AnimatePresence>
+        {isRolesModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-zinc-200 dark:border-zinc-800"
+            >
+              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Gerenciar Cargos</h2>
+                <button onClick={handleCloseRolesModal} className="text-zinc-400 hover:text-zinc-600 transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6 overflow-y-auto">
+                {/* Form para novo cargo */}
+                <form onSubmit={handleSubmitRole} className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 space-y-4">
+                  <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
+                    {editingRole ? 'Editar Cargo' : 'Novo Cargo'}
+                  </h3>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={roleFormData.description}
+                        onChange={(e) => setRoleFormData({ description: e.target.value })}
+                        className={`w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
+                          roleFormErrors.description ? 'border-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                        }`}
+                        placeholder="Descrição do cargo (ex: Gerente)"
+                      />
+                      {roleFormErrors.description && <p className="mt-1 text-xs text-red-500">{roleFormErrors.description}</p>}
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={savingRole}
+                      className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-sm shadow-emerald-500/20 disabled:opacity-50"
+                    >
+                      {savingRole ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                      {editingRole ? 'Salvar' : 'Adicionar'}
+                    </button>
+                    {editingRole && (
+                      <button
+                        type="button"
+                        onClick={() => { setEditingRole(null); setRoleFormData({ description: '' }); }}
+                        className="px-4 py-2.5 bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl font-medium hover:bg-zinc-300 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
+                </form>
+
+                {/* Lista de cargos */}
+                <div className="space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                    <input
+                      type="text"
+                      value={rolesSearch}
+                      onChange={(e) => setRolesSearch(e.target.value)}
+                      placeholder="Buscar cargos..."
+                      className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800"
+                    />
+                  </div>
+
+                  {loadingRoles ? (
+                    <div className="flex justify-center py-8"><Loader2 className="animate-spin text-emerald-500" /></div>
+                  ) : (
+                    <div className="border border-zinc-100 dark:border-zinc-800 rounded-xl overflow-hidden">
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
+                          <tr>
+                            <th className="px-4 py-3 font-bold">Descrição</th>
+                            <th className="px-4 py-3 text-right">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                          {roles.map((role) => (
+                            <tr key={role.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30">
+                              <td className="px-4 py-3 font-medium text-zinc-900 dark:text-white">{role.description}</td>
+                              <td className="px-4 py-3 text-right flex justify-end gap-1">
+                                <button
+                                  onClick={() => handleEditRole(role)}
+                                  className="p-1.5 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-all"
+                                >
+                                  <Edit2 size={16} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteRole(role)}
+                                  className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                          {roles.length === 0 && (
+                            <tr><td colSpan={2} className="px-4 py-8 text-center text-zinc-500 italic">Nenhum cargo encontrado.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Paginação de cargos */}
+                  {rolesTotalPages > 1 && (
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="text-xs text-zinc-500">Página {rolesPage} de {rolesTotalPages}</span>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => fetchRolesPaginated(rolesPage - 1, rolesSearch)}
+                          disabled={rolesPage === 1}
+                          className="p-1.5 border rounded-lg disabled:opacity-50"
+                        ><ChevronLeft size={16} /></button>
+                        <button
+                          onClick={() => fetchRolesPaginated(rolesPage + 1, rolesSearch)}
+                          disabled={rolesPage === rolesTotalPages}
+                          className="p-1.5 border rounded-lg disabled:opacity-50"
+                        ><ChevronRight size={16} /></button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Modal de Extrato de Moedas */}
       <CoinStatementModal
