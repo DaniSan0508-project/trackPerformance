@@ -479,7 +479,7 @@ export const PostsPage: React.FC = () => {
             </button>
             <button
               onClick={() => setCreatePostModal(true)}
-              className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
+              className="bg-primary-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-primary-700 shadow-sm transition-all flex items-center gap-2"
             >
               <Plus size={18} />
               Novo Post
@@ -494,7 +494,7 @@ export const PostsPage: React.FC = () => {
             <input 
               type="text" 
               placeholder="Buscar por nome do usuário..." 
-              className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+              className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
               value={filterUserName}
               onChange={(e) => setFilterUserName(e.target.value)}
             />
@@ -502,14 +502,14 @@ export const PostsPage: React.FC = () => {
           <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
             <input 
               type="date" 
-              className="w-full md:w-40 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+              className="w-full md:w-40 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
               value={filterStartDate}
               onChange={(e) => setFilterStartDate(e.target.value)}
               title="Data início"
             />
             <input 
               type="date" 
-              className="w-full md:w-40 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+              className="w-full md:w-40 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
               value={filterEndDate}
               onChange={(e) => setFilterEndDate(e.target.value)}
               title="Data fim"
@@ -533,7 +533,7 @@ export const PostsPage: React.FC = () => {
         {/* Posts List */}
         {loading && posts.length === 0 ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+            <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
           </div>
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
@@ -561,7 +561,7 @@ export const PostsPage: React.FC = () => {
                   {/* Header */}
                   <div className="p-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gradient-to-tr from-emerald-400 via-green-500 to-teal-600 p-[2px] rounded-full flex-shrink-0">
+                      <div className="w-8 h-8 bg-gradient-to-tr from-primary-400 via-primary-500 to-primary-600 p-[2px] rounded-full flex-shrink-0">
                         <div className="w-full h-full bg-white dark:bg-zinc-900 rounded-full p-[2px]">
                           {post.user?.profile_image_url ? (
                             <img src={getFullImageUrl(post.user.profile_image_url) || ''} alt={post.user.name} className="w-full h-full rounded-full object-cover" />
@@ -675,7 +675,7 @@ export const PostsPage: React.FC = () => {
                         className="text-left w-full group block"
                       >
                         {post.title && (
-                          <h4 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1 group-hover:text-emerald-700 dark:group-hover:text-emerald-500 transition-colors">
+                          <h4 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1 group-hover:text-primary-700 dark:group-hover:text-primary-500 transition-colors">
                             {post.title}
                           </h4>
                         )}
@@ -701,7 +701,7 @@ export const PostsPage: React.FC = () => {
                       
                       <button 
                         onClick={() => setCommentsModalPost(post)}
-                        className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-500 transition-colors group"
+                        className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 hover:text-primary-600 dark:hover:text-primary-500 transition-colors group"
                         title="Comentários"
                       >
                         <MessageSquare size={18} className="group-hover:scale-110 transition-transform" />
@@ -1017,7 +1017,7 @@ export const PostsPage: React.FC = () => {
                       required
                       value={editTitle}
                       onChange={(e) => setEditTitle(e.target.value)}
-                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
                       placeholder="Título do post"
                     />
                   </div>
@@ -1030,7 +1030,7 @@ export const PostsPage: React.FC = () => {
                       required
                       value={editContent}
                       onChange={(e) => setEditContent(e.target.value)}
-                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[150px] resize-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[150px] resize-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
                       placeholder="O que você está pensando?"
                     />
                   </div>
@@ -1100,7 +1100,7 @@ export const PostsPage: React.FC = () => {
                               <div className="flex text-sm text-zinc-600 dark:text-zinc-400 justify-center">
                                 <label
                                   htmlFor="edit-file-upload"
-                                  className="relative cursor-pointer bg-white dark:bg-zinc-900 rounded-md font-medium text-emerald-600 hover:text-emerald-500 focus-within:outline-none"
+                                  className="relative cursor-pointer bg-white dark:bg-zinc-900 rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none"
                                 >
                                   <span>Upload um arquivo</span>
                                   <input
@@ -1175,7 +1175,7 @@ export const PostsPage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isUpdating || !editContent.trim() || editMediaType === 'none'}
-                      className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       title={editMediaType === 'none' ? 'Selecione uma imagem ou vídeo do YouTube' : ''}
                     >
                       {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <Edit size={18} />}
@@ -1215,7 +1215,7 @@ export const PostsPage: React.FC = () => {
                       required
                       value={newPostTitle}
                       onChange={(e) => setNewPostTitle(e.target.value)}
-                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
                       placeholder="Título do post"
                     />
                   </div>
@@ -1228,7 +1228,7 @@ export const PostsPage: React.FC = () => {
                       required
                       value={newPostContent}
                       onChange={(e) => setNewPostContent(e.target.value)}
-                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[150px] resize-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[150px] resize-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
                       placeholder="O que você está pensando?"
                     />
                   </div>
@@ -1251,7 +1251,7 @@ export const PostsPage: React.FC = () => {
                         }}
                         className={`flex-1 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
                           mediaType === 'image'
-                            ? 'bg-emerald-600 text-white'
+                            ? 'bg-primary-600 text-white'
                             : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                         }`}
                       >
@@ -1313,7 +1313,7 @@ export const PostsPage: React.FC = () => {
                               <div className="flex text-sm text-zinc-600 dark:text-zinc-400 justify-center">
                                 <label
                                   htmlFor="file-upload"
-                                  className="relative cursor-pointer bg-white dark:bg-zinc-900 rounded-md font-medium text-emerald-600 hover:text-emerald-500 focus-within:outline-none"
+                                  className="relative cursor-pointer bg-white dark:bg-zinc-900 rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none"
                                 >
                                   <span>Upload um arquivo</span>
                                   <input
@@ -1388,7 +1388,7 @@ export const PostsPage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isCreating || !newPostContent.trim() || (mediaType === 'none')}
-                      className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       title={mediaType === 'none' ? 'Selecione uma imagem ou vídeo do YouTube' : ''}
                     >
                       {isCreating ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}

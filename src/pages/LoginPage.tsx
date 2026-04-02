@@ -69,7 +69,7 @@ export const LoginPage: React.FC = () => {
         className="sm:mx-auto sm:w-full sm:max-w-md relative z-10"
       >
         <div className="flex justify-center">
-          <div className="bg-emerald-600 p-3 rounded-2xl shadow-lg">
+          <div className="bg-primary-600 p-3 rounded-2xl shadow-lg">
             <LogIn className="w-8 h-8 text-white" />
           </div>
         </div>
@@ -105,10 +105,10 @@ export const LoginPage: React.FC = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className={`block w-full pl-10 pr-3 py-2 border rounded-xl leading-5 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-emerald-500 sm:text-sm transition-all ${
+                  className={`block w-full pl-10 pr-3 py-2 border rounded-xl leading-5 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-primary-500 sm:text-sm transition-all ${
                     validationErrors.email
                       ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                      : 'border-zinc-300 dark:border-zinc-700 focus:ring-emerald-500'
+                      : 'border-zinc-300 dark:border-zinc-700 focus:ring-primary-500'
                   }`}
                   placeholder="admin@teste.com"
                 />
@@ -134,10 +134,10 @@ export const LoginPage: React.FC = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={`block w-full pl-10 pr-3 py-2 border rounded-xl leading-5 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-emerald-500 sm:text-sm transition-all ${
+                  className={`block w-full pl-10 pr-3 py-2 border rounded-xl leading-5 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-primary-500 sm:text-sm transition-all ${
                     validationErrors.password
                       ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                      : 'border-zinc-300 dark:border-zinc-700 focus:ring-emerald-500'
+                      : 'border-zinc-300 dark:border-zinc-700 focus:ring-primary-500'
                   }`}
                   placeholder="••••••••"
                 />
@@ -156,7 +156,7 @@ export const LoginPage: React.FC = () => {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-zinc-300 dark:border-zinc-700 rounded cursor-pointer bg-white dark:bg-zinc-900"
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-zinc-300 dark:border-zinc-700 rounded cursor-pointer bg-white dark:bg-zinc-900"
                   />
                   <label htmlFor="remember-me" className="ml-2 block text-sm text-zinc-900 dark:text-zinc-300 cursor-pointer">
                     Manter-me conectado
@@ -164,7 +164,7 @@ export const LoginPage: React.FC = () => {
                 </div>
 
                 <div className="text-sm">
-                  <a href="#" className="font-medium text-emerald-600 hover:text-emerald-500 dark:text-emerald-500 dark:hover:text-emerald-400">
+                  <a href="#" className="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-500 dark:hover:text-primary-400">
                     Esqueceu a senha?
                   </a>
                 </div>
@@ -192,7 +192,7 @@ export const LoginPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {isLoading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />

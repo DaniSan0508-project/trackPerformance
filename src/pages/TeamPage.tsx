@@ -495,7 +495,7 @@ export const TeamPage: React.FC = () => {
 
   const getUserTypeColor = (typeId: number) => {
     return typeId === 1
-      ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+      ? 'bg-primary-100 text-primary-800 border-primary-200'
       : 'bg-teal-50 text-teal-700 border-teal-200';
   };
 
@@ -540,7 +540,7 @@ export const TeamPage: React.FC = () => {
             {isAdmin && (
               <button 
                 onClick={() => handleOpenModal()}
-                className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
+                className="bg-primary-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-primary-700 shadow-sm transition-all flex items-center gap-2"
               >
                 <Plus size={18} />
                 Novo Usuário
@@ -556,7 +556,7 @@ export const TeamPage: React.FC = () => {
             <input 
               type="text" 
               placeholder="Buscar por nome..." 
-              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -566,7 +566,7 @@ export const TeamPage: React.FC = () => {
         {/* Users List */}
         {loading && users.length === 0 ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+            <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
           </div>
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
@@ -587,7 +587,7 @@ export const TeamPage: React.FC = () => {
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3 flex-1">
-                      <div className="w-14 h-14 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 overflow-hidden border-2 border-emerald-200 dark:border-emerald-800 flex-shrink-0">
+                      <div className="w-14 h-14 bg-gradient-to-br from-primary-100 to-teal-100 dark:from-primary-900/30 dark:to-teal-900/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 overflow-hidden border-2 border-primary-200 dark:border-primary-800 flex-shrink-0">
                         {user.profile_image_url ? (
                           <img src={getFullImageUrl(user.profile_image_url) || ''} alt={user.name} className="w-full h-full object-cover" />
                         ) : (
@@ -622,7 +622,7 @@ export const TeamPage: React.FC = () => {
                       {(isAdmin || currentUser?.id === user.id) && (
                         <button
                           onClick={() => handleOpenModal(user)}
-                          className="p-2 text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                          className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
                           title="Editar"
                         >
                           <Edit2 size={16} />
@@ -766,7 +766,7 @@ export const TeamPage: React.FC = () => {
                           <User size={40} className="text-zinc-400" />
                         )}
                       </div>
-                      <label htmlFor="photo-upload" className="absolute bottom-0 right-0 bg-emerald-600 text-white p-1.5 rounded-full shadow-md cursor-pointer hover:bg-emerald-700 transition-colors">
+                      <label htmlFor="photo-upload" className="absolute bottom-0 right-0 bg-primary-600 text-white p-1.5 rounded-full shadow-md cursor-pointer hover:bg-primary-700 transition-colors">
                         <Camera size={16} />
                         <input 
                           id="photo-upload" 
@@ -789,7 +789,7 @@ export const TeamPage: React.FC = () => {
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                         formErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                       }`}
                       placeholder="Nome completo"
@@ -803,7 +803,7 @@ export const TeamPage: React.FC = () => {
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                         formErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                       }`}
                       placeholder="email@exemplo.com"
@@ -817,7 +817,7 @@ export const TeamPage: React.FC = () => {
                       type="text"
                       value={formData.phone}
                       onChange={handlePhoneChange}
-                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                         formErrors.phone ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                       }`}
                       placeholder="(00) 00000-0000"
@@ -834,7 +834,7 @@ export const TeamPage: React.FC = () => {
                         type={showPassword ? 'text' : 'password'}
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className={`w-full p-2.5 pr-10 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                        className={`w-full p-2.5 pr-10 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                           formErrors.password ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                         }`}
                         placeholder="******"
@@ -858,7 +858,7 @@ export const TeamPage: React.FC = () => {
                         value={formData.user_type_id}
                         onChange={(e) => setFormData({ ...formData, user_type_id: Number(e.target.value) })}
                         disabled={!isAdmin}
-                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:bg-zinc-100 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500"
+                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:bg-zinc-100 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500"
                       >
                         <option value={2}>Colaborador</option>
                         <option value={1}>Administrador</option>
@@ -871,7 +871,7 @@ export const TeamPage: React.FC = () => {
                         value={formData.store_id}
                         onChange={(e) => setFormData({ ...formData, store_id: e.target.value ? Number(e.target.value) : '' })}
                         disabled={!isAdmin}
-                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:bg-zinc-100 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500"
+                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:bg-zinc-100 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500"
                       >
                         <option value="">Selecione uma loja</option>
                         {stores.map(store => (
@@ -886,7 +886,7 @@ export const TeamPage: React.FC = () => {
                         <select
                           value={formData.role_id}
                           onChange={(e) => setFormData({ ...formData, role_id: e.target.value ? Number(e.target.value) : '' })}
-                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                         >
                           <option value="">Selecione um cargo</option>
                           {roles.map(role => (
@@ -913,7 +913,7 @@ export const TeamPage: React.FC = () => {
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                         placeholder="Ex: Gerente da loja centro..."
                         rows={3}
-                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white resize-none"
+                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white resize-none"
                       />
                     </div>
                   </div>
@@ -929,7 +929,7 @@ export const TeamPage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={saving}
-                      className="flex-1 px-4 py-2.5 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+                      className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
                     >
                       {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
                       {saving ? 'Salvando...' : 'Salvar'}
@@ -971,7 +971,7 @@ export const TeamPage: React.FC = () => {
                         type="text"
                         value={roleFormData.description}
                         onChange={(e) => setRoleFormData({ description: e.target.value })}
-                        className={`w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
+                        className={`w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
                           roleFormErrors.description ? 'border-red-500' : 'border-zinc-300 dark:border-zinc-600'
                         }`}
                         placeholder="Descrição do cargo (ex: Gerente)"
@@ -981,7 +981,7 @@ export const TeamPage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={savingRole}
-                      className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-sm shadow-emerald-500/20 disabled:opacity-50"
+                      className="px-4 py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors flex items-center gap-2 shadow-sm shadow-primary-500/20 disabled:opacity-50"
                     >
                       {savingRole ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                       {editingRole ? 'Salvar' : 'Adicionar'}
@@ -1007,12 +1007,12 @@ export const TeamPage: React.FC = () => {
                       value={rolesSearch}
                       onChange={(e) => setRolesSearch(e.target.value)}
                       placeholder="Buscar cargos..."
-                      className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800"
+                      className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-zinc-800"
                     />
                   </div>
 
                   {loadingRoles ? (
-                    <div className="flex justify-center py-8"><Loader2 className="animate-spin text-emerald-500" /></div>
+                    <div className="flex justify-center py-8"><Loader2 className="animate-spin text-primary-500" /></div>
                   ) : (
                     <div className="border border-zinc-100 dark:border-zinc-800 rounded-xl overflow-hidden">
                       <table className="w-full text-sm text-left">
@@ -1029,7 +1029,7 @@ export const TeamPage: React.FC = () => {
                               <td className="px-4 py-3 text-right flex justify-end gap-1">
                                 <button
                                   onClick={() => handleEditRole(role)}
-                                  className="p-1.5 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-all"
+                                  className="p-1.5 text-zinc-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-all"
                                 >
                                   <Edit2 size={16} />
                                 </button>

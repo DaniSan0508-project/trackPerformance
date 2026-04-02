@@ -677,7 +677,7 @@ export const SurveysPage: React.FC = () => {
             </button>
             <button
               onClick={() => handleOpenModal()}
-              className="flex items-center gap-2 bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all"
+              className="flex items-center gap-2 bg-primary-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-primary-700 shadow-sm transition-all"
             >
               <Plus size={16} />
               Nova Pesquisa
@@ -694,7 +694,7 @@ export const SurveysPage: React.FC = () => {
               <input
                 type="text"
                 placeholder="Buscar por título..."
-                className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+                className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -704,7 +704,7 @@ export const SurveysPage: React.FC = () => {
             <select
               value={publishedFilter}
               onChange={(e) => setPublishedFilter(e.target.value as 'all' | 'true' | 'false')}
-              className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+              className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
             >
               <option value="all">Todas publicações</option>
               <option value="true">Publicadas</option>
@@ -716,7 +716,7 @@ export const SurveysPage: React.FC = () => {
         {/* Lista de Pesquisas */}
         {loading ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+            <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
           </div>
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
@@ -751,8 +751,8 @@ export const SurveysPage: React.FC = () => {
                   >
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex items-start gap-4 flex-1">
-                        <div className="bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-xl">
-                          <FileText className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                        <div className="bg-primary-100 dark:bg-primary-900/30 p-3 rounded-xl">
+                          <FileText className="w-6 h-6 text-primary-600 dark:text-primary-400" />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -777,7 +777,7 @@ export const SurveysPage: React.FC = () => {
                               </span>
                             )}
                             {survey.status === 'active' && (
-                              <span className="px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                              <span className="px-2 py-1 rounded-full text-xs font-bold bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 flex items-center gap-1">
                                 <Check size={12} />
                                 Ativa
                               </span>
@@ -799,7 +799,7 @@ export const SurveysPage: React.FC = () => {
                               </span>
                             </div>
                             <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                              <FileText size={16} className="text-emerald-500" />
+                              <FileText size={16} className="text-primary-500" />
                               <span className="text-zinc-500 dark:text-zinc-500">Perguntas:</span>
                               <span className="font-medium text-zinc-900 dark:text-white">{survey.questions_count}</span>
                             </div>
@@ -828,7 +828,7 @@ export const SurveysPage: React.FC = () => {
                         </button>
                         <button
                           onClick={() => handleOpenModal(survey)}
-                          className="p-2 text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                          className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
                         >
                           <Edit2 size={18} />
                         </button>
@@ -862,7 +862,7 @@ export const SurveysPage: React.FC = () => {
                     <ChevronLeft size={16} />
                     Anterior
                   </button>
-                  <span className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium">
+                  <span className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium">
                     {currentPage} de {totalPages}
                   </span>
                   <button
@@ -894,7 +894,7 @@ export const SurveysPage: React.FC = () => {
               <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
                 <div>
                   <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                    <FileText className="w-6 h-6 text-emerald-500" />
+                    <FileText className="w-6 h-6 text-primary-500" />
                     {editingSurvey ? 'Editar Pesquisa' : 'Nova Pesquisa'}
                   </h2>
                   <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
@@ -912,7 +912,7 @@ export const SurveysPage: React.FC = () => {
                   onClick={() => setActiveTab('basic')}
                   className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                     activeTab === 'basic'
-                      ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
+                      ? 'bg-white dark:bg-zinc-900 text-primary-600 dark:text-primary-400 border-b-2 border-primary-500'
                       : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                   }`}
                 >
@@ -922,7 +922,7 @@ export const SurveysPage: React.FC = () => {
                   onClick={() => setActiveTab('users')}
                   className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                     activeTab === 'users'
-                      ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
+                      ? 'bg-white dark:bg-zinc-900 text-primary-600 dark:text-primary-400 border-b-2 border-primary-500'
                       : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                   }`}
                 >
@@ -932,7 +932,7 @@ export const SurveysPage: React.FC = () => {
                   onClick={() => setActiveTab('questions')}
                   className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                     activeTab === 'questions'
-                      ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
+                      ? 'bg-white dark:bg-zinc-900 text-primary-600 dark:text-primary-400 border-b-2 border-primary-500'
                       : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                   }`}
                 >
@@ -944,7 +944,7 @@ export const SurveysPage: React.FC = () => {
               <div className="flex-1 overflow-y-auto p-6 relative min-h-0">
                 {loadingDetail && (
                   <div className="absolute inset-0 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10 flex items-center justify-center">
-                    <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
+                    <Loader2 className="w-10 h-10 text-primary-600 animate-spin" />
                   </div>
                 )}
 
@@ -971,7 +971,7 @@ export const SurveysPage: React.FC = () => {
                           value={formData.title}
                           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                           placeholder="Ex: Pesquisa de Clima Organizacional"
-                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
+                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
                         />
                       </div>
                       <div>
@@ -989,7 +989,7 @@ export const SurveysPage: React.FC = () => {
                               is_published: newStatus === 'active'
                             });
                           }}
-                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
+                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
                         >
                           <option value="" disabled>Selecione a situação</option>
                           {(!editingSurvey || (editingSurvey.status !== 'active' && editingSurvey.status !== 'closed')) && (
@@ -1050,13 +1050,13 @@ export const SurveysPage: React.FC = () => {
                           }}
                           className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-3 ${
                             formData.survey_type === 'text'
-                              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-md'
+                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-md'
                               : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
                           } ${isReadOnly ? 'cursor-not-allowed' : ''} ${isReadOnly && formData.survey_type !== 'text' ? 'opacity-40' : ''}`}
                         >
                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                             formData.survey_type === 'text'
-                              ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                              ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
                               : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
                           }`}>
                             <FileText size={24} />
@@ -1068,7 +1068,7 @@ export const SurveysPage: React.FC = () => {
                         </button>
                       </div>
                       {formData.survey_type ? (
-                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
+                        <p className="text-xs text-primary-600 dark:text-primary-400 mt-2 flex items-center gap-1">
                           <CheckCircle size={12} />
                           Tipo selecionado: {formData.survey_type === 'choice' ? 'Múltipla Escolha' : 'Texto Aberto'}
                         </p>
@@ -1090,7 +1090,7 @@ export const SurveysPage: React.FC = () => {
                           disabled={isReadOnly}
                           value={formData.starts_at}
                           onChange={(e) => setFormData({ ...formData, starts_at: e.target.value })}
-                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
+                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
                         />
                       </div>
                       <div>
@@ -1102,7 +1102,7 @@ export const SurveysPage: React.FC = () => {
                           disabled={isReadOnly}
                           value={formData.ends_at}
                           onChange={(e) => setFormData({ ...formData, ends_at: e.target.value })}
-                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
+                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
                         />
                       </div>
                     </div>
@@ -1114,7 +1114,7 @@ export const SurveysPage: React.FC = () => {
                           disabled={isReadOnly}
                           checked={formData.is_anonymous}
                           onChange={(e) => setFormData({ ...formData, is_anonymous: e.target.checked })}
-                          className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 disabled:opacity-50"
+                          className="w-5 h-5 text-primary-600 rounded focus:ring-primary-500 disabled:opacity-50"
                         />
                         <div>
                           <p className="font-medium text-zinc-900 dark:text-white">Pesquisa Anônima</p>
@@ -1128,7 +1128,7 @@ export const SurveysPage: React.FC = () => {
                           disabled={!canPublish || isReadOnly}
                           checked={formData.is_published}
                           onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })}
-                          className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 disabled:opacity-50"
+                          className="w-5 h-5 text-primary-600 rounded focus:ring-primary-500 disabled:opacity-50"
                         />
                         <div>
                           <p className="font-medium text-zinc-900 dark:text-white">Publicar Imediatamente</p>
@@ -1171,7 +1171,7 @@ export const SurveysPage: React.FC = () => {
                           placeholder={`Buscar por ${userFilterType === 'name' ? 'nome' : 'e-mail'}...`}
                           value={userSearch}
                           onChange={(e) => setUserSearch(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+                          className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
                         />
                       </div>
                     </div>
@@ -1188,7 +1188,7 @@ export const SurveysPage: React.FC = () => {
                           className={`px-4 py-2 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm border ${
                             selectedUsers.length > 0
                               ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
-                              : 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-700 shadow-emerald-500/20'
+                              : 'bg-primary-600 text-white border-primary-500 hover:bg-primary-700 shadow-primary-500/20'
                           } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                           {loadingSelectAllUsers ? (
@@ -1219,8 +1219,8 @@ export const SurveysPage: React.FC = () => {
                                 disabled={selectByRoleLoading !== null || isReadOnly}
                                 className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
                                   areAllUsersSelectedByRole(role)
-                                    ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
-                                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-emerald-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
+                                    ? 'bg-primary-100 text-primary-700 border-primary-300 dark:bg-primary-900/40 dark:text-primary-300 dark:border-primary-700'
+                                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-primary-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
                                 } disabled:opacity-50 disabled:cursor-not-allowed`}
                               >
                                 {selectByRoleLoading === role ? (
@@ -1239,8 +1239,8 @@ export const SurveysPage: React.FC = () => {
                     </div>
 
                     {/* Contador de selecionados */}
-                    <div className="mb-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl">
-                      <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                    <div className="mb-3 p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl">
+                      <p className="text-sm font-semibold text-primary-700 dark:text-primary-400">
                         👥 {selectedUsers.length} usuário(s) selecionado(s)
                       </p>
                     </div>
@@ -1248,7 +1248,7 @@ export const SurveysPage: React.FC = () => {
                     {/* Grid de Cards de Usuários */}
                     {users.length === 0 ? (
                       <div className="flex justify-center py-12">
-                        <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                        <Loader2 className="w-6 h-6 text-primary-600 animate-spin" />
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pr-2">
@@ -1262,13 +1262,13 @@ export const SurveysPage: React.FC = () => {
                               animate={{ opacity: 1, scale: 1 }}
                               className={`p-4 rounded-xl border-2 transition-all duration-200 text-left group ${
                                 isSelected
-                                  ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 shadow-md'
-                                  : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm'
+                                  ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 shadow-md'
+                                  : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-sm'
                               } ${isReadOnly ? 'cursor-default' : ''}`}
                             >
                               <div className="flex items-start gap-3">
                                 {/* Avatar */}
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 border-2 border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 overflow-hidden flex-shrink-0">
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-100 to-teal-100 dark:from-primary-900/30 dark:to-teal-900/30 border-2 border-primary-200 dark:border-primary-800 flex items-center justify-center text-primary-600 dark:text-primary-400 overflow-hidden flex-shrink-0">
                                   {user.profile_image_url ? (
                                     <img
                                       src={user.profile_image_url}
@@ -1288,7 +1288,7 @@ export const SurveysPage: React.FC = () => {
                                     {user.name}
                                   </p>
                                   {user.role && (
-                                    <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-0.5">
+                                    <p className="text-[10px] font-semibold text-primary-600 dark:text-primary-400 uppercase tracking-wider mb-0.5">
                                       {user.role}
                                     </p>
                                   )}
@@ -1305,8 +1305,8 @@ export const SurveysPage: React.FC = () => {
                                 {/* Check de selecionado */}
                                 <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                                   isSelected
-                                    ? 'bg-emerald-500 border-emerald-500'
-                                    : 'border-zinc-300 dark:border-zinc-600 group-hover:border-emerald-400'
+                                    ? 'bg-primary-500 border-primary-500'
+                                    : 'border-zinc-300 dark:border-zinc-600 group-hover:border-primary-400'
                                 }`}>
                                   {isSelected && (
                                     <Check size={14} className="text-white" />
@@ -1318,7 +1318,7 @@ export const SurveysPage: React.FC = () => {
                               <div className="mt-3 flex items-center gap-2 flex-wrap">
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
                                   user.user_type_id === 1
-                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800'
+                                    ? 'bg-primary-100 text-primary-800 border-primary-200 dark:bg-primary-900/30 dark:text-primary-400 dark:border-primary-800'
                                     : 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/20 dark:text-teal-400 dark:border-teal-800'
                                 }`}>
                                   <Shield size={10} className="mr-1" />
@@ -1369,13 +1369,13 @@ export const SurveysPage: React.FC = () => {
                     <div className={`rounded-xl p-4 border ${
                       formData.survey_type === 'choice'
                         ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800'
-                        : 'bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-emerald-200 dark:border-emerald-800'
+                        : 'bg-gradient-to-r from-primary-50 to-teal-50 dark:from-primary-900/20 dark:to-primary-900/20 border-primary-200 dark:border-primary-800'
                     }`}>
                       <div className="flex items-start gap-3">
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
                           formData.survey_type === 'choice'
                             ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                            : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
                         }`}>
                           {formData.survey_type === 'choice' ? <BarChart3 size={20} /> : <FileText size={20} />}
                         </div>
@@ -1404,7 +1404,7 @@ export const SurveysPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={addQuestion}
-                              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-medium"
+                              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all font-medium"
                             >
                               <PlusCircle size={18} />
                               Adicionar Primeira Questão
@@ -1421,7 +1421,7 @@ export const SurveysPage: React.FC = () => {
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             className={`border-2 transition-all duration-500 rounded-xl p-5 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md ${
                               qIndex === questions.length - 1 && !editingSurvey
-                                ? 'border-emerald-500/50 dark:border-emerald-500/30 ring-4 ring-emerald-500/10'
+                                ? 'border-primary-500/50 dark:border-primary-500/30 ring-4 ring-primary-500/10'
                                 : 'border-zinc-200 dark:border-zinc-700'
                             }`}
                           >
@@ -1431,7 +1431,7 @@ export const SurveysPage: React.FC = () => {
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                                   formData.survey_type === 'choice'
                                     ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                                    : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                                    : 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
                                 }`}>
                                   {formData.survey_type === 'choice' ? <BarChart3 size={16} /> : <FileText size={16} />}
                                 </div>
@@ -1482,7 +1482,7 @@ export const SurveysPage: React.FC = () => {
                                   onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
                                   placeholder="Digite sua pergunta aqui..."
                                   rows={2}
-                                  className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white resize-none disabled:opacity-60"
+                                  className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white resize-none disabled:opacity-60"
                                 />
                               </div>
 
@@ -1509,7 +1509,7 @@ export const SurveysPage: React.FC = () => {
                                         value={option.option_text}
                                         onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
                                         placeholder={`Opção ${oIndex + 1}`}
-                                        className="flex-1 px-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm disabled:opacity-60"
+                                        className="flex-1 px-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm disabled:opacity-60"
                                       />
                                       {!isReadOnly && (
                                         <button
@@ -1526,7 +1526,7 @@ export const SurveysPage: React.FC = () => {
                                   {!isReadOnly && (
                                     <button
                                       onClick={() => addOption(qIndex)}
-                                      className="w-full py-2.5 border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-500 dark:text-zinc-400 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center justify-center gap-2 text-sm font-medium"
+                                      className="w-full py-2.5 border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-500 dark:text-zinc-400 hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-all flex items-center justify-center gap-2 text-sm font-medium"
                                     >
                                       <Plus size={16} />
                                       Adicionar Opção
@@ -1537,8 +1537,8 @@ export const SurveysPage: React.FC = () => {
 
                               {/* Info para texto aberto */}
                               {formData.survey_type === 'text' && (
-                                <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-3">
-                                  <p className="text-sm text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                                <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl p-3">
+                                  <p className="text-sm text-primary-700 dark:text-primary-400 flex items-center gap-2">
                                     <CheckCircle size={16} />
                                     Os participantes poderão digitar uma resposta livre para esta questão
                                   </p>
@@ -1553,7 +1553,7 @@ export const SurveysPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={addQuestion}
-                            className="w-full border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-xl p-4 text-zinc-500 dark:text-zinc-400 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center justify-center gap-2 font-medium bg-zinc-50/30 dark:bg-zinc-800/10"
+                            className="w-full border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-xl p-4 text-zinc-500 dark:text-zinc-400 hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-all flex items-center justify-center gap-2 font-medium bg-zinc-50/30 dark:bg-zinc-800/10"
                           >
                             <PlusCircle size={20} />
                             Adicionar Nova Questão
@@ -1604,7 +1604,7 @@ export const SurveysPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={addQuestion}
-                      className="px-6 py-2.5 border border-emerald-500 text-emerald-600 dark:text-emerald-400 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all font-bold flex items-center gap-2"
+                      className="px-6 py-2.5 border border-primary-500 text-primary-600 dark:text-primary-400 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all font-bold flex items-center gap-2"
                     >
                       <PlusCircle size={18} />
                       Nova Questão
@@ -1648,7 +1648,7 @@ export const SurveysPage: React.FC = () => {
                       type="button"
                       onClick={handleSubmit}
                       disabled={saving || (activeTab === 'questions' && questions.length === 0)}
-                      className="px-8 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+                      className="px-8 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold flex items-center gap-2 shadow-lg shadow-primary-500/20"
                     >
                       {saving ? (
                         <>
@@ -1721,7 +1721,7 @@ export const SurveysPage: React.FC = () => {
               <div className="p-6">
                 {resultsModal.loading && (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 size={32} className="animate-spin text-emerald-600" />
+                    <Loader2 size={32} className="animate-spin text-primary-600" />
                   </div>
                 )}
 
@@ -1735,7 +1735,7 @@ export const SurveysPage: React.FC = () => {
                       resultsModal.results.questions.map((question, index) => (
                         <div key={question.question_id} className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-4">
                           <div className="flex items-start gap-3 mb-4">
-                            <span className="flex-shrink-0 w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-lg flex items-center justify-center font-bold text-sm">
+                            <span className="flex-shrink-0 w-8 h-8 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-lg flex items-center justify-center font-bold text-sm">
                               {index + 1}
                             </span>
                             <div className="flex-1">
@@ -1791,7 +1791,7 @@ export const SurveysPage: React.FC = () => {
                                     <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-3 overflow-hidden">
                                       <div
                                         className={`h-3 rounded-full transition-all duration-500 ${
-                                          percentage > 0 ? 'bg-emerald-600' : 'bg-zinc-400 dark:bg-zinc-600'
+                                          percentage > 0 ? 'bg-primary-600' : 'bg-zinc-400 dark:bg-zinc-600'
                                         }`}
                                         style={{ width: `${percentage}%` }}
                                       />
@@ -1821,7 +1821,7 @@ export const SurveysPage: React.FC = () => {
                                                   setChoiceResponseFilter(e.target.value);
                                                   setChoiceResponsePage(1);
                                                 }}
-                                                className="w-full pl-8 pr-8 py-1.5 text-xs border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                                                className="w-full pl-8 pr-8 py-1.5 text-xs border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                                               />
                                               {choiceResponseFilter && (
                                                 <button
@@ -1852,18 +1852,18 @@ export const SurveysPage: React.FC = () => {
                                                 return (
                                                   <div
                                                     key={user.id}
-                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-emerald-300 dark:hover:border-emerald-600 transition-colors"
+                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-primary-300 dark:hover:border-primary-600 transition-colors"
                                                     title={user.name}
                                                   >
                                                     {hasProfileImage ? (
                                                       <img
                                                         src={user.profile_image_path}
                                                         alt={user.name}
-                                                        className="w-5 h-5 rounded-full object-cover border border-emerald-200 dark:border-emerald-800"
+                                                        className="w-5 h-5 rounded-full object-cover border border-primary-200 dark:border-primary-800"
                                                       />
                                                     ) : (
-                                                      <div className="w-5 h-5 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                                                        <User size={12} className="text-emerald-600 dark:text-emerald-400" />
+                                                      <div className="w-5 h-5 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                                                        <User size={12} className="text-primary-600 dark:text-primary-400" />
                                                       </div>
                                                     )}
                                                     <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 max-w-[120px] truncate">
@@ -1939,7 +1939,7 @@ export const SurveysPage: React.FC = () => {
                                                 setTextResponseFilter(e.target.value);
                                                 setTextResponsePage(1);
                                               }}
-                                              className="w-full pl-8 pr-8 py-1.5 text-xs border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                                              className="w-full pl-8 pr-8 py-1.5 text-xs border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                                             />
                                             {textResponseFilter && (
                                               <button
@@ -1979,11 +1979,11 @@ export const SurveysPage: React.FC = () => {
                                                           <img
                                                             src={answer.user.profile_image_path}
                                                             alt={answer.user.name}
-                                                            className="w-10 h-10 rounded-full object-cover border-2 border-emerald-200 dark:border-emerald-800"
+                                                            className="w-10 h-10 rounded-full object-cover border-2 border-primary-200 dark:border-primary-800"
                                                           />
                                                         ) : (
-                                                          <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
-                                                            <User size={20} className="text-emerald-600 dark:text-emerald-400" />
+                                                          <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
+                                                            <User size={20} className="text-primary-600 dark:text-primary-400" />
                                                           </div>
                                                         )
                                                       ) : (

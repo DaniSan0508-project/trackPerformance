@@ -72,7 +72,7 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
 
   const getOperationColor = (operation: 'credit' | 'debit') => {
     return operation === 'credit' 
-      ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20' 
+      ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20' 
       : 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20';
   };
 
@@ -117,12 +117,12 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
         {/* Resumo */}
         {data?.summary && (
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4">
+            <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <TrendingUp size={20} className="text-emerald-600 dark:text-emerald-400" />
-                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Total Créditos</span>
+                <TrendingUp size={20} className="text-primary-600 dark:text-primary-400" />
+                <span className="text-sm font-medium text-primary-700 dark:text-primary-400">Total Créditos</span>
               </div>
-              <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
+              <p className="text-2xl font-bold text-primary-700 dark:text-primary-400">
                 {data.summary.total_credits.toLocaleString('pt-BR')} 🪙
               </p>
             </div>
@@ -164,7 +164,7 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
                 type="date"
                 value={filters.start_date}
                 onChange={(e) => handleFilterChange('start_date', e.target.value)}
-                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
+                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
               />
             </div>
             <div>
@@ -175,7 +175,7 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
                 type="date"
                 value={filters.end_date}
                 onChange={(e) => handleFilterChange('end_date', e.target.value)}
-                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
+                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
               />
             </div>
           </div>
@@ -184,7 +184,7 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
         {/* Lista de Movimentações */}
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-8 h-8 text-emerald-600 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
+            <div className="w-8 h-8 text-primary-600 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
           </div>
         ) : data?.data && data.data.length > 0 ? (
           <>
@@ -215,7 +215,7 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className={`text-lg font-bold ${statement.operation === 'credit' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                      <p className={`text-lg font-bold ${statement.operation === 'credit' ? 'text-primary-600 dark:text-primary-400' : 'text-red-600 dark:text-red-400'}`}>
                         {statement.operation === 'credit' ? '+' : '-'}{statement.value.toLocaleString('pt-BR')} 🪙
                       </p>
                     </div>

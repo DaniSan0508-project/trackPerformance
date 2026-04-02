@@ -29,7 +29,7 @@ const campaignTypeLabels: Record<CampaignType, string> = {
 };
 
 const campaignTypeColors: Record<CampaignType, string> = {
-  sales: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  sales: 'bg-[var(--color-primary-100)] text-[var(--color-primary-700)] dark:bg-[var(--color-primary-900/30)] dark:text-[var(--color-primary-400)]',
   engagement: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
 };
 
@@ -40,7 +40,7 @@ const campaignStatusLabels: Record<CampaignStatus, string> = {
 };
 
 const campaignStatusColors: Record<CampaignStatus, string> = {
-  ativa: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
+  ativa: 'bg-[var(--color-primary-100)] dark:bg-[var(--color-primary-900/30)] text-[var(--color-primary-700)] dark:text-[var(--color-primary-400)]',
   pausada: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
   finalizada: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400',
 };
@@ -1144,7 +1144,7 @@ export const CampaignsPage: React.FC = () => {
             {isAdmin && (
               <button
                 onClick={() => handleOpenModal()}
-                className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
+                className="bg-primary-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-primary-700 shadow-sm transition-all flex items-center gap-2"
               >
                 <Plus size={18} />
                 Nova Campanha
@@ -1160,7 +1160,7 @@ export const CampaignsPage: React.FC = () => {
             <input
               type="text"
               placeholder="Buscar por nome..."
-              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -1170,7 +1170,7 @@ export const CampaignsPage: React.FC = () => {
         {/* Campaigns List */}
         {loading && campaigns.length === 0 ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+            <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
           </div>
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
@@ -1189,7 +1189,7 @@ export const CampaignsPage: React.FC = () => {
                 const isAtiva = campaign.status === 'ativa' || (campaign.status as any) === 'active' || campaign.is_active === 1;
                 const statusLabel = isAtiva ? 'Ativa' : 'Inativa';
                 const statusColor = isAtiva 
-                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' 
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400' 
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400';
 
                 return (
@@ -1201,8 +1201,8 @@ export const CampaignsPage: React.FC = () => {
                   >
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex items-start gap-4 flex-1">
-                        <div className="bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-xl">
-                          <Target className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                        <div className="bg-primary-100 dark:bg-primary-900/30 p-3 rounded-xl">
+                          <Target className="w-6 h-6 text-primary-600 dark:text-primary-400" />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -1219,7 +1219,7 @@ export const CampaignsPage: React.FC = () => {
                             {/* Meta apenas para campanhas de vendas */}
                             {campaign.type === 'sales' && (
                               <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                                <TrendingUp size={16} className="text-emerald-500" />
+                                <TrendingUp size={16} className="text-primary-500" />
                                 <span className="text-zinc-500 dark:text-zinc-500">Meta:</span>
                                 <span className="font-semibold text-zinc-900 dark:text-white">{formatCurrency(campaign.goal)}</span>
                               </div>
@@ -1299,7 +1299,7 @@ export const CampaignsPage: React.FC = () => {
                                     )}
                                   </div>
                                   {campaign.type === 'sales' && member.sales_amount !== null && (
-                                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                    <span className="text-xs font-semibold text-primary-600 dark:text-primary-400">
                                       {formatCurrency(String(member.sales_amount))}
                                     </span>
                                   )}
@@ -1330,7 +1330,7 @@ export const CampaignsPage: React.FC = () => {
                           <>
                             <button
                               onClick={() => handleOpenModal(campaign)}
-                              className="p-2 text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                              className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
                               title="Editar"
                             >
                               <Edit2 size={18} />
@@ -1422,7 +1422,7 @@ export const CampaignsPage: React.FC = () => {
                     onClick={() => setActiveTab('basic')}
                     className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                       activeTab === 'basic'
-                        ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
+                        ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 border-b-2 border-primary-500'
                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
                   >
@@ -1432,7 +1432,7 @@ export const CampaignsPage: React.FC = () => {
                     onClick={() => setActiveTab('users')}
                     className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                       activeTab === 'users'
-                        ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
+                        ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 border-b-2 border-primary-500'
                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
                   >
@@ -1444,7 +1444,7 @@ export const CampaignsPage: React.FC = () => {
                       onClick={() => setActiveTab('actions')}
                       className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                         activeTab === 'actions'
-                          ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
+                          ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 border-b-2 border-primary-500'
                           : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                       }`}
                     >
@@ -1457,7 +1457,7 @@ export const CampaignsPage: React.FC = () => {
                       onClick={() => setActiveTab('products')}
                       className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                         activeTab === 'products'
-                          ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
+                          ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 border-b-2 border-primary-500'
                           : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                       }`}
                     >
@@ -1476,7 +1476,7 @@ export const CampaignsPage: React.FC = () => {
                           type="text"
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                          className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                             formErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                           }`}
                           placeholder="Ex: Black Friday"
@@ -1540,7 +1540,7 @@ export const CampaignsPage: React.FC = () => {
                             <select
                               value={formData.type}
                               onChange={(e) => setFormData({ ...formData, type: e.target.value as CampaignType })}
-                              className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                              className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                             >
                               <option value="">Selecione o tipo de campanha</option>
                               <option value="sales">Vendas</option>
@@ -1558,7 +1558,7 @@ export const CampaignsPage: React.FC = () => {
                                   type="text"
                                   value={formData.goal ? formatCurrencyInput(formData.goal.replace(/\./g, '').replace(',', '.')) : ''}
                                   onChange={handleGoalChange}
-                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                                     formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   }`}
                                   placeholder="R$ 0,00"
@@ -1571,7 +1571,7 @@ export const CampaignsPage: React.FC = () => {
                                   type="text"
                                   value={formData.goal_campaign ? formatCurrencyInput(formData.goal_campaign.replace(/\./g, '').replace(',', '.')) : ''}
                                   onChange={handleGoalCampaignChange}
-                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                                     formErrors.goal_campaign ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   }`}
                                   placeholder="R$ 0,00"
@@ -1623,7 +1623,7 @@ export const CampaignsPage: React.FC = () => {
                                 value={formData.start_date}
                                 onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                                 min={getMinDate()}
-                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
+                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
                                   formErrors.start_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                 }`}
                               />
@@ -1637,7 +1637,7 @@ export const CampaignsPage: React.FC = () => {
                                 value={formData.end_date}
                                 onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                                 min={formData.start_date || getMinDate()}
-                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
+                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
                                   formErrors.end_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                 }`}
                               />
@@ -1652,7 +1652,7 @@ export const CampaignsPage: React.FC = () => {
                         <select
                           value={formData.status}
                           onChange={(e) => setFormData({ ...formData, status: e.target.value as CampaignStatus })}
-                          className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                          className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                         >
                           <option value="ativa">Ativa</option>
                           <option value="inativa">Inativa</option>
@@ -1662,13 +1662,13 @@ export const CampaignsPage: React.FC = () => {
                       {/* Card de Prêmio da Campanha */}
                       <div className="pt-2">
                         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Prêmio da Campanha (Opcional)</label>
-                        <div className={`p-4 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center min-h-[140px] ${formData.reward_id ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-900/10' : 'border-zinc-200 dark:border-zinc-700'}`}>
+                        <div className={`p-4 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center min-h-[140px] ${formData.reward_id ? 'border-primary-500 bg-primary-50/30 dark:bg-primary-900/10' : 'border-zinc-200 dark:border-zinc-700'}`}>
                           {(() => {
                             const selectedReward = rewards.find(r => r.id === formData.reward_id);
                             if (selectedReward) {
                               return (
                                 <div className="flex flex-col items-center text-center space-y-2 w-full">
-                                  <div className="w-16 h-16 rounded-xl overflow-hidden border border-emerald-200 dark:border-emerald-800 shadow-sm bg-white dark:bg-zinc-800">
+                                  <div className="w-16 h-16 rounded-xl overflow-hidden border border-primary-200 dark:border-primary-800 shadow-sm bg-white dark:bg-zinc-800">
                                     {selectedReward.images?.[0]?.image_full_url ? (
                                       <img src={selectedReward.images[0].image_full_url} alt={selectedReward.name} className="w-full h-full object-cover" />
                                     ) : <div className="w-full h-full flex items-center justify-center text-zinc-300"><ShoppingBag /></div>}
@@ -1676,7 +1676,7 @@ export const CampaignsPage: React.FC = () => {
                                   <div>
                                     <p className="text-sm font-bold text-zinc-900 dark:text-white">{selectedReward.name}</p>
                                     <div className="flex gap-3 justify-center mt-1">
-                                      <button type="button" onClick={() => setIsRewardModalOpen(true)} className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline uppercase">Trocar</button>
+                                      <button type="button" onClick={() => setIsRewardModalOpen(true)} className="text-[10px] font-bold text-primary-600 dark:text-primary-400 hover:underline uppercase">Trocar</button>
                                       <button type="button" onClick={() => setFormData({ ...formData, reward_id: '' })} className="text-[10px] font-bold text-red-500 hover:underline uppercase">Remover</button>
                                     </div>
                                   </div>
@@ -1752,7 +1752,7 @@ export const CampaignsPage: React.FC = () => {
                             placeholder={`Buscar por ${userFilterType === 'name' ? 'nome' : 'e-mail'}...`}
                             value={userSearch}
                             onChange={(e) => setUserSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+                            className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
                           />
                         </div>
                       </div>
@@ -1769,7 +1769,7 @@ export const CampaignsPage: React.FC = () => {
                             className={`px-4 py-2 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm border ${
                               selectedUsers.length > 0
                                 ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
-                                : 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-700 shadow-emerald-500/20'
+                                : 'bg-primary-600 text-white border-primary-500 hover:bg-primary-700 shadow-primary-500/20'
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
                           >
                             {loadingSelectAllUsers ? (
@@ -1800,8 +1800,8 @@ export const CampaignsPage: React.FC = () => {
                                   disabled={selectByRoleLoading !== null}
                                   className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
                                     areAllUsersSelectedByRole(role)
-                                      ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
-                                      : 'bg-white text-zinc-600 border-zinc-200 hover:border-emerald-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
+                                      ? 'bg-primary-100 text-primary-700 border-primary-300 dark:bg-primary-900/40 dark:text-primary-300 dark:border-primary-700'
+                                      : 'bg-white text-zinc-600 border-zinc-200 hover:border-primary-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
                                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
                                   {selectByRoleLoading === role ? (
@@ -1821,15 +1821,15 @@ export const CampaignsPage: React.FC = () => {
 
                       {loadingAux ? (
                         <div className="flex justify-center py-8">
-                          <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                          <Loader2 className="w-6 h-6 text-primary-600 animate-spin" />
                         </div>
                       ) : users.length === 0 ? (
                         <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum usuário encontrado.</p>
                       ) : (
                         <>
                           {/* Contador de selecionados */}
-                          <div className="mb-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl">
-                            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                          <div className="mb-3 p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl">
+                            <p className="text-sm font-semibold text-primary-700 dark:text-primary-400">
                               👥 {selectedUsers.length} usuário(s) selecionado(s)
                             </p>
                           </div>
@@ -1848,13 +1848,13 @@ export const CampaignsPage: React.FC = () => {
                                 animate={{ opacity: 1, scale: 1 }}
                                 className={`p-4 rounded-xl border-2 transition-all duration-200 text-left group ${
                                   selectedUsers.includes(user.id)
-                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 shadow-md'
-                                    : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm'
+                                    ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 shadow-md'
+                                    : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-sm'
                                 }`}
                               >
                                 <div className="flex items-start gap-3">
                                   {/* Avatar */}
-                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 border-2 border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 overflow-hidden flex-shrink-0">
+                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-100 to-teal-100 dark:from-primary-900/30 dark:to-teal-900/30 border-2 border-primary-200 dark:border-primary-800 flex items-center justify-center text-primary-600 dark:text-primary-400 overflow-hidden flex-shrink-0">
                                     {user.profile_image_url ? (
                                       <img
                                         src={getFullImageUrl(user.profile_image_url) || ''}
@@ -1874,7 +1874,7 @@ export const CampaignsPage: React.FC = () => {
                                       {user.name}
                                     </p>
                                     {user.role && (
-                                      <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-0.5">
+                                      <p className="text-[10px] font-semibold text-primary-600 dark:text-primary-400 uppercase tracking-wider mb-0.5">
                                         {user.role}
                                       </p>
                                     )}
@@ -1891,8 +1891,8 @@ export const CampaignsPage: React.FC = () => {
                                   {/* Check de selecionado */}
                                   <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                                     selectedUsers.includes(user.id)
-                                      ? 'bg-emerald-500 border-emerald-500'
-                                      : 'border-zinc-300 dark:border-zinc-600 group-hover:border-emerald-400'
+                                      ? 'bg-primary-500 border-primary-500'
+                                      : 'border-zinc-300 dark:border-zinc-600 group-hover:border-primary-400'
                                   }`}>
                                     {selectedUsers.includes(user.id) && (
                                       <Check size={14} className="text-white" />
@@ -1904,7 +1904,7 @@ export const CampaignsPage: React.FC = () => {
                                 <div className="mt-3 flex items-center gap-2 flex-wrap">
                                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
                                     user.user_type_id === 1
-                                      ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800'
+                                      ? 'bg-primary-100 text-primary-800 border-primary-200 dark:bg-primary-900/30 dark:text-primary-400 dark:border-primary-800'
                                       : 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/20 dark:text-teal-400 dark:border-teal-800'
                                   }`}>
                                     <Shield size={10} className="mr-1" />
@@ -2126,7 +2126,7 @@ export const CampaignsPage: React.FC = () => {
 
                       {loadingAux ? (
                         <div className="flex justify-center py-8">
-                          <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                          <Loader2 className="w-6 h-6 text-primary-600 animate-spin" />
                         </div>
                       ) : products.length === 0 ? (
                         <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum produto encontrado.</p>
@@ -2211,7 +2211,7 @@ export const CampaignsPage: React.FC = () => {
 
                           {loadingAux ? (
                             <div className="flex justify-center py-8">
-                              <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                              <Loader2 className="w-6 h-6 text-primary-600 animate-spin" />
                             </div>
                           ) : products.length === 0 ? (
                             <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum produto encontrado.</p>
@@ -2365,7 +2365,7 @@ export const CampaignsPage: React.FC = () => {
                       type="button"
                       onClick={handleSubmit}
                       disabled={saving}
-                      className="px-8 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+                      className="px-8 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold flex items-center gap-2 shadow-lg shadow-primary-500/20"
                     >
                       {saving ? (
                         <>
@@ -2398,7 +2398,7 @@ export const CampaignsPage: React.FC = () => {
               >
                 <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
                   <h3 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                    <Gift className="text-emerald-500" />
+                    <Gift className="text-primary-500" />
                     Selecionar Prêmio
                   </h3>
                   <button onClick={() => setIsRewardModalOpen(false)} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
@@ -2412,14 +2412,14 @@ export const CampaignsPage: React.FC = () => {
                     <input
                       type="text"
                       placeholder="Buscar prêmio por nome..."
-                      className="w-full pl-10 pr-4 py-3 border border-zinc-200 dark:border-zinc-700 rounded-2xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full pl-10 pr-4 py-3 border border-zinc-200 dark:border-zinc-700 rounded-2xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
                       value={rewardSearch}
                       onChange={(e) => setRewardSearch(e.target.value)}
                     />
                   </div>
 
                   {loadingRewards ? (
-                    <div className="flex justify-center py-12"><Loader2 className="animate-spin text-emerald-500" size={40} /></div>
+                    <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary-500" size={40} /></div>
                   ) : rewards.length === 0 ? (
                     <div className="text-center py-12 text-zinc-500">Nenhum prêmio encontrado.</div>
                   ) : (
@@ -2434,8 +2434,8 @@ export const CampaignsPage: React.FC = () => {
                           }}
                           className={`group relative flex flex-col p-3 rounded-2xl border-2 transition-all ${
                             formData.reward_id === reward.id
-                              ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 shadow-md'
-                              : 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-800 hover:border-emerald-300'
+                              ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 shadow-md'
+                              : 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-800 hover:border-primary-300'
                           }`}
                         >
                           <div className="aspect-square rounded-xl bg-zinc-100 dark:bg-zinc-900 mb-2 overflow-hidden border border-zinc-200 dark:border-zinc-700">
@@ -2445,7 +2445,7 @@ export const CampaignsPage: React.FC = () => {
                           </div>
                           <p className="text-xs font-bold text-zinc-900 dark:text-white line-clamp-2 text-center">{reward.name}</p>
                           {formData.reward_id === reward.id && (
-                            <div className="absolute top-2 right-2 bg-emerald-500 text-white p-1 rounded-full shadow-lg"><Check size={12} /></div>
+                            <div className="absolute top-2 right-2 bg-primary-500 text-white p-1 rounded-full shadow-lg"><Check size={12} /></div>
                           )}
                         </button>
                       ))}
@@ -2493,7 +2493,7 @@ export const CampaignsPage: React.FC = () => {
                 <div className="flex-1 overflow-y-auto p-6">
                   {rankingModal.loading ? (
                     <div className="flex justify-center py-12">
-                      <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                      <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
                     </div>
                   ) : rankingModal.ranking.length === 0 ? (
                     <div className="text-center py-8">
@@ -2551,7 +2551,7 @@ export const CampaignsPage: React.FC = () => {
                                 {rankingModal.campaign?.type === 'sales' ? 'Vendas' : 'Pontuação'}
                               </p>
                               <p className={`font-black text-lg ${
-                                isTop3 ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-700 dark:text-zinc-300'
+                                isTop3 ? 'text-primary-600 dark:text-primary-400' : 'text-zinc-700 dark:text-zinc-300'
                               }`}>
                                 {rankingModal.campaign?.type === 'sales'
                                   ? formatCurrency(String(salesAmount !== null ? salesAmount : item.value || 0))

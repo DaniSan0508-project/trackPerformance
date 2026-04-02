@@ -49,17 +49,17 @@ const GroupListItem: React.FC<{
   };
 
   return (
-    <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 group hover:border-emerald-200 dark:hover:border-emerald-800 transition-colors">
+    <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 group hover:border-primary-200 dark:hover:border-primary-800 transition-colors">
       {isEditing ? (
         <div className="flex items-center gap-2 flex-1">
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="flex-1 p-1.5 text-sm border border-zinc-300 dark:border-zinc-600 rounded-md focus:ring-2 focus:ring-emerald-500 outline-none bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
+            className="flex-1 p-1.5 text-sm border border-zinc-300 dark:border-zinc-600 rounded-md focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
             autoFocus
           />
-          <button onClick={handleSave} disabled={loading} className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-md hover:bg-emerald-200 dark:hover:bg-emerald-900/50">
+          <button onClick={handleSave} disabled={loading} className="p-1.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-md hover:bg-primary-200 dark:hover:bg-primary-900/50">
             {loading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
           </button>
           <button onClick={() => { setName(group.name); setIsEditing(false); }} disabled={loading} className="p-1.5 bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-md hover:bg-zinc-300 dark:hover:bg-zinc-600">
@@ -70,7 +70,7 @@ const GroupListItem: React.FC<{
         <>
           <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{group.name}</span>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={() => setIsEditing(true)} className="p-1.5 text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-md transition-colors">
+            <button onClick={() => setIsEditing(true)} className="p-1.5 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-md transition-colors">
               <Edit2 size={14} />
             </button>
             <button onClick={handleDelete} className="p-1.5 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors">
@@ -414,7 +414,7 @@ export const StoresPage: React.FC = () => {
             </button>
             <button 
               onClick={() => handleOpenModal()}
-              className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
+              className="bg-primary-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-primary-700 shadow-sm transition-all flex items-center gap-2"
             >
               <Plus size={18} />
               Nova Loja
@@ -429,7 +429,7 @@ export const StoresPage: React.FC = () => {
             <input
               type="text"
               placeholder="Buscar por nome ou CNPJ..."
-              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -439,7 +439,7 @@ export const StoresPage: React.FC = () => {
         {/* Stores List */}
         {loading && stores.length === 0 ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+            <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
           </div>
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
@@ -460,14 +460,14 @@ export const StoresPage: React.FC = () => {
                 >
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-start gap-4 flex-1">
-                      <div className="bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-xl">
-                        <Store className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                      <div className="bg-primary-100 dark:bg-primary-900/30 p-3 rounded-xl">
+                        <Store className="w-6 h-6 text-primary-600 dark:text-primary-400" />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                             <h3 className="font-bold text-lg text-zinc-900 dark:text-white">{store.name}</h3>
                             {store.active ? (
-                                <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-bold">ATIVO</span>
+                                <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-full text-xs font-bold">ATIVO</span>
                             ) : (
                                 <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full text-xs font-bold">INATIVO</span>
                             )}
@@ -503,7 +503,7 @@ export const StoresPage: React.FC = () => {
                         <div className="flex items-center gap-2 mt-2 md:mt-0">
                           <button 
                             onClick={() => handleOpenModal(store)}
-                            className="flex items-center gap-1 text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium p-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                            className="flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium p-2 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
                             title="Editar"
                           >
                             <Edit2 size={18} />
@@ -595,12 +595,12 @@ export const StoresPage: React.FC = () => {
                         value={newGroupName}
                         onChange={(e) => setNewGroupName(e.target.value)}
                         placeholder="Nome do novo grupo"
-                        className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400"
+                        className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400"
                       />
                       <button 
                         type="submit" 
                         disabled={creatingGroup || !newGroupName.trim()}
-                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                        className="px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 transition-colors"
                       >
                         {creatingGroup ? <Loader2 size={20} className="animate-spin" /> : <Plus size={20} />}
                       </button>
@@ -629,7 +629,7 @@ export const StoresPage: React.FC = () => {
                         type="text"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                           formErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                         }`}
                         placeholder="Ex: Loja Matriz"
@@ -644,7 +644,7 @@ export const StoresPage: React.FC = () => {
                           type="text"
                           value={formData.cnpj}
                           onChange={(e) => setFormData({ ...formData, cnpj: formatCNPJ(e.target.value) })}
-                          className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                          className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                             formErrors.cnpj ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                           }`}
                           placeholder="00.000.000/0000-00"
@@ -658,7 +658,7 @@ export const StoresPage: React.FC = () => {
                           type="text"
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })}
-                          className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                          className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                             formErrors.phone ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                           }`}
                           placeholder="(00) 00000-0000"
@@ -674,7 +674,7 @@ export const StoresPage: React.FC = () => {
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                           formErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                         }`}
                         placeholder="loja@empresa.com"
@@ -688,7 +688,7 @@ export const StoresPage: React.FC = () => {
                         <select
                           value={formData.store_group_id || ''}
                           onChange={(e) => setFormData({ ...formData, store_group_id: e.target.value ? Number(e.target.value) : null })}
-                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                         >
                           <option value="">Selecione um grupo (opcional)</option>
                           {groups.map(group => (
@@ -712,7 +712,7 @@ export const StoresPage: React.FC = () => {
                         id="active"
                         checked={formData.active}
                         onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                        className="w-4 h-4 text-emerald-600 border-zinc-300 dark:border-zinc-600 rounded focus:ring-emerald-500 bg-white dark:bg-zinc-800"
+                        className="w-4 h-4 text-primary-600 border-zinc-300 dark:border-zinc-600 rounded focus:ring-primary-500 bg-white dark:bg-zinc-800"
                       />
                       <label htmlFor="active" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
                         Loja Ativa
@@ -730,7 +730,7 @@ export const StoresPage: React.FC = () => {
                       <button
                         type="submit"
                         disabled={saving}
-                        className="flex-1 px-4 py-2.5 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+                        className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
                       >
                         {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
                         {saving ? 'Salvando...' : 'Salvar'}

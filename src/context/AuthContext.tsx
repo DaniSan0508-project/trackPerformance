@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, Tenant, AuthResponse, RefreshResponse } from '../types';
 import { api } from '../services/api';
+import { DEFAULT_PRIMARY_COLOR } from '../utils/colorUtils';
 
 interface AuthContextType {
   user: User | null;
@@ -8,6 +9,7 @@ interface AuthContextType {
   token: string | null;
   logoUrl: string | null;
   coinName: string;
+  primaryColor: string;
   login: (data: AuthResponse, rememberMe?: boolean) => void;
   logout: () => void;
   isAuthenticated: boolean;
@@ -22,6 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [coinName, setCoinName] = useState<string>('coins');
+  const [primaryColor, setPrimaryColor] = useState<string>(DEFAULT_PRIMARY_COLOR);
   const [loading, setLoading] = useState(true);
 
   // Initialize state from storage
@@ -39,6 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // stored blob may contain coin_name added later
           const parsed = JSON.parse(localAuth);
           if (parsed.coin_name) setCoinName(parsed.coin_name);
+          if (parsed.primary_color) setPrimaryColor(parsed.primary_color);
           return;
         }
 
@@ -51,6 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setToken(data.access_token);
           const parsed = JSON.parse(sessionAuth);
           if (parsed.coin_name) setCoinName(parsed.coin_name);
+          if (parsed.primary_color) setPrimaryColor(parsed.primary_color);
         }
       } catch (e) {
         console.error('Failed to parse auth data', e);
@@ -64,7 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     loadAuthData();
   }, []);
 
-  // Fetch tenant configs (logo and coin_name) when token is available
+  // Fetch tenant configs (logo, coin_name and primary_color) when token is available
   useEffect(() => {
     const fetchTenantConfigs = async () => {
       if (!token) return;
@@ -72,17 +77,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const response = await api.getTenantConfigs(token, 1);
         const logoConfig = response.data.find(c => c.config_key === 'path_logo');
         const coinConfig = response.data.find(c => c.config_key === 'coin_name');
+        const primaryColorConfig = response.data.find(c => c.config_key === 'primary_color');
+
         if (logoConfig) setLogoUrl(logoConfig.config_value);
         if (coinConfig && coinConfig.config_value) setCoinName(String(coinConfig.config_value));
+        if (primaryColorConfig && primaryColorConfig.config_value) {
+          setPrimaryColor(String(primaryColorConfig.config_value));
+        }
 
-        // Persist coin_name into storage if present so subsequent loads can restore it
-        if (coinConfig && coinConfig.config_value) {
+        // Persist coin_name and primary_color into storage if present
+        if ((coinConfig && coinConfig.config_value) || (primaryColorConfig && primaryColorConfig.config_value)) {
           const persist = (storage: Storage) => {
             const stored = storage.getItem('track_performance_auth');
             if (stored) {
               try {
                 const parsed = JSON.parse(stored);
-                parsed.coin_name = String(coinConfig.config_value);
+                if (coinConfig && coinConfig.config_value) {
+                  parsed.coin_name = String(coinConfig.config_value);
+                }
+                if (primaryColorConfig && primaryColorConfig.config_value) {
+                  parsed.primary_color = String(primaryColorConfig.config_value);
+                }
                 storage.setItem('track_performance_auth', JSON.stringify(parsed));
               } catch (e) {
                 // ignore
@@ -121,6 +136,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setToken(null);
     setLogoUrl(null);
     setCoinName('coins');
+    setPrimaryColor(DEFAULT_PRIMARY_COLOR);
     localStorage.removeItem('track_performance_auth');
     sessionStorage.removeItem('track_performance_auth');
   }, []);
@@ -218,7 +234,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [token, user?.id]);
 
   return (
-    <AuthContext.Provider value={{ user, tenant, token, logoUrl, coinName, login, logout, isAuthenticated: !!token, refreshAccessToken }}>
+    <AuthContext.Provider value={{ user, tenant, token, logoUrl, coinName, primaryColor, login, logout, isAuthenticated: !!token, refreshAccessToken }}>
       {!loading && children}
     </AuthContext.Provider>
   );

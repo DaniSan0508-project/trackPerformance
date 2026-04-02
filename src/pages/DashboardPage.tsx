@@ -208,7 +208,7 @@ export const DashboardPage = () => {
                     {/* Header: title + period selector */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                         <h3 className="font-bold text-lg flex items-center gap-2 text-zinc-900 dark:text-white">
-                            <ChartNoAxesColumn size={20} className="text-emerald-600"/>
+                            <ChartNoAxesColumn size={20} className="text-primary-600"/>
                             Índice de Engajamento por Ação
                         </h3>
                         <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1 text-sm">
@@ -224,7 +224,7 @@ export const DashboardPage = () => {
                                     onClick={() => setActionsPeriod(opt.value)}
                                     className={`px-3 py-1 rounded-md font-medium transition-colors duration-150 ${
                                         actionsPeriod === opt.value
-                                            ? 'bg-emerald-500 text-white shadow-sm'
+                                            ? 'bg-primary-500 text-white shadow-sm'
                                             : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                                     }`}
                                 >
@@ -314,7 +314,7 @@ export const DashboardPage = () => {
                     <div
                         className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
                         <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-zinc-900 dark:text-white">
-                            <User size={20} className="text-emerald-600"/>
+                            <User size={20} className="text-primary-600"/>
                             Top
                             Jogadores</h3>
                         {loadingTop ? (
@@ -338,7 +338,7 @@ export const DashboardPage = () => {
                                                             <span className="text-xl">{medal}</span>
                                                             <div className="flex items-center gap-3">
                                                                 <div
-                                                                    className="w-14 h-14 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 overflow-hidden border-2 border-emerald-200 dark:border-emerald-800 flex-shrink-0">
+                                                                    className="w-14 h-14 bg-gradient-to-br from-primary-100 to-teal-100 dark:from-primary-900/30 dark:to-teal-900/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 overflow-hidden border-2 border-primary-200 dark:border-primary-800 flex-shrink-0">
                                                                     {p.profile_image_url ? (
                                                                         <img
                                                                             src={getFullImageUrl(p.profile_image_url) || ''}
@@ -357,7 +357,7 @@ export const DashboardPage = () => {
                                                     </div>
                                                     <div
                                                         className="mt-2 h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-emerald-500 dark:bg-emerald-600"
+                                                        <div className="h-full bg-primary-500 dark:bg-primary-600"
                                                              style={{width: `${percent}%`}}/>
                                                     </div>
                                                 </div>
@@ -375,7 +375,7 @@ export const DashboardPage = () => {
                 <div
                     className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
                     <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-zinc-900 dark:text-white">
-                        <ChartNoAxesColumn size={20} className="text-emerald-600"/>
+                        <ChartNoAxesColumn size={20} className="text-primary-600"/>
                         Campanhas</h3>
                     {loadingCampaigns ? (
                         <div className="text-zinc-400">Carregando...</div>
@@ -396,7 +396,7 @@ export const DashboardPage = () => {
                                                 <div className="flex-1">
                                                     <div
                                                         className="w-full h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-emerald-500 dark:bg-emerald-600"
+                                                        <div className="h-full bg-primary-500 dark:bg-primary-600"
                                                              style={{width: `${c.progress_percentage}%`}}/>
                                                     </div>
                                                 </div>
@@ -415,7 +415,7 @@ export const DashboardPage = () => {
                 <div
                     className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
                     <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-zinc-900 dark:text-white">
-                        <ChartNoAxesColumn size={20} className="text-emerald-600"/>
+                        <ChartNoAxesColumn size={20} className="text-primary-600"/>
                         Índice de Engajamento por
                         Loja</h3>
                     {loadingEngagementIndex ? (
@@ -442,7 +442,7 @@ export const DashboardPage = () => {
                                                 <div
                                                     className="w-full h-4 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                                                     <div
-                                                        className="h-full bg-emerald-500 dark:bg-emerald-600 transition-all"
+                                                        className="h-full bg-primary-500 dark:bg-primary-600 transition-all"
                                                         style={{width: `${(store.score / (maxScore || 1)) * 100}%`}}/>
                                                 </div>
                                                 {/* Tooltip on hover - show breakdown */}
@@ -498,7 +498,7 @@ const StatCard = ({label, value, change, positive}: {
         <div className="flex items-end justify-between">
             <h4 className="text-2xl font-bold text-zinc-900 dark:text-white">{value}</h4>
             <span
-                className={`text-xs font-bold px-2 py-1 rounded-lg ${positive ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}`}>
+                className={`text-xs font-bold px-2 py-1 rounded-lg ${positive ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}`}>
         {change}
       </span>
         </div>

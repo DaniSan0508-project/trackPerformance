@@ -60,14 +60,14 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
 const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({ toast, onRemove }) => {
   const icons = {
-    success: <CheckCircle className="w-5 h-5 text-emerald-500" />,
+    success: <CheckCircle className="w-5 h-5 text-primary-500" />,
     error: <AlertCircle className="w-5 h-5 text-red-500" />,
     warning: <AlertTriangle className="w-5 h-5 text-amber-500" />,
     info: <Info className="w-5 h-5 text-blue-500" />,
   };
 
   const bgColors = {
-    success: 'bg-white dark:bg-zinc-900 border-emerald-100 dark:border-emerald-900/30',
+    success: 'bg-white dark:bg-zinc-900 border-primary-100 dark:border-primary-900/30',
     error: 'bg-white dark:bg-zinc-900 border-red-100 dark:border-red-900/30',
     warning: 'bg-white dark:bg-zinc-900 border-amber-100 dark:border-amber-900/30',
     info: 'bg-white dark:bg-zinc-900 border-blue-100 dark:border-blue-900/30',

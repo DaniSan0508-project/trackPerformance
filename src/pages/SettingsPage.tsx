@@ -113,7 +113,7 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
   };
 
   const formatDisplayValue = (key: string, val: string) => {
-    if (val === 'true') return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md text-xs font-bold">ATIVO</span>;
+    if (val === 'true') return <span className="px-2 py-1 bg-primary-100 text-primary-700 rounded-md text-xs font-bold">ATIVO</span>;
     if (val === 'false') return <span className="px-2 py-1 bg-red-100 text-red-700 rounded-md text-xs font-bold">INATIVO</span>;
 
     // Mostra o label traduzido para user_profile
@@ -161,7 +161,7 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
                   onClick={() => setValue(value === 'true' ? 'false' : 'true')}
                   className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
                     value === 'true'
-                      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50'
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 hover:bg-primary-200 dark:hover:bg-primary-900/50'
                       : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
                   }`}
                 >
@@ -171,7 +171,7 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
                 <select
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
-                  className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                   autoFocus
                 >
                   {userProfileOptions.map(opt => (
@@ -182,7 +182,7 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
                 <select
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
-                  className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                   autoFocus
                 >
                   {engagementRewardFrequencyOptions.map(opt => (
@@ -198,10 +198,10 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
                       setValue(e.target.value);
                       setValidationError(null);
                     }}
-                    className={`flex-1 md:w-64 p-2 border bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 rounded-lg focus:ring-2 focus:border-emerald-500 text-right transition-colors ${
+                    className={`flex-1 md:w-64 p-2 border bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 rounded-lg focus:ring-2 focus:border-primary-500 text-right transition-colors ${
                       validationError
                         ? 'border-red-500 focus:ring-red-500'
-                        : 'border-zinc-300 dark:border-zinc-700 focus:ring-emerald-500'
+                        : 'border-zinc-300 dark:border-zinc-700 focus:ring-primary-500'
                     }`}
                     autoFocus
                   />
@@ -217,7 +217,7 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
                   <button
                     onClick={handleSave}
                     disabled={updating || hasError}
-                    className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="p-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     title={hasError ? 'Corrija o erro antes de salvar' : 'Salvar'}
                   >
                     {updating ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
@@ -238,12 +238,12 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
               className="flex flex-col md:items-end cursor-pointer group"
               onClick={() => setIsEditing(true)}
             >
-              <div className="inline-block bg-zinc-50 dark:bg-zinc-800 px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 max-w-full overflow-hidden text-ellipsis group-hover:border-emerald-300 dark:group-hover:border-emerald-700 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/20 transition-colors duration-200">
+              <div className="inline-block bg-zinc-50 dark:bg-zinc-800 px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 max-w-full overflow-hidden text-ellipsis group-hover:border-primary-300 dark:group-hover:border-primary-700 group-hover:bg-primary-50 dark:group-hover:bg-primary-900/20 transition-colors duration-200">
                 <span className="font-mono text-sm text-zinc-700 dark:text-zinc-300 break-all">
                   {formatDisplayValue(config.config_key, config.config_value)}
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+              <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                 Clique para editar
               </p>
             </div>
@@ -358,7 +358,7 @@ export const SettingsPage: React.FC = () => {
             <input 
               type="text" 
               placeholder="Buscar por chave ou valor..." 
-              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 transition-colors"
+              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 transition-colors"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -368,7 +368,7 @@ export const SettingsPage: React.FC = () => {
         {/* Config List */}
         {loading && configs.length === 0 ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+            <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
           </div>
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">

@@ -46,7 +46,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <img src={logoUrl} alt="Logo" className="h-10 w-auto object-contain max-w-[180px]" />
     ) : (
       <div className="flex items-center gap-3">
-        <div className="bg-emerald-600 p-2 rounded-lg">
+        <div className="bg-primary-600 p-2 rounded-lg">
           <Trophy className="w-5 h-5 text-white" />
         </div>
         <span className="font-bold text-xl text-zinc-900 dark:text-white">TrackPerf</span>
@@ -172,7 +172,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <p className="text-sm font-semibold text-zinc-900 dark:text-white">{user.name}</p>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">{user.user_type}</p>
               </div>
-              <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold border-2 border-emerald-50 dark:border-emerald-900/50 shadow-sm">
+              <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-bold border-2 border-primary-50 dark:border-primary-900/50 shadow-sm">
                 {user.name.charAt(0)}
               </div>
             </div>
@@ -243,14 +243,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 };
 
 const NavItem: React.FC<{ icon: React.ReactNode; label: string; active?: boolean; to: string }> = ({ icon, label, active, to }) => (
-  <Link to={to} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${active ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>
+  <Link to={to} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${active ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 font-semibold' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>
     {icon}
     <span>{label}</span>
   </Link>
 );
 
 const MobileNavItem: React.FC<{ icon: React.ReactNode; active?: boolean; to: string }> = ({ icon, active, to }) => (
-  <Link to={to} className={`${active ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400 dark:text-zinc-500'}`}>
+  <Link to={to} className={`${active ? 'text-primary-600 dark:text-primary-400' : 'text-zinc-400 dark:text-zinc-500'}`}>
     {icon}
   </Link>
 );

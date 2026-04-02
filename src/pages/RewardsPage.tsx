@@ -496,7 +496,7 @@ export const RewardsPage: React.FC = () => {
             {isAdmin && (
               <button
                 onClick={() => handleOpenModal()}
-                className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
+                className="bg-primary-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-primary-700 shadow-sm transition-all flex items-center gap-2"
               >
                 <Plus size={18} />
                 Nova Recompensa
@@ -511,7 +511,7 @@ export const RewardsPage: React.FC = () => {
             onClick={() => setActiveTab('rewards')}
             className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors ${
               activeTab === 'rewards'
-                ? 'bg-emerald-600 text-white'
+                ? 'bg-primary-600 text-white'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
             }`}
           >
@@ -524,7 +524,7 @@ export const RewardsPage: React.FC = () => {
             onClick={() => setActiveTab('redemptions')}
             className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors ${
               activeTab === 'redemptions'
-                ? 'bg-emerald-600 text-white'
+                ? 'bg-primary-600 text-white'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
             }`}
           >
@@ -544,7 +544,7 @@ export const RewardsPage: React.FC = () => {
             <input
               type="text"
               placeholder="Buscar recompensas..."
-              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -554,7 +554,7 @@ export const RewardsPage: React.FC = () => {
         {/* Rewards List */}
         {loading && rewards.length === 0 ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+            <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
           </div>
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
@@ -633,7 +633,7 @@ export const RewardsPage: React.FC = () => {
                             e.stopPropagation();
                             handleOpenModal(reward);
                           }}
-                          className="p-1.5 bg-white/90 dark:bg-zinc-800/90 text-emerald-600 dark:text-emerald-400 rounded-lg shadow-md hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                          className="p-1.5 bg-white/90 dark:bg-zinc-800/90 text-primary-600 dark:text-primary-400 rounded-lg shadow-md hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
                           title="Editar"
                         >
                           <Edit2 size={16} />
@@ -710,7 +710,7 @@ export const RewardsPage: React.FC = () => {
                     setRedemptionFilterStatus(e.target.value as RedemptionStatus | '');
                     setRedemptionsPage(1);
                   }}
-                  className="flex-1 md:flex-none md:w-48 p-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                  className="flex-1 md:flex-none md:w-48 p-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                 >
                   <option value="">Todos</option>
                   <option value="pending">Pendente</option>
@@ -733,7 +733,7 @@ export const RewardsPage: React.FC = () => {
             {/* Redemptions List */}
             {redemptionsLoading && redemptions.length === 0 ? (
               <div className="flex justify-center py-12">
-                <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
               </div>
             ) : (
               <div className="space-y-4">
@@ -771,7 +771,7 @@ export const RewardsPage: React.FC = () => {
                                   </span>
                                 )}
                                 {redemption.status === 'approved' && (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400">
                                     <CheckCircle size={14} />
                                     Disponível para Retirada
                                   </span>
@@ -861,7 +861,7 @@ export const RewardsPage: React.FC = () => {
                                   <button
                                     onClick={() => handleApproveRedemption(redemption.id)}
                                     disabled={updatingRedemptionId === redemption.id}
-                                    className="flex-1 lg:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                                    className="flex-1 lg:flex-none px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                                     title="Aprovar resgate"
                                   >
                                     {updatingRedemptionId === redemption.id ? (
@@ -1038,7 +1038,7 @@ export const RewardsPage: React.FC = () => {
                             key={img.id}
                             onClick={() => setCurrentImageIndex(idx)}
                             className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
-                              currentImageIndex === idx ? 'border-emerald-500 ring-2 ring-emerald-100 dark:ring-emerald-900/30' : 'border-transparent opacity-60 hover:opacity-100'
+                              currentImageIndex === idx ? 'border-primary-500 ring-2 ring-primary-100 dark:ring-primary-900/30' : 'border-transparent opacity-60 hover:opacity-100'
                             }`}
                           >
                             <img src={img.image_full_url} alt="" className="w-full h-full object-cover" />
@@ -1082,7 +1082,7 @@ export const RewardsPage: React.FC = () => {
                       <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-zinc-500 dark:text-zinc-400">Estoque disponível:</span>
-                          <span className={`font-medium ${selectedReward.stock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                          <span className={`font-medium ${selectedReward.stock > 0 ? 'text-primary-600 dark:text-primary-400' : 'text-red-600 dark:text-red-400'}`}>
                             {selectedReward.stock} unidades
                           </span>
                         </div>
@@ -1094,7 +1094,7 @@ export const RewardsPage: React.FC = () => {
                     <button
                       onClick={() => handleOpenRedemption(selectedReward)}
                       disabled={!selectedReward.is_active || selectedReward.stock <= 0}
-                      className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 dark:shadow-none disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                      className="w-full py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl shadow-lg shadow-primary-200 dark:shadow-none disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                     >
                       <Gift size={20} />
                       Resgatar Recompensa
@@ -1119,8 +1119,8 @@ export const RewardsPage: React.FC = () => {
               >
                 <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
-                      <Gift className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                    <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
+                      <Gift className="w-6 h-6 text-primary-600 dark:text-primary-400" />
                     </div>
                     <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Confirmar Resgate</h2>
                   </div>
@@ -1210,7 +1210,7 @@ export const RewardsPage: React.FC = () => {
                     type="button"
                     onClick={executeRedemption}
                     disabled={redemptionModal.isProcessing || (currentUser?.coin_balance || 0) < parseFloat(redemptionModal.reward.price_coins as string)}
-                    className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     title={(currentUser?.coin_balance || 0) < parseFloat(redemptionModal.reward.price_coins as string) ? 'Saldo insuficiente' : ''}
                   >
                     {redemptionModal.isProcessing ? (
@@ -1276,7 +1276,7 @@ export const RewardsPage: React.FC = () => {
                             onClick={() => setFormData(prev => ({ ...prev, primary_image_index: String(index) }))}
                             className={`absolute bottom-1 left-1 p-1 rounded-full transition-all ${
                               String(index) === formData.primary_image_index
-                                ? 'bg-emerald-500 text-white'
+                                ? 'bg-primary-500 text-white'
                                 : 'bg-black/50 text-white opacity-0 group-hover:opacity-100'
                             }`}
                             title="Definir como principal"
@@ -1285,7 +1285,7 @@ export const RewardsPage: React.FC = () => {
                           </button>
                         </div>
                       ))}
-                      <label className="aspect-square rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors bg-zinc-50 dark:bg-zinc-800/50">
+                      <label className="aspect-square rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 flex flex-col items-center justify-center cursor-pointer hover:border-primary-500 dark:hover:border-primary-500 transition-colors bg-zinc-50 dark:bg-zinc-800/50">
                         <Camera size={24} className="text-zinc-400 mb-1" />
                         <span className="text-xs text-zinc-500 dark:text-zinc-400">
                           {formData.images.length}/{MAX_IMAGES}
@@ -1314,7 +1314,7 @@ export const RewardsPage: React.FC = () => {
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                         formErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                       }`}
                       placeholder="Ex: Camiseta"
@@ -1327,7 +1327,7 @@ export const RewardsPage: React.FC = () => {
                     <textarea
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 resize-none ${
+                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 resize-none ${
                         formErrors.description ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                       }`}
                       placeholder="Ex: Camiseta personalizada da empresa"
@@ -1343,7 +1343,7 @@ export const RewardsPage: React.FC = () => {
                         type="number"
                         value={formData.price_coins}
                         onChange={(e) => setFormData({ ...formData, price_coins: e.target.value })}
-                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                           formErrors.price_coins ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                         }`}
                         placeholder="100"
@@ -1358,7 +1358,7 @@ export const RewardsPage: React.FC = () => {
                         type="number"
                         value={formData.stock}
                         onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                           formErrors.stock ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                         }`}
                         placeholder="50"
@@ -1373,7 +1373,7 @@ export const RewardsPage: React.FC = () => {
                     <select
                       value={formData.is_active}
                       onChange={(e) => setFormData({ ...formData, is_active: e.target.value })}
-                      className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                      className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                     >
                       <option value="1">Ativo</option>
                       <option value="0">Inativo</option>
@@ -1391,7 +1391,7 @@ export const RewardsPage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={saving}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-xl shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                       {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                       {saving ? 'Salvando...' : 'Salvar'}

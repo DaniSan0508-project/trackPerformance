@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
+import { usePrimaryColorSync } from './hooks/usePrimaryColorSync';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -15,6 +16,12 @@ import { CampaignsPage } from './pages/CampaignsPage';
 import { SurveysPage } from './pages/SurveysPage';
 import { ProductsPage } from './pages/ProductsPage';
 
+// Componente interno para sincronizar cor primária
+const AppContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  usePrimaryColorSync();
+  return <>{children}</>;
+};
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
@@ -25,94 +32,96 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <ToastProvider>
-          <Router>
-            <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/stores" 
-              element={
-                <ProtectedRoute>
-                  <StoresPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/posts" 
-              element={
-                <ProtectedRoute>
-                  <PostsPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/feedbacks" 
-              element={
-                <ProtectedRoute>
-                  <FeedbacksPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/team" 
-              element={
-                <ProtectedRoute>
-                  <TeamPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route
-              path="/rewards"
-              element={
-                <ProtectedRoute>
-                  <RewardsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/campaigns"
-              element={
-                <ProtectedRoute>
-                  <CampaignsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/surveys"
-              element={
-                <ProtectedRoute>
-                  <SurveysPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/products"
-              element={
-                <ProtectedRoute>
-                  <ProductsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <SettingsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/" element={<Navigate to="/dashboard" />} />
-          </Routes>
-        </Router>
-      </ToastProvider>
-    </AuthProvider>
-  </ThemeProvider>
+          <AppContent>
+            <Router>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/stores"
+                  element={
+                    <ProtectedRoute>
+                      <StoresPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/posts"
+                  element={
+                    <ProtectedRoute>
+                      <PostsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/feedbacks"
+                  element={
+                    <ProtectedRoute>
+                      <FeedbacksPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/team"
+                  element={
+                    <ProtectedRoute>
+                      <TeamPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rewards"
+                  element={
+                    <ProtectedRoute>
+                      <RewardsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/campaigns"
+                  element={
+                    <ProtectedRoute>
+                      <CampaignsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/surveys"
+                  element={
+                    <ProtectedRoute>
+                      <SurveysPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/products"
+                  element={
+                    <ProtectedRoute>
+                      <ProductsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <SettingsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/" element={<Navigate to="/dashboard" />} />
+              </Routes>
+            </Router>
+          </AppContent>
+        </ToastProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

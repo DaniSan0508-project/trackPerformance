@@ -262,7 +262,7 @@ export const FeedbacksPage: React.FC = () => {
                 <input
                   type="text"
                   placeholder="Buscar usuário por nome..."
-                  className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+                  className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -272,7 +272,7 @@ export const FeedbacksPage: React.FC = () => {
             {/* Users List */}
             {loadingUsers && users.length === 0 ? (
               <div className="flex justify-center py-12">
-                <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
               </div>
             ) : usersError ? (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
@@ -303,7 +303,7 @@ export const FeedbacksPage: React.FC = () => {
 
                       <button
                         onClick={() => setSelectedUser(user)}
-                        className="mt-auto w-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                        className="mt-auto w-full bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/30 py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                       >
                         <MessageSquarePlus size={18} />
                         Enviar Feedback
@@ -355,7 +355,7 @@ export const FeedbacksPage: React.FC = () => {
             {/* Received Feedbacks List */}
             {loadingFeedbacks && feedbacks.length === 0 ? (
               <div className="flex justify-center py-12">
-                <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
               </div>
             ) : feedbacksError ? (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
@@ -455,7 +455,7 @@ export const FeedbacksPage: React.FC = () => {
                 <input
                   type="text"
                   placeholder="Buscar por nome do destinatário..."
-                  className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+                  className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
                   value={allFeedbacksSearch}
                   onChange={(e) => setAllFeedbacksSearch(e.target.value)}
                 />
@@ -464,7 +464,7 @@ export const FeedbacksPage: React.FC = () => {
 
             {loadingAllFeedbacks && allFeedbacks.length === 0 ? (
               <div className="flex justify-center py-12">
-                <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
               </div>
             ) : allFeedbacksError ? (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
@@ -604,7 +604,7 @@ export const FeedbacksPage: React.FC = () => {
                       required
                       value={feedbackContent}
                       onChange={(e) => setFeedbackContent(e.target.value)}
-                      className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[120px] resize-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${
+                      className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[120px] resize-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${
                         feedbackError ? 'border-red-500 focus:ring-red-500' : 'border-zinc-200 dark:border-zinc-700'
                       }`}
                       placeholder="Escreva seu feedback construtivo aqui..."
@@ -618,7 +618,7 @@ export const FeedbacksPage: React.FC = () => {
                       id="anonymous"
                       checked={isAnonymous}
                       onChange={(e) => setIsAnonymous(e.target.checked)}
-                      className="w-4 h-4 text-emerald-600 border-zinc-300 dark:border-zinc-600 rounded focus:ring-emerald-500 bg-white dark:bg-zinc-700"
+                      className="w-4 h-4 text-primary-600 border-zinc-300 dark:border-zinc-600 rounded focus:ring-primary-500 bg-white dark:bg-zinc-700"
                     />
                     <label htmlFor="anonymous" className="text-sm text-zinc-700 dark:text-zinc-300 select-none cursor-pointer">
                       Enviar anonimamente
@@ -636,7 +636,7 @@ export const FeedbacksPage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={sending || !feedbackContent.trim()}
-                      className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {sending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                       Enviar
