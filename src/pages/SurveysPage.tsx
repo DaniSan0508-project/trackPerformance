@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, FileText, Calendar, Eye, Users, CheckCircle, XCircle, Clock, EyeOff, Plus, Edit2, Trash2, X, Save, Check, User as UserIcon, Shield, User, BarChart3, PlusCircle, GripVertical, Copy, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Survey, SurveyStatus, User as UserType, SurveyResults, SurveyResultTextOption, SurveyResultChoiceOption } from '../types';
+import { Survey, SurveyStatus, User as UserType, SurveyResults, SurveyResultTextOption, SurveyResultChoiceOption, Role } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -92,6 +92,7 @@ export const SurveysPage: React.FC = () => {
   const [loadingSelectAllUsers, setLoadingSelectAllUsers] = useState(false);
   const [selectAllUsersProgress, setSelectAllUsersProgress] = useState<{ current: number; total: number } | null>(null);
   const [selectByRoleLoading, setSelectByRoleLoading] = useState<string | null>(null);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [fullySelectedRoles, setFullySelectedRoles] = useState<Set<string>>(new Set());
 
   // Questões
@@ -193,6 +194,21 @@ export const SurveysPage: React.FC = () => {
       }
     }
   }, [usersPage, debouncedUserSearch, userFilterType, isModalOpen, activeTab]);
+
+  // Buscar cargos quando o modal abrir
+  useEffect(() => {
+    const fetchRoles = async () => {
+      if (isModalOpen && token) {
+        try {
+          const response = await api.getAllRoles(token);
+          setRoles(response.data || []);
+        } catch (error) {
+          console.error('Error fetching roles:', error);
+        }
+      }
+    };
+    fetchRoles();
+  }, [isModalOpen, token]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
@@ -321,6 +337,9 @@ export const SurveysPage: React.FC = () => {
         return [...prev, ...newIds];
       });
 
+      // Marca todos os cargos principais como totalmente selecionados
+      setFullySelectedRoles(new Set(roles.map(r => r.description)));
+
       addToast('success', `Todos os ${validUserIds.length} usuários foram selecionados!`);
       setSelectAllUsersProgress(null);
     } catch (error) {
@@ -393,10 +412,10 @@ export const SurveysPage: React.FC = () => {
   useEffect(() => {
     if (!isModalOpen || users.length === 0) return;
 
-    const roles = ['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor', 'Gerente', 'Coordenador'];
     const newFullySelectedRoles = new Set<string>();
 
-    roles.forEach(role => {
+    roles.forEach(roleObj => {
+      const role = roleObj.description;
       const usersInRole = users.filter(u => u.role === role);
       if (usersInRole.length > 0 && usersInRole.every(u => selectedUsers.includes(u.id))) {
         newFullySelectedRoles.add(role);
@@ -404,7 +423,7 @@ export const SurveysPage: React.FC = () => {
     });
 
     setFullySelectedRoles(newFullySelectedRoles);
-  }, [selectedUsers, users, isModalOpen]);
+  }, [selectedUsers, users, isModalOpen, roles]);
 
   const questionsContainerRef = useRef<HTMLDivElement>(null);
 
@@ -1191,27 +1210,30 @@ export const SurveysPage: React.FC = () => {
                           Filtrar por Cargo
                         </p>
                         <div className="flex flex-wrap gap-2">
-                          {['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor', 'Gerente', 'Coordenador'].map((role) => (
-                            <button
-                              key={role}
-                              onClick={() => handleSelectAllByRole(role)}
-                              disabled={selectByRoleLoading !== null || isReadOnly}
-                              className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
-                                areAllUsersSelectedByRole(role)
-                                  ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
-                                  : 'bg-white text-zinc-600 border-zinc-200 hover:border-emerald-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
-                              } disabled:opacity-50 disabled:cursor-not-allowed`}
-                            >
-                              {selectByRoleLoading === role ? (
-                                <Loader2 size={12} className="animate-spin" />
-                              ) : (
-                                <>
-                                  {areAllUsersSelectedByRole(role) ? <Check size={12} /> : <Plus size={12} />}
-                                  {role}
-                                </>
-                              )}
-                            </button>
-                          ))}
+                          {roles.map((roleObj) => {
+                            const role = roleObj.description;
+                            return (
+                              <button
+                                key={role}
+                                onClick={() => handleSelectAllByRole(role)}
+                                disabled={selectByRoleLoading !== null || isReadOnly}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
+                                  areAllUsersSelectedByRole(role)
+                                    ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
+                                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-emerald-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
+                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                              >
+                                {selectByRoleLoading === role ? (
+                                  <Loader2 size={12} className="animate-spin" />
+                                ) : (
+                                  <>
+                                    {areAllUsersSelectedByRole(role) ? <Check size={12} /> : <Plus size={12} />}
+                                    {role}
+                                  </>
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>

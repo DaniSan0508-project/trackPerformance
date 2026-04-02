@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus } from '../types';
+import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus, Role } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -173,6 +173,7 @@ export const CampaignsPage: React.FC = () => {
   const [selectByRoleLoading, setSelectByRoleLoading] = useState<string | null>(null);
   const [selectByManufacturerLoading, setSelectByManufacturerLoading] = useState<string | null>(null);
   const [manufacturers, setManufacturers] = useState<Array<{ id: number; name: string }>>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   
   // Controle de seleção por cargo/fabricante (independente da página)
   const [fullySelectedRoles, setFullySelectedRoles] = useState<Set<string>>(new Set());
@@ -212,10 +213,11 @@ export const CampaignsPage: React.FC = () => {
     setLoadingAux(true);
     try {
       // Carregar primeira página de usuários, produtos e fabricantes
-      const [usersData, productsData, manufacturersData] = await Promise.all([
+      const [usersData, productsData, manufacturersData, rolesData] = await Promise.all([
         api.getAllUsers(token, 1, 10).catch(() => null),
         api.getProducts(token, 1, 10).catch(() => null),
         api.getAllManufacturers(token).catch(() => null),
+        api.getAllRoles(token).catch(() => null),
       ]);
 
       if (usersData?.data) {
@@ -230,6 +232,9 @@ export const CampaignsPage: React.FC = () => {
       }
       if (manufacturersData) {
         setManufacturers(manufacturersData.map(m => ({ id: m.id, name: m.name })));
+      }
+      if (rolesData?.data) {
+        setRoles(rolesData.data);
       }
     } catch (error) {
       console.error('Error fetching auxiliary data:', error);
@@ -333,12 +338,12 @@ export const CampaignsPage: React.FC = () => {
 
   const updateSelectionBadges = (currentSelectedUsers: number[], currentSelectedProducts: number[], allUsersList: UserType[], allProductsList: Product[]) => {
     // Calcular cargos totalmente selecionados
-    const roles = ['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor'];
     const newFullySelectedRoles = new Set<string>();
     
     const isEngagement = editingCampaign?.type === 'engagement' || formData.type === 'engagement';
 
-    roles.forEach(role => {
+    roles.forEach(roleObj => {
+      const role = roleObj.description;
       const usersInRole = allUsersList.filter(u => u.role === role);
       // Para engajamento, consideramos apenas user_type_id === 2
       const validUsersInRole = isEngagement 
@@ -438,11 +443,11 @@ export const CampaignsPage: React.FC = () => {
           }
 
           // CALCULAR TAGS DE SELEÇÃO
-          const roles = ['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor'];
           const newFullySelectedRoles = new Set<string>();
-          roles.forEach(role => {
+          roles.forEach(roleObj => {
+            const role = roleObj.description;
             const usersInRole = allUsersList.filter(u => u.role === role);
-            const validUsersInRole = campaign.type === 'engagement' 
+            const validUsersInRole = campaign.type === 'engagement'
               ? usersInRole.filter(u => u.user_type_id === 2)
               : usersInRole;
             if (validUsersInRole.length > 0 && validUsersInRole.every(u => campaignUserIds.includes(u.id))) {
@@ -450,7 +455,6 @@ export const CampaignsPage: React.FC = () => {
             }
           });
           setFullySelectedRoles(newFullySelectedRoles);
-
           const newFullySelectedManufacturers = new Set<number>();
           (manufacturersData || []).forEach((m: any) => {
             const productsInManufacturer = allProductsList.filter(p => p.manufacturer_id === m.id);
@@ -912,8 +916,7 @@ export const CampaignsPage: React.FC = () => {
       setSelectedUsers(validUserIds);
 
       // Marca todos os cargos principais como totalmente selecionados
-      const roles = ['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor'];
-      setFullySelectedRoles(new Set(roles));
+      setFullySelectedRoles(new Set(roles.map(r => r.description)));
 
       addToast('success', `Todos os ${validUserIds.length} usuários foram selecionados!`);
     } catch (error) {
@@ -1788,27 +1791,30 @@ export const CampaignsPage: React.FC = () => {
                             Filtrar por Cargo
                           </p>
                           <div className="flex flex-wrap gap-2">
-                            {['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor'].map((role) => (
-                              <button
-                                key={role}
-                                onClick={() => handleSelectAllByRole(role)}
-                                disabled={selectByRoleLoading !== null}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
-                                  areAllUsersSelectedByRole(role)
-                                    ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
-                                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-emerald-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
-                                } disabled:opacity-50 disabled:cursor-not-allowed`}
-                              >
-                                {selectByRoleLoading === role ? (
-                                  <Loader2 size={12} className="animate-spin" />
-                                ) : (
-                                  <>
-                                    {areAllUsersSelectedByRole(role) ? <Check size={12} /> : <Plus size={12} />}
-                                    {role}
-                                  </>
-                                )}
-                              </button>
-                            ))}
+                            {roles.map((roleObj) => {
+                              const role = roleObj.description;
+                              return (
+                                <button
+                                  key={role}
+                                  onClick={() => handleSelectAllByRole(role)}
+                                  disabled={selectByRoleLoading !== null}
+                                  className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
+                                    areAllUsersSelectedByRole(role)
+                                      ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
+                                      : 'bg-white text-zinc-600 border-zinc-200 hover:border-emerald-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
+                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
+                                  {selectByRoleLoading === role ? (
+                                    <Loader2 size={12} className="animate-spin" />
+                                  ) : (
+                                    <>
+                                      {areAllUsersSelectedByRole(role) ? <Check size={12} /> : <Plus size={12} />}
+                                      {role}
+                                    </>
+                                  )}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                       </div>

@@ -72,6 +72,13 @@ export const api = {
     return handleResponse(response);
   },
 
+  getAllRoles: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/roles?per_page=9999`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
   createRole: async (token: string, data: { description: string }) => {
     const response = await fetch(`${API_BASE_URL}/roles`, {
       method: 'POST',
