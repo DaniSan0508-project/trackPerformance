@@ -250,6 +250,16 @@ export interface ActionEngagement {
   updated_at: string;
 }
 
+export interface EngagementAction {
+  id: number;
+  name: string;
+  is_enabled: boolean;
+  campaign: {
+    id: number;
+    name: string;
+  } | null;
+}
+
 export interface CampaignRanking {
   position: number;
   user_id: number;

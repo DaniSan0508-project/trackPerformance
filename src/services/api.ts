@@ -791,4 +791,11 @@ export const api = {
     });
     return handleResponse(response);
   },
+
+  getEngagementActions: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/engagement-actions`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
 };

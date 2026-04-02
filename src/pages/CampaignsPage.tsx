@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift, Upload, FileSpreadsheet } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus, Role } from '../types';
+import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus, Role, EngagementAction } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -64,6 +64,7 @@ const actionLabels: Record<string, string> = {
   send_feedback: 'Enviar Feedback',
   answer_survey: 'Responder Pesquisa',
   create_post: 'Criar Post',
+  change_profile_photo: 'Alterar Foto do Perfil',
 };
 
 const defaultActionCoins: Record<string, number> = {
@@ -147,6 +148,11 @@ export const CampaignsPage: React.FC = () => {
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [selectedActions, setSelectedActions] = useState<{ id: number; coins: number }[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
+
+  // Ações de engajamento (buscadas da API)
+  const [engagementActions, setEngagementActions] = useState<EngagementAction[]>([]);
+  const [loadingEngagementActions, setLoadingEngagementActions] = useState(false);
+  const [manuallyUnselectedActions, setManuallyUnselectedActions] = useState<number[]>([]);
 
   // Importação de vendas
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -434,21 +440,21 @@ export const CampaignsPage: React.FC = () => {
           const campaignUserIds = (usersRes.data || []).map((u: any) => u.id);
           setSelectedUsers(campaignUserIds);
           setUsers(allUsersList.slice(0, 10)); // Mostra os primeiros 10 na lista auxiliar
-          
+
           // Processar Produtos/Ações
           const campaignProductIds = (productsRes.data || []).map((p: any) => p.id);
           setSelectedProducts(campaignProductIds);
-          
+
           // Carregar prêmios
           fetchRewardsPaginated(1);
 
           if (campaign.type === 'engagement') {
-            const campaignActions = (actionsRes.data || []).map((a: any) => ({ 
-              id: a.id, 
-              coins: parseInt(a.coins) || 0 
+            const campaignActions = (actionsRes.data || []).map((a: any) => ({
+              id: a.id,
+              coins: parseInt(a.coins) || 0
             }));
             setSelectedActions(campaignActions);
-            
+
             const coinsInputsMap: { [key: number]: string } = {};
             campaignActions.forEach(a => { coinsInputsMap[a.id] = a.coins.toString(); });
             setActionCoinsInputs(coinsInputsMap);
@@ -504,6 +510,34 @@ export const CampaignsPage: React.FC = () => {
     }
   };
 
+  // Função para buscar ações de engajamento (chamada ao clicar na aba Actions)
+  const loadEngagementActions = useCallback(async () => {
+    if (!token || loadingEngagementActions) return;
+
+    setLoadingEngagementActions(true);
+    try {
+      const response = await api.getEngagementActions(token);
+      // A API retorna array direto, não dentro de { data: ... }
+      const actionsData = Array.isArray(response) ? response : (response?.data || []);
+      setEngagementActions(actionsData);
+    } catch (error) {
+      console.error('Error loading engagement actions:', error);
+      addToast('error', 'Erro ao carregar ações de engajamento.');
+    } finally {
+      setLoadingEngagementActions(false);
+    }
+  }, [token, loadingEngagementActions, addToast]);
+
+  // Buscar ações automaticamente quando mudar para a aba Actions
+  useEffect(() => {
+    if (activeTab === 'actions' && 
+        (formData.type === 'engagement' || editingCampaign?.type === 'engagement') &&
+        !loadingEngagementActions && 
+        engagementActions.length === 0) {
+      loadEngagementActions();
+    }
+  }, [activeTab, formData.type, editingCampaign?.type, loadEngagementActions, engagementActions.length, loadingEngagementActions]);
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingCampaign(null);
@@ -521,6 +555,7 @@ export const CampaignsPage: React.FC = () => {
     setSelectedUsers([]);
     setSelectedProducts([]);
     setSelectedActions([]);
+    setManuallyUnselectedActions([]);
     setActionCoinsInputs({});
     setFullySelectedRoles(new Set());
     setFullySelectedManufacturers(new Set());
@@ -903,11 +938,16 @@ export const CampaignsPage: React.FC = () => {
           delete newInputs[actionId];
           return newInputs;
         });
+        // Rastreia que esta ação foi desmarcada manualmente
+        setManuallyUnselectedActions(prev => [...prev, actionId]);
         return prev.filter(a => a.id !== actionId);
+      } else {
+        // Ao marcar, remove da lista de desmarcadas manualmente
+        setManuallyUnselectedActions(prev => prev.filter(id => id !== actionId));
+        const action = engagementActions.find(a => a.id === actionId);
+        const defaultCoins = action ? defaultActionCoins[action.name] || 10 : 10;
+        return [...prev, { id: actionId, coins: defaultCoins }];
       }
-      const action = ENGAGEMENT_ACTIONS.find(a => a.id === actionId);
-      const defaultCoins = action ? defaultActionCoins[action.name] || 10 : 10;
-      return [...prev, { id: actionId, coins: defaultCoins }];
     });
   };
 
@@ -1501,7 +1541,10 @@ export const CampaignsPage: React.FC = () => {
                   {/* Aba de ações: apenas para engajamento (criação e update) */}
                   {formData.type === 'engagement' || editingCampaign?.type === 'engagement' ? (
                     <button
-                      onClick={() => setActiveTab('actions')}
+                      onClick={() => {
+                        setActiveTab('actions');
+                        loadEngagementActions();
+                      }}
                       className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                         activeTab === 'actions'
                           ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 border-b-2 border-primary-500'
@@ -2051,84 +2094,108 @@ export const CampaignsPage: React.FC = () => {
                       </div>
 
                       <div className="grid gap-3 max-h-80 overflow-y-auto">
-                        {ENGAGEMENT_ACTIONS.filter(action =>
-                          actionLabels[action.name].toLowerCase().includes(actionSearch.toLowerCase())
-                        ).map((action) => {
-                          const isSelected = selectedActions.find(a => a.id === action.id);
-                          return (
-                            <div
-                              key={action.id}
-                              className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
-                                isSelected
-                                  ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
-                                  : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-amber-300 dark:hover:border-amber-700'
-                              }`}
-                            >
-                              <button
-                                onClick={() => toggleAction(action.id)}
-                                className="flex items-center gap-3 flex-1 text-left"
-                              >
-                                <div className={`w-5 h-5 rounded border flex items-center justify-center ${
-                                  isSelected
-                                    ? 'bg-amber-500 border-amber-500'
-                                    : 'border-zinc-300 dark:border-zinc-600'
-                                }`}>
-                                  {isSelected && <Check size={14} className="text-white" />}
+                        {loadingEngagementActions ? (
+                          <div className="flex flex-col items-center justify-center py-8">
+                            <Loader2 className="w-6 h-6 text-primary-600 animate-spin mb-2" />
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">Carregando ações...</p>
+                          </div>
+                        ) : engagementActions.length === 0 ? (
+                          <div className="text-center py-8 text-zinc-500 dark:text-zinc-400">
+                            <p className="text-sm">Clique aqui para carregar as ações de engajamento.</p>
+                          </div>
+                        ) : (
+                          engagementActions
+                            .filter(action => {
+                              const actionLabel = actionLabels[action.name] || action.name;
+                              return actionLabel.toLowerCase().includes(actionSearch.toLowerCase());
+                            })
+                            .map((action) => {
+                              const isDisabled = !action.is_enabled && !manuallyUnselectedActions.includes(action.id);
+                              const campaignName = action.campaign?.name;
+                              const isSelected = selectedActions.find(a => a.id === action.id);
+                              const actionLabel = actionLabels[action.name] || action.name;
+                              
+                              // Permite desmarcar ações já selecionadas, mesmo que estejam em uso em outra campanha
+                              const canToggle = isSelected || !isDisabled;
+
+                              return (
+                                <div
+                                  key={action.id}
+                                  className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                                    isSelected
+                                      ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
+                                      : isDisabled
+                                        ? 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700 opacity-60'
+                                        : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-amber-300 dark:hover:border-amber-700'
+                                  }`}
+                                >
+                                  <button
+                                    onClick={() => canToggle && toggleAction(action.id)}
+                                    disabled={!canToggle}
+                                    className="flex items-center gap-3 flex-1 text-left disabled:cursor-not-allowed"
+                                  >
+                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+                                      isSelected
+                                        ? 'bg-amber-500 border-amber-500'
+                                        : 'border-zinc-300 dark:border-zinc-600'
+                                    }`}>
+                                      {isSelected && <Check size={14} className="text-white" />}
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className={`font-medium text-sm ${
+                                        isDisabled && !isSelected ? 'text-zinc-500 dark:text-zinc-400' : 'text-zinc-900 dark:text-white'
+                                      }`}>
+                                        {actionLabel}
+                                      </p>
+                                      {isDisabled && campaignName && !isSelected && (
+                                        <p className="text-xs text-red-500 dark:text-red-400 mt-0.5 flex items-center gap-1">
+                                          <span>🚫</span> Em uso em: {campaignName}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </button>
+                                  {isSelected && !isDisabled && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                        {coinName.charAt(0).toUpperCase() + coinName.slice(1)}:
+                                      </span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={actionCoinsInputs[action.id] ?? (selectedActions.find(a => a.id === action.id)?.coins ?? defaultActionCoins[action.name] ?? 10)}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          if (val === '' || val === '-' || /^-?\d*$/.test(val)) {
+                                            setActionCoinsInputs(prev => ({ ...prev, [action.id]: val }));
+                                          }
+                                        }}
+                                        onBlur={(e) => {
+                                          const val = e.target.value.trim();
+                                          if (val === '' || val === '-') {
+                                            setActionCoinsInputs(prev => ({ ...prev, [action.id]: '0' }));
+                                            updateActionCoins(action.id, 0);
+                                            addToast('warning', 'Valor inválido. Definido como 0.');
+                                            return;
+                                          }
+                                          const numVal = parseInt(val);
+                                          if (isNaN(numVal) || numVal < 0) {
+                                            setActionCoinsInputs(prev => ({ ...prev, [action.id]: '0' }));
+                                            updateActionCoins(action.id, 0);
+                                            addToast('warning', 'Valores negativos não são permitidos. Definido como 0.');
+                                            return;
+                                          }
+                                          setActionCoinsInputs(prev => ({ ...prev, [action.id]: String(numVal) }));
+                                          updateActionCoins(action.id, numVal);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
+                                      />
+                                    </div>
+                                  )}
                                 </div>
-                                <div>
-                                  <p className="font-medium text-sm text-zinc-900 dark:text-white">
-                                    {actionLabels[action.name]}
-                                  </p>
-                                </div>
-                              </button>
-                              {isSelected && (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">{coinName.charAt(0).toUpperCase() + coinName.slice(1)}:</span>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={actionCoinsInputs[action.id] ?? (selectedActions.find(a => a.id === action.id)?.coins ?? defaultActionCoins[action.name] ?? 10)}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      // Permite digitar temporariamente
-                                      if (val === '' || val === '-' || /^-?\d*$/.test(val)) {
-                                        setActionCoinsInputs(prev => ({ ...prev, [action.id]: val }));
-                                      }
-                                    }}
-                                    onBlur={(e) => {
-                                      // Valida e atualiza o estado real apenas quando perde o foco
-                                      const val = e.target.value.trim();
-                                      
-                                      // Não permite vazio ou apenas "-"
-                                      if (val === '' || val === '-') {
-                                        setActionCoinsInputs(prev => ({ ...prev, [action.id]: '0' }));
-                                        updateActionCoins(action.id, 0);
-                                        addToast('warning', 'Valor inválido. Definido como 0.');
-                                        return;
-                                      }
-                                      
-                                      const numVal = parseInt(val);
-                                      
-                                      // Não permite negativos
-                                      if (isNaN(numVal) || numVal < 0) {
-                                        setActionCoinsInputs(prev => ({ ...prev, [action.id]: '0' }));
-                                        updateActionCoins(action.id, 0);
-                                        addToast('warning', 'Valores negativos não são permitidos. Definido como 0.');
-                                        return;
-                                      }
-                                      
-                                      // Valor válido
-                                      setActionCoinsInputs(prev => ({ ...prev, [action.id]: String(numVal) }));
-                                      updateActionCoins(action.id, numVal);
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                              );
+                            })
+                        )}
                       </div>
                     </div>
                   )}
