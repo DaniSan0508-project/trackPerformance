@@ -40,7 +40,7 @@ const UserListItem: React.FC<{ user?: UserType | { name: string; profile_image_u
 );
 
 export const PostsPage: React.FC = () => {
-  const { token, user: currentUser } = useAuth();
+  const { token, user: currentUser, coinName } = useAuth();
   const { addToast } = useToast();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -576,7 +576,7 @@ export const PostsPage: React.FC = () => {
                         <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 leading-none truncate">{post.user?.name || 'Usuário'}</h3>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
                           {formatRelativeDate(post.created_at)}
-                          {post.earns_coins && <span className="ml-2 text-amber-600 font-medium">• Ganha Moedas</span>}
+                          {post.earns_coins && <span className="ml-2 text-amber-600 font-medium">• Ganha {coinName}</span>}
                         </p>
                       </div>
                     </div>
@@ -942,7 +942,7 @@ export const PostsPage: React.FC = () => {
                     <span>Postado em {new Date(contentModalPost.created_at).toLocaleDateString()} às {new Date(contentModalPost.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     {contentModalPost.earns_coins && (
                       <span className="text-amber-600 font-medium flex items-center gap-1">
-                        💰 Ganha Moedas
+                        💰 Ganha {coinName}
                       </span>
                     )}
                   </div>

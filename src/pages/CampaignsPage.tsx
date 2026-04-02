@@ -77,7 +77,7 @@ const defaultActionCoins: Record<string, number> = {
 };
 
 export const CampaignsPage: React.FC = () => {
-  const { token, user: currentUser } = useAuth();
+  const { token, user: currentUser, coinName } = useAuth();
   const { addToast } = useToast();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1229,7 +1229,7 @@ export const CampaignsPage: React.FC = () => {
                                 <Coins size={16} className="text-amber-500" />
                                 <span className="text-zinc-500 dark:text-zinc-500">Meta:</span>
                                 <span className="font-semibold text-zinc-900 dark:text-white">
-                                  {Math.floor(campaign.goal || 0)} coins
+                                  {Math.floor(campaign.goal || 0)} {coinName}
                                 </span>
                               </div>
                             )}
@@ -1305,7 +1305,7 @@ export const CampaignsPage: React.FC = () => {
                                   )}
                                   {campaign.type === 'engagement' && member.coins_total !== null && (
                                     <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                                      {member.coins_total} 🪙
+                                      {member.coins_total} {coinName}
                                     </span>
                                   )}
                                 </div>
@@ -1501,7 +1501,7 @@ export const CampaignsPage: React.FC = () => {
                               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta Individual</label>
                               <p className="text-sm font-medium text-zinc-900 dark:text-white">
                                 {editingCampaign.type === 'engagement'
-                                  ? `${Math.floor(Number(editingCampaign.goal) || 0)} coins`
+                                  ? `${Math.floor(Number(editingCampaign.goal) || 0)} ${coinName}`
                                   : formatCurrency(String(editingCampaign.goal))
                                 }
                               </p>
@@ -1511,7 +1511,7 @@ export const CampaignsPage: React.FC = () => {
                                 <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta Campanha</label>
                                 <p className="text-sm font-medium text-zinc-900 dark:text-white">
                                   {editingCampaign.type === 'engagement'
-                                    ? `${Math.floor(Number(editingCampaign.goal_campaign) || 0)} coins`
+                                    ? `${Math.floor(Number(editingCampaign.goal_campaign) || 0)} ${coinName}`
                                     : formatCurrency(String(editingCampaign.goal_campaign))
                                   }
                                 </p>
@@ -1585,7 +1585,7 @@ export const CampaignsPage: React.FC = () => {
                           {formData.type === 'engagement' && (
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta Individual (Coins) *</label>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta Individual ({coinName.charAt(0).toUpperCase() + coinName.slice(1)}) *</label>
                                 <input
                                   type="number"
                                   value={formData.goal}
@@ -1599,7 +1599,7 @@ export const CampaignsPage: React.FC = () => {
                                 {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta Campanha (Coins) (Opcional)</label>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta Campanha ({coinName.charAt(0).toUpperCase() + coinName.slice(1)}) (Opcional)</label>
                                 <input
                                   type="number"
                                   value={formData.goal_campaign}
@@ -1913,7 +1913,7 @@ export const CampaignsPage: React.FC = () => {
                                   {user.coin_balance !== undefined && user.coin_balance > 0 && (
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
                                       <Coins size={10} />
-                                      {user.coin_balance.toLocaleString('pt-BR')}
+                                      {user.coin_balance.toLocaleString('pt-BR')} {coinName}
                                     </span>
                                   )}
                                   {/* Badge de aviso para Admin em campanha de engajamento */}
@@ -1958,8 +1958,8 @@ export const CampaignsPage: React.FC = () => {
                     <div className="space-y-3">
                       <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
                         {editingCampaign?.type === 'engagement'
-                          ? 'Selecione as ações e defina quantos coins serão ganhos (obrigatório para campanhas de engajamento):'
-                          : 'Selecione as ações e defina quantos coins serão ganhos:'}
+                          ? `Selecione as ações e defina quantos ${coinName} serão ganhos (obrigatório para campanhas de engajamento):`
+                          : `Selecione as ações e defina quantos ${coinName} serão ganhos:`}
                       </p>
 
                       {/* Mensagem de Erro de Validação de Ações */}
@@ -2023,7 +2023,7 @@ export const CampaignsPage: React.FC = () => {
                               </button>
                               {isSelected && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">Coins:</span>
+                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">{coinName.charAt(0).toUpperCase() + coinName.slice(1)}:</span>
                                   <input
                                     type="number"
                                     min="0"
@@ -2555,7 +2555,7 @@ export const CampaignsPage: React.FC = () => {
                               }`}>
                                 {rankingModal.campaign?.type === 'sales'
                                   ? formatCurrency(String(salesAmount !== null ? salesAmount : item.value || 0))
-                                  : `${coinsTotal !== null ? coinsTotal : item.value || 0} 🪙`
+                                  : `${coinsTotal !== null ? coinsTotal : item.value || 0} ${coinName}`
                                 }
                               </p>
                             </div>

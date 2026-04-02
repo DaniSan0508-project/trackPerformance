@@ -80,6 +80,8 @@ export const TeamPage: React.FC = () => {
     isLoading: false,
   });
 
+  const { coinName } = useAuth();
+
   // Modal de Extrato
   const [coinStatementModal, setCoinStatementModal] = useState<{
     isOpen: boolean;
@@ -673,7 +675,7 @@ export const TeamPage: React.FC = () => {
                         <span className="font-semibold text-zinc-900 dark:text-white text-xs">
                           {user.coin_balance || 0}
                         </span>
-                        <span className="text-zinc-500 dark:text-zinc-400 text-xs">moedas</span>
+                        <span className="text-zinc-500 dark:text-zinc-400 text-xs">{coinName}</span>
                       </div>
                       <div className="flex items-center gap-1.5 text-sm">
                         <LogOut size={14} className="text-zinc-400 flex-shrink-0" />

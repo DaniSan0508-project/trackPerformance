@@ -31,7 +31,7 @@ interface Question {
 }
 
 export const SurveysPage: React.FC = () => {
-  const { token } = useAuth();
+  const { token, user: currentUser, coinName } = useAuth();
   const { addToast } = useToast();
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1327,7 +1327,7 @@ export const SurveysPage: React.FC = () => {
                                 {user.coin_balance !== undefined && user.coin_balance > 0 && (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
                                     <DollarSign size={10} />
-                                    {user.coin_balance.toLocaleString('pt-BR')}
+                                    {user.coin_balance.toLocaleString('pt-BR')} {coinName}
                                   </span>
                                 )}
                               </div>

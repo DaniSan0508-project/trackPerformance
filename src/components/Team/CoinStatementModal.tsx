@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, CoinStatementResponse, CoinStatement } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { Calendar, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Search, X, Filter } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDate } from '../../utils';
@@ -23,6 +24,7 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
   onClose,
 }) => {
   const { addToast } = useToast();
+  const { coinName } = useAuth();
   
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CoinStatementResponse | null>(null);
@@ -99,7 +101,7 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
             <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-start flex-shrink-0 bg-white dark:bg-zinc-900 rounded-t-2xl z-10">
               <div className="flex-1">
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
-                  Extrato de Moedas - {user?.name || ''}
+                  Extrato de {coinName.charAt(0).toUpperCase() + coinName.slice(1)} - {user?.name || ''}
                 </h2>
               </div>
               <button
@@ -250,9 +252,9 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
             <Calendar size={48} className="mx-auto mb-3 opacity-50" />
             <p className="font-medium">Nenhuma movimentação encontrada</p>
             <p className="text-sm mt-1">
-              {filters.start_date || filters.end_date 
-                ? 'Tente ajustar os filtros de data.' 
-                : 'Este usuário ainda não tem movimentações de moedas.'}
+              {filters.start_date || filters.end_date
+                ? 'Tente ajustar os filtros de data.'
+                : `Este usuário ainda não tem movimentações de ${coinName}.`}
             </p>
           </div>
         )}
