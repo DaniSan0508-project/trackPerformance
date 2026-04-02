@@ -26,7 +26,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export const RewardsPage: React.FC = () => {
-  const { token, user: currentUser } = useAuth();
+  const { token, user: currentUser, coinName } = useAuth();
   const { addToast } = useToast();
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
@@ -390,22 +390,23 @@ export const RewardsPage: React.FC = () => {
       
       // Tenta extrair dados do erro da API
       let errorMessage = error.message || 'Erro ao resgatar recompensa.';
-      
+
       if (error.response?.data) {
         const data = error.response.data;
-        
+
         // Trata erro de saldo insuficiente
         if (data.error === 'Saldo de coins insuficiente') {
           const required = data.required || 0;
           const available = data.available || 0;
           const missing = required - available;
-          
-          errorMessage = `Saldo insuficiente. Você tem ${available.toLocaleString('pt-BR')} moedas, mas precisa de ${required.toLocaleString('pt-BR')} moedas. Faltam ${missing.toLocaleString('pt-BR')} moedas.`;
+
+          const coinNameCapitalized = coinName.charAt(0).toUpperCase() + coinName.slice(1);
+          errorMessage = `Saldo insuficiente. Você tem ${available.toLocaleString('pt-BR')} ${coinName}, mas precisa de ${required.toLocaleString('pt-BR')} ${coinName}. Faltam ${missing.toLocaleString('pt-BR')} ${coinName}.`;
         } else if (data.message) {
           errorMessage = data.message;
         }
       }
-      
+
       addToast('error', errorMessage);
       setRedemptionModal(prev => ({ ...prev, isProcessing: false }));
     }
@@ -482,7 +483,7 @@ export const RewardsPage: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Loja de Recompensas</h1>
-            <p className="text-zinc-500 dark:text-zinc-400">Troque suas moedas por recompensas incríveis.</p>
+            <p className="text-zinc-500 dark:text-zinc-400">Troque suas {coinName} por recompensas incríveis.</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -837,7 +838,7 @@ export const RewardsPage: React.FC = () => {
                             {/* Total */}
                             <div className="mt-3 flex items-center gap-2 text-amber-500 font-bold">
                               <Coins size={18} className="fill-current" />
-                              <span>{redemption.total_coins_spent.toLocaleString('pt-BR')} moedas gastas</span>
+                              <span>{redemption.total_coins_spent.toLocaleString('pt-BR')} {coinName} gastos</span>
                             </div>
 
                             {/* Notes */}
@@ -1147,14 +1148,14 @@ export const RewardsPage: React.FC = () => {
                       <h3 className="font-bold text-zinc-900 dark:text-white mb-1">{redemptionModal.reward.name}</h3>
                       <div className="flex items-center gap-2 text-amber-500 font-bold">
                         <Coins size={16} className="fill-current" />
-                        <span>{parseFloat(redemptionModal.reward.price_coins as string).toLocaleString('pt-BR', { minimumFractionDigits: 0 })} moedas</span>
+                        <span>{parseFloat(redemptionModal.reward.price_coins as string).toLocaleString('pt-BR', { minimumFractionDigits: 0 })} {coinName}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
                     <p className="text-sm text-amber-800 dark:text-amber-400">
-                      <strong>Atenção:</strong> Este resgate será realizado com suas moedas atuais. Após a confirmação, não será possível cancelar.
+                      <strong>Atenção:</strong> Este resgate será realizado com suas {coinName} atuais. Após a confirmação, não será possível cancelar.
                     </p>
                   </div>
 
@@ -1172,15 +1173,15 @@ export const RewardsPage: React.FC = () => {
                         <div className="text-xs text-red-700 dark:text-red-400 space-y-1">
                           <div className="flex justify-between">
                             <span>Valor necessário:</span>
-                            <span className="font-medium">{rewardPrice.toLocaleString('pt-BR')} moedas</span>
+                            <span className="font-medium">{rewardPrice.toLocaleString('pt-BR')} {coinName}</span>
                           </div>
                           <div className="flex justify-between">
                             <span>Seu saldo:</span>
-                            <span className="font-medium">{userBalance.toLocaleString('pt-BR')} moedas</span>
+                            <span className="font-medium">{userBalance.toLocaleString('pt-BR')} {coinName}</span>
                           </div>
                           <div className="flex justify-between pt-2 border-t border-red-200 dark:border-red-800">
                             <span>Faltam:</span>
-                            <span className="font-bold">{(rewardPrice - userBalance).toLocaleString('pt-BR')} moedas</span>
+                            <span className="font-bold">{(rewardPrice - userBalance).toLocaleString('pt-BR')} {coinName}</span>
                           </div>
                         </div>
                       </div>

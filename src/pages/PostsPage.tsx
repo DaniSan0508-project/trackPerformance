@@ -40,7 +40,7 @@ const UserListItem: React.FC<{ user?: UserType | { name: string; profile_image_u
 );
 
 export const PostsPage: React.FC = () => {
-  const { token, user: currentUser } = useAuth();
+  const { token, user: currentUser, coinName } = useAuth();
   const { addToast } = useToast();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -341,44 +341,32 @@ export const PostsPage: React.FC = () => {
       formData.append('title', editTitle);
       formData.append('content', editContent);
 
-      // Adicionar mídia se houver mudança
+      // Lógica de mídia: sempre envia os dois campos
       if (editMediaType === 'image') {
+        // Envia imagem (nova ou sinaliza manter a atual) e limpa vídeo
         if (editImage) {
           formData.append('image', editImage);
           console.log('Enviando nova imagem:', editImage.name);
-          // Se tinha vídeo antes, remover
-          if (editPostModal.video_url) {
-            formData.append('remove_video', 'true');
-            console.log('Removendo vídeo existente');
-          }
         } else if (editPostModal.image_url) {
-          // Manter imagem atual
           formData.append('keep_existing_media', 'true');
           console.log('Mantendo imagem atual');
         }
+        formData.append('video_url', '');
       } else if (editMediaType === 'video') {
-        if (editVideoUrl) {
-          formData.append('video_url', editVideoUrl);
-          console.log('Enviando novo vídeo:', editVideoUrl);
-          // Se tinha imagem antes, remover
-          if (editPostModal.image_url) {
-            formData.append('remove_image', 'true');
-            console.log('Removendo imagem existente');
-          }
-        } else if (editPostModal.video_url) {
-          // Manter vídeo atual
-          formData.append('keep_existing_media', 'true');
-          console.log('Mantendo vídeo atual');
-        }
-      } else if (editMediaType === 'none') {
-        // Remover mídia existente
-        formData.append('remove_media', 'true');
-        console.log('Removendo toda mídia');
+        // Envia vídeo e limpa imagem
+        formData.append('video_url', editVideoUrl);
+        formData.append('image', '');
+        console.log('Enviando vídeo e limpando imagem');
+      } else {
+        // Sem mídia: limpa ambos
+        formData.append('image', '');
+        formData.append('video_url', '');
+        console.log('Limpando toda mídia');
       }
 
-      console.log('FormData enviado:', formData);
+      console.log('FormData enviado para atualização:');
       for (let pair of formData.entries()) {
-        console.log(pair[0] + ': ' + pair[1]);
+        console.log(pair[0] + ': ' + (pair[1] instanceof File ? `[File: ${pair[1].name}]` : pair[1]));
       }
 
       // Usar API específica para FormData
@@ -588,7 +576,7 @@ export const PostsPage: React.FC = () => {
                         <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 leading-none truncate">{post.user?.name || 'Usuário'}</h3>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
                           {formatRelativeDate(post.created_at)}
-                          {post.earns_coins && <span className="ml-2 text-amber-600 font-medium">• Ganha Moedas</span>}
+                          {post.earns_coins && <span className="ml-2 text-amber-600 font-medium">• Ganha {coinName}</span>}
                         </p>
                       </div>
                     </div>
@@ -954,7 +942,7 @@ export const PostsPage: React.FC = () => {
                     <span>Postado em {new Date(contentModalPost.created_at).toLocaleDateString()} às {new Date(contentModalPost.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     {contentModalPost.earns_coins && (
                       <span className="text-amber-600 font-medium flex items-center gap-1">
-                        💰 Ganha Moedas
+                        💰 Ganha {coinName}
                       </span>
                     )}
                   </div>
@@ -1080,51 +1068,6 @@ export const PostsPage: React.FC = () => {
                         )}
                       </div>
                     )}
-
-                    <div className="flex gap-3 mb-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (editMediaType === 'image') {
-                            setEditMediaType('none');
-                            setEditImage(null);
-                          } else {
-                            setEditMediaType('image');
-                            setEditVideoUrl('');
-                          }
-                        }}
-                        className={`flex-1 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-                          editMediaType === 'image'
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                        }`}
-                      >
-                        <ImageIcon size={18} />
-                        Imagem
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (editMediaType === 'video') {
-                            setEditMediaType('none');
-                            setEditVideoUrl('');
-                          } else {
-                            setEditMediaType('video');
-                            setEditImage(null);
-                          }
-                        }}
-                        className={`flex-1 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-                          editMediaType === 'video'
-                            ? 'bg-red-600 text-white'
-                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                        }`}
-                      >
-                        <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
-                        </svg>
-                        YouTube
-                      </button>
-                    </div>
 
                     {/* Campo de Imagem */}
                     {editMediaType === 'image' && (

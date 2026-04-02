@@ -3,12 +3,10 @@ import { Layout } from '../components/Layout';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, FileText, Calendar, Eye, Users, CheckCircle, XCircle, Clock, EyeOff, Plus, Edit2, Trash2, X, Save, Check, User as UserIcon, Shield, User, BarChart3, PlusCircle, GripVertical, Copy, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Survey, SurveyStatus, User as UserType, SurveyResults, SurveyResultTextOption, SurveyResultChoiceOption } from '../types';
+import { Survey, SurveyStatus, User as UserType, SurveyResults, SurveyResultTextOption, SurveyResultChoiceOption, Role } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
-
-const API_BASE_URL = 'http://localhost:8010/api/v1';
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -33,7 +31,7 @@ interface Question {
 }
 
 export const SurveysPage: React.FC = () => {
-  const { token } = useAuth();
+  const { token, user: currentUser, coinName } = useAuth();
   const { addToast } = useToast();
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,12 +64,11 @@ export const SurveysPage: React.FC = () => {
     is_anonymous: false,
     is_published: false,
     survey_type: '' as 'choice' | 'text' | '',
-    status: 'draft' as SurveyStatus,
-    coins_reward: false,
+    status: '' as SurveyStatus | '',
   });
 
   const isReadOnly = !!editingSurvey && (editingSurvey.status === 'active' || editingSurvey.status === 'closed');
-  const canPublish = formData.status !== 'draft';
+  const canPublish = formData.status === 'active';
 
   // Valida se Dados Básicos estão completos
   const isBasicDataComplete = () => {
@@ -95,6 +92,7 @@ export const SurveysPage: React.FC = () => {
   const [loadingSelectAllUsers, setLoadingSelectAllUsers] = useState(false);
   const [selectAllUsersProgress, setSelectAllUsersProgress] = useState<{ current: number; total: number } | null>(null);
   const [selectByRoleLoading, setSelectByRoleLoading] = useState<string | null>(null);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [fullySelectedRoles, setFullySelectedRoles] = useState<Set<string>>(new Set());
 
   // Questões
@@ -197,6 +195,21 @@ export const SurveysPage: React.FC = () => {
     }
   }, [usersPage, debouncedUserSearch, userFilterType, isModalOpen, activeTab]);
 
+  // Buscar cargos quando o modal abrir
+  useEffect(() => {
+    const fetchRoles = async () => {
+      if (isModalOpen && token) {
+        try {
+          const response = await api.getAllRoles(token);
+          setRoles(response.data || []);
+        } catch (error) {
+          console.error('Error fetching roles:', error);
+        }
+      }
+    };
+    fetchRoles();
+  }, [isModalOpen, token]);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
@@ -225,18 +238,11 @@ export const SurveysPage: React.FC = () => {
       setIsModalOpen(true);
       try {
         // Busca detalhes completos com questões
-        const response = await fetch(`${API_BASE_URL}/surveys/${survey.id}?include=questions`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-        
-        if (!response.ok) throw new Error('Falha ao carregar detalhes da pesquisa');
-        const { data: detail } = await response.json();
+        const responseData = await api.getSurvey(token!, survey.id);
+        const detail = responseData.data || responseData;
 
         // Busca usuários separadamente da nova rota
-        const usersResponse = await api.getSurveyUsers(token, survey.id);
+        const usersResponse = await api.getSurveyUsers(token!, survey.id);
         const surveyUsers = usersResponse.data || [];
 
         setFormData({
@@ -247,7 +253,6 @@ export const SurveysPage: React.FC = () => {
           is_published: detail.is_published,
           survey_type: detail.questions?.[0]?.type || 'text',
           status: detail.status,
-          coins_reward: detail.coins_reward || false,
         });
 
         // Mapeia as questões
@@ -281,8 +286,7 @@ export const SurveysPage: React.FC = () => {
         is_anonymous: false,
         is_published: false,
         survey_type: '',
-        status: 'draft',
-        coins_reward: false,
+        status: '',
       });
       setSelectedUsers([]);
       setQuestions([]);
@@ -312,23 +316,8 @@ export const SurveysPage: React.FC = () => {
     setLoadingSelectAllUsers(true);
     setSelectAllUsersProgress(null);
     try {
-      const queryParams = new URLSearchParams();
-      queryParams.append('page', '1');
-      queryParams.append('per_page', '100');
-      queryParams.append('include', 'store');
-      if (userSearch) {
-        queryParams.append(`filter[${userFilterType}]`, userSearch);
-      }
-
-      const firstResponse = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-      if (!firstResponse.ok) throw new Error('Falha ao carregar usuários');
-      const firstData = await firstResponse.json() as any;
-
+      // Busca a primeira página para saber o total
+      const firstData = await api.getUsers(token!, 1, userSearch, userFilterType);
       const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
       let allUsers: User[] = [...(firstData.data || [])];
 
@@ -337,23 +326,7 @@ export const SurveysPage: React.FC = () => {
       }
 
       for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
-        const nextPageParams = new URLSearchParams();
-        nextPageParams.append('page', currentPage.toString());
-        nextPageParams.append('per_page', '100');
-        nextPageParams.append('include', 'store');
-        if (userSearch) {
-          nextPageParams.append(`filter[${userFilterType}]`, userSearch);
-        }
-
-        const response = await fetch(`${API_BASE_URL}/users?${nextPageParams.toString()}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-        if (!response.ok) throw new Error('Falha ao carregar usuários');
-        const data = await response.json() as any;
-
+        const data = await api.getUsers(token!, currentPage, userSearch, userFilterType);
         allUsers.push(...(data.data || []));
         setSelectAllUsersProgress({ current: currentPage, total: totalPages });
       }
@@ -363,6 +336,9 @@ export const SurveysPage: React.FC = () => {
         const newIds = validUserIds.filter(id => !prev.includes(id));
         return [...prev, ...newIds];
       });
+
+      // Marca todos os cargos principais como totalmente selecionados
+      setFullySelectedRoles(new Set(roles.map(r => r.description)));
 
       addToast('success', `Todos os ${validUserIds.length} usuários foram selecionados!`);
       setSelectAllUsersProgress(null);
@@ -381,38 +357,13 @@ export const SurveysPage: React.FC = () => {
 
     setSelectByRoleLoading(role);
     try {
-      const queryParams = new URLSearchParams();
-      queryParams.append('page', '1');
-      queryParams.append('per_page', '100');
-      queryParams.append('include', 'store');
-
-      const firstResponse = await fetch(`${API_BASE_URL}/users?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-      if (!firstResponse.ok) throw new Error('Falha ao carregar usuários');
-      const firstData = await firstResponse.json() as any;
-
+      // Busca a primeira página para saber o total
+      const firstData = await api.getUsers(token!, 1);
       const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
       let allUsers: User[] = [...(firstData.data || [])];
 
       for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
-        const nextPageParams = new URLSearchParams();
-        nextPageParams.append('page', currentPage.toString());
-        nextPageParams.append('per_page', '100');
-        nextPageParams.append('include', 'store');
-
-        const response = await fetch(`${API_BASE_URL}/users?${nextPageParams.toString()}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-        if (!response.ok) throw new Error('Falha ao carregar usuários');
-        const data = await response.json() as any;
-
+        const data = await api.getUsers(token!, currentPage);
         allUsers.push(...(data.data || []));
       }
 
@@ -461,10 +412,10 @@ export const SurveysPage: React.FC = () => {
   useEffect(() => {
     if (!isModalOpen || users.length === 0) return;
 
-    const roles = ['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor', 'Gerente', 'Coordenador'];
     const newFullySelectedRoles = new Set<string>();
 
-    roles.forEach(role => {
+    roles.forEach(roleObj => {
+      const role = roleObj.description;
       const usersInRole = users.filter(u => u.role === role);
       if (usersInRole.length > 0 && usersInRole.every(u => selectedUsers.includes(u.id))) {
         newFullySelectedRoles.add(role);
@@ -472,7 +423,22 @@ export const SurveysPage: React.FC = () => {
     });
 
     setFullySelectedRoles(newFullySelectedRoles);
-  }, [selectedUsers, users, isModalOpen]);
+  }, [selectedUsers, users, isModalOpen, roles]);
+
+  const questionsContainerRef = useRef<HTMLDivElement>(null);
+
+  const focusLastQuestion = () => {
+    setTimeout(() => {
+      if (questionsContainerRef.current) {
+        const lastQuestion = questionsContainerRef.current.lastElementChild as HTMLElement;
+        if (lastQuestion) {
+          lastQuestion.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const textarea = lastQuestion.querySelector('textarea');
+          if (textarea) textarea.focus();
+        }
+      }
+    }, 100);
+  };
 
   const addQuestion = () => {
     const newOrder = questions.length + 1;
@@ -484,6 +450,8 @@ export const SurveysPage: React.FC = () => {
       order: newOrder,
       options: questionType === 'choice' ? [{ option_text: '' }, { option_text: '' }] : []
     }]);
+
+    focusLastQuestion();
   };
 
   const removeQuestion = (index: number) => {
@@ -621,7 +589,6 @@ export const SurveysPage: React.FC = () => {
         is_anonymous: formData.is_anonymous,
         is_published: formData.is_published,
         status: formData.status,
-        coins_reward: formData.coins_reward,
         users: selectedUsers,
         questions: questionsToSave,
       };
@@ -1009,17 +976,29 @@ export const SurveysPage: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                          Status da Pesquisa *
+                          Situação *
                         </label>
                         <select
                           value={formData.status}
-                          disabled={isReadOnly}
-                          onChange={(e) => setFormData({ ...formData, status: e.target.value as SurveyStatus })}
+                          disabled={isReadOnly && formData.status === editingSurvey?.status && formData.status === 'closed'}
+                          onChange={(e) => {
+                            const newStatus = e.target.value as SurveyStatus;
+                            setFormData({ 
+                              ...formData, 
+                              status: newStatus,
+                              is_published: newStatus === 'active'
+                            });
+                          }}
                           className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
                         >
-                          <option value="draft">Rascunho</option>
+                          <option value="" disabled>Selecione a situação</option>
+                          {(!editingSurvey || (editingSurvey.status !== 'active' && editingSurvey.status !== 'closed')) && (
+                            <option value="draft">Rascunho</option>
+                          )}
                           <option value="active">Ativa</option>
-                          <option value="closed">Encerrada</option>
+                          {(editingSurvey || formData.status === 'closed') && (
+                            <option value="closed">Encerrada</option>
+                          )}
                         </select>
                       </div>
                     </div>
@@ -1099,41 +1078,6 @@ export const SurveysPage: React.FC = () => {
                           Selecione um tipo para continuar
                         </p>
                       )}
-                      
-                      {/* Checklist do que falta preencher */}
-                      {!isBasicDataComplete() && (
-                        <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
-                          <p className="text-xs font-semibold text-amber-800 dark:text-amber-400 mb-2">
-                            📋 Preencha os campos obrigatórios:
-                          </p>
-                          <div className="space-y-1">
-                            {!formData.title.trim() && (
-                              <p className="text-xs text-amber-700 dark:text-amber-500 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                Título da pesquisa
-                              </p>
-                            )}
-                            {!formData.survey_type && (
-                              <p className="text-xs text-amber-700 dark:text-amber-500 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                Tipo de pesquisa
-                              </p>
-                            )}
-                            {!formData.starts_at && (
-                              <p className="text-xs text-amber-700 dark:text-amber-500 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                Data de início
-                              </p>
-                            )}
-                            {!formData.ends_at && (
-                              <p className="text-xs text-amber-700 dark:text-amber-500 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                Data de término
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -1143,9 +1087,10 @@ export const SurveysPage: React.FC = () => {
                         </label>
                         <input
                           type="date"
+                          disabled={isReadOnly}
                           value={formData.starts_at}
                           onChange={(e) => setFormData({ ...formData, starts_at: e.target.value })}
-                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
                         />
                       </div>
                       <div>
@@ -1154,9 +1099,10 @@ export const SurveysPage: React.FC = () => {
                         </label>
                         <input
                           type="date"
+                          disabled={isReadOnly}
                           value={formData.ends_at}
                           onChange={(e) => setFormData({ ...formData, ends_at: e.target.value })}
-                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
                         />
                       </div>
                     </div>
@@ -1187,22 +1133,8 @@ export const SurveysPage: React.FC = () => {
                         <div>
                           <p className="font-medium text-zinc-900 dark:text-white">Publicar Imediatamente</p>
                           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                            {!canPublish ? 'Pesquisas rascunho não podem ser publicadas diretamente' : 'A pesquisa ficará visível para os participantes'}
+                            {formData.status !== 'active' ? 'Selecione a situação "Ativa" para habilitar a publicação' : 'A pesquisa ficará visível para os participantes'}
                           </p>
-                        </div>
-                      </label>
-
-                      <label className={`flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}>
-                        <input
-                          type="checkbox"
-                          disabled={isReadOnly}
-                          checked={formData.coins_reward}
-                          onChange={(e) => setFormData({ ...formData, coins_reward: e.target.checked })}
-                          className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 disabled:opacity-50"
-                        />
-                        <div>
-                          <p className="font-medium text-zinc-900 dark:text-white">Recompensar com Moedas</p>
-                          <p className="text-sm text-zinc-500 dark:text-zinc-400">Os participantes ganharão moedas ao responder</p>
                         </div>
                       </label>
                     </div>
@@ -1278,27 +1210,30 @@ export const SurveysPage: React.FC = () => {
                           Filtrar por Cargo
                         </p>
                         <div className="flex flex-wrap gap-2">
-                          {['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor', 'Gerente', 'Coordenador'].map((role) => (
-                            <button
-                              key={role}
-                              onClick={() => handleSelectAllByRole(role)}
-                              disabled={selectByRoleLoading !== null || isReadOnly}
-                              className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
-                                areAllUsersSelectedByRole(role)
-                                  ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
-                                  : 'bg-white text-zinc-600 border-zinc-200 hover:border-emerald-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
-                              } disabled:opacity-50 disabled:cursor-not-allowed`}
-                            >
-                              {selectByRoleLoading === role ? (
-                                <Loader2 size={12} className="animate-spin" />
-                              ) : (
-                                <>
-                                  {areAllUsersSelectedByRole(role) ? <Check size={12} /> : <Plus size={12} />}
-                                  {role}
-                                </>
-                              )}
-                            </button>
-                          ))}
+                          {roles.map((roleObj) => {
+                            const role = roleObj.description;
+                            return (
+                              <button
+                                key={role}
+                                onClick={() => handleSelectAllByRole(role)}
+                                disabled={selectByRoleLoading !== null || isReadOnly}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
+                                  areAllUsersSelectedByRole(role)
+                                    ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
+                                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-emerald-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
+                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                              >
+                                {selectByRoleLoading === role ? (
+                                  <Loader2 size={12} className="animate-spin" />
+                                ) : (
+                                  <>
+                                    {areAllUsersSelectedByRole(role) ? <Check size={12} /> : <Plus size={12} />}
+                                    {role}
+                                  </>
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
@@ -1392,7 +1327,7 @@ export const SurveysPage: React.FC = () => {
                                 {user.coin_balance !== undefined && user.coin_balance > 0 && (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
                                     <DollarSign size={10} />
-                                    {user.coin_balance.toLocaleString('pt-BR')}
+                                    {user.coin_balance.toLocaleString('pt-BR')} {coinName}
                                   </span>
                                 )}
                               </div>
@@ -1478,13 +1413,17 @@ export const SurveysPage: React.FC = () => {
                         )}
                       </div>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-4" ref={questionsContainerRef}>
                         {questions.map((question, qIndex) => (
                           <motion.div
                             key={qIndex}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-5 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md transition-all"
+                            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            className={`border-2 transition-all duration-500 rounded-xl p-5 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md ${
+                              qIndex === questions.length - 1 && !editingSurvey
+                                ? 'border-emerald-500/50 dark:border-emerald-500/30 ring-4 ring-emerald-500/10'
+                                : 'border-zinc-200 dark:border-zinc-700'
+                            }`}
                           >
                             {/* Header da questão */}
                             <div className="flex items-center justify-between mb-4">
@@ -1513,6 +1452,7 @@ export const SurveysPage: React.FC = () => {
                                       };
                                       setQuestions([...questions, newQuestion]);
                                       addToast('success', 'Questão duplicada!');
+                                      focusLastQuestion();
                                     }}
                                     className="p-2 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
                                     title="Duplicar questão"
@@ -1702,8 +1642,8 @@ export const SurveysPage: React.FC = () => {
                     </button>
                   )}
 
-                  {/* Botão Salvar (Visível em Questions ou sempre em edição - ESCONDIDO se ReadOnly) */}
-                  {(activeTab === 'questions' || editingSurvey) && !isReadOnly && (
+                  {/* Botão Salvar (Visível em Questions ou sempre em edição - ESCONDIDO se ReadOnly, EXCETO se mudou o status) */}
+                  {(activeTab === 'questions' || editingSurvey) && (!isReadOnly || formData.status !== editingSurvey?.status) && (
                     <button
                       type="button"
                       onClick={handleSubmit}

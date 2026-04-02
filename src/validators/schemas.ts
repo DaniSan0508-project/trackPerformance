@@ -198,6 +198,9 @@ export const campaignSchema = z.object({
   goal: z
     .string()
     .optional(),
+  goal_campaign: z
+    .string()
+    .optional(),
   start_date: z
     .string()
     .min(1, 'Data de início é obrigatória'),
@@ -210,7 +213,7 @@ export const campaignSchema = z.object({
     .refine((val) => val === 'ativa' || val === 'pausada' || val === 'finalizada', {
       message: 'Status inválido',
     }),
-}).refine((data) => {
+  }).refine((data) => {
   // Goal é obrigatório para sales e engagement
   if (data.type === 'sales' && (!data.goal || data.goal.trim() === '')) {
     return false;
@@ -219,10 +222,10 @@ export const campaignSchema = z.object({
     return false;
   }
   return true;
-}, {
+  }, {
   message: 'Meta é obrigatória',
   path: ['goal'],
-}).refine((data) => {
+  }).refine((data) => {
   // Valida formato numérico se goal estiver presente
   if (data.goal && data.goal.trim() !== '') {
     if (data.type === 'sales') {
@@ -232,7 +235,7 @@ export const campaignSchema = z.object({
     }
   }
   return true;
-}, {
+  }, {
   message: 'Deve ser um número válido',
   path: ['goal'],
 });
@@ -257,6 +260,14 @@ export const productSchema = z.object({
     .optional(),
 });
 
+// Schema para Cargos
+export const roleSchema = z.object({
+  description: z
+    .string()
+    .min(1, 'Descrição é obrigatória')
+    .max(100, 'Descrição muito longa'),
+});
+
 // Tipos inferidos dos schemas
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type UserFormData = z.infer<typeof userSchema>;
@@ -268,3 +279,4 @@ export type RewardFormData = z.infer<typeof rewardSchema>;
 export type RewardUpdateFormData = z.infer<typeof rewardUpdateSchema>;
 export type CampaignFormData = z.infer<typeof campaignSchema>;
 export type ProductFormData = z.infer<typeof productSchema>;
+export type RoleFormData = z.infer<typeof roleSchema>;

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus } from '../types';
+import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus, Role } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -77,7 +77,7 @@ const defaultActionCoins: Record<string, number> = {
 };
 
 export const CampaignsPage: React.FC = () => {
-  const { token, user: currentUser } = useAuth();
+  const { token, user: currentUser, coinName } = useAuth();
   const { addToast } = useToast();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +90,13 @@ export const CampaignsPage: React.FC = () => {
   const debouncedUserSearch = useDebounce(userSearch, 500);
   const [productSearch, setProductSearch] = useState('');
   const debouncedProductSearch = useDebounce(productSearch, 500);
+  const [rewardSearch, setRewardSearch] = useState('');
+  const debouncedRewardSearch = useDebounce(rewardSearch, 500);
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
+  const [rewardsPage, setRewardsPage] = useState(1);
+  const [rewardsTotalPages, setRewardsTotalPages] = useState(1);
+  const [loadingRewards, setLoadingRewards] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -129,9 +136,11 @@ export const CampaignsPage: React.FC = () => {
     name: '',
     type: '' as CampaignType | '',
     goal: '',
+    goal_campaign: '',
     start_date: '',
     end_date: '',
     status: 'ativa' as CampaignStatus,
+    reward_id: '' as number | '',
   });
 
   // Seleções
@@ -164,6 +173,7 @@ export const CampaignsPage: React.FC = () => {
   const [selectByRoleLoading, setSelectByRoleLoading] = useState<string | null>(null);
   const [selectByManufacturerLoading, setSelectByManufacturerLoading] = useState<string | null>(null);
   const [manufacturers, setManufacturers] = useState<Array<{ id: number; name: string }>>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   
   // Controle de seleção por cargo/fabricante (independente da página)
   const [fullySelectedRoles, setFullySelectedRoles] = useState<Set<string>>(new Set());
@@ -203,10 +213,11 @@ export const CampaignsPage: React.FC = () => {
     setLoadingAux(true);
     try {
       // Carregar primeira página de usuários, produtos e fabricantes
-      const [usersData, productsData, manufacturersData] = await Promise.all([
+      const [usersData, productsData, manufacturersData, rolesData] = await Promise.all([
         api.getAllUsers(token, 1, 10).catch(() => null),
         api.getProducts(token, 1, 10).catch(() => null),
         api.getAllManufacturers(token).catch(() => null),
+        api.getAllRoles(token).catch(() => null),
       ]);
 
       if (usersData?.data) {
@@ -221,6 +232,9 @@ export const CampaignsPage: React.FC = () => {
       }
       if (manufacturersData) {
         setManufacturers(manufacturersData.map(m => ({ id: m.id, name: m.name })));
+      }
+      if (rolesData?.data) {
+        setRoles(rolesData.data);
       }
     } catch (error) {
       console.error('Error fetching auxiliary data:', error);
@@ -253,6 +267,21 @@ export const CampaignsPage: React.FC = () => {
       setProductsPage(response.meta?.current_page || response.current_page || 1);
     } catch (error) {
       console.error('Error fetching products:', error);
+    }
+  }, [token]);
+
+  const fetchRewardsPaginated = useCallback(async (page = 1, search = '') => {
+    if (!token) return;
+    setLoadingRewards(true);
+    try {
+      const response = await api.getRewards(token, page, search, 'campaign');
+      setRewards(response.data || []);
+      setRewardsTotalPages(response.meta?.last_page || response.last_page || 1);
+      setRewardsPage(response.meta?.current_page || response.current_page || 1);
+    } catch (error) {
+      console.error('Error fetching rewards:', error);
+    } finally {
+      setLoadingRewards(false);
     }
   }, [token]);
 
@@ -300,14 +329,21 @@ export const CampaignsPage: React.FC = () => {
     }
   }, [debouncedProductSearch, productFilterType, productManufacturerFilter, isModalOpen]);
 
+  useEffect(() => {
+    if (isRewardModalOpen) {
+      setRewardsPage(1);
+      fetchRewardsPaginated(1, debouncedRewardSearch);
+    }
+  }, [debouncedRewardSearch, isRewardModalOpen]);
+
   const updateSelectionBadges = (currentSelectedUsers: number[], currentSelectedProducts: number[], allUsersList: UserType[], allProductsList: Product[]) => {
     // Calcular cargos totalmente selecionados
-    const roles = ['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor'];
     const newFullySelectedRoles = new Set<string>();
     
     const isEngagement = editingCampaign?.type === 'engagement' || formData.type === 'engagement';
 
-    roles.forEach(role => {
+    roles.forEach(roleObj => {
+      const role = roleObj.description;
       const usersInRole = allUsersList.filter(u => u.role === role);
       // Para engajamento, consideramos apenas user_type_id === 2
       const validUsersInRole = isEngagement 
@@ -359,9 +395,11 @@ export const CampaignsPage: React.FC = () => {
         name: campaign.name,
         type: campaign.type,
         goal: campaign.goal ? String(campaign.goal) : '',
+        goal_campaign: campaign.goal_campaign ? String(campaign.goal_campaign) : '',
         start_date: campaign.start_date,
         end_date: campaign.end_date,
         status: currentStatus,
+        reward_id: campaign.reward_id || '',
       });
 
       if (token) {
@@ -389,6 +427,9 @@ export const CampaignsPage: React.FC = () => {
           const campaignProductIds = (productsRes.data || []).map((p: any) => p.id);
           setSelectedProducts(campaignProductIds);
           
+          // Carregar prêmios
+          fetchRewardsPaginated(1);
+
           if (campaign.type === 'engagement') {
             const campaignActions = (actionsRes.data || []).map((a: any) => ({ 
               id: a.id, 
@@ -402,11 +443,11 @@ export const CampaignsPage: React.FC = () => {
           }
 
           // CALCULAR TAGS DE SELEÇÃO
-          const roles = ['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor'];
           const newFullySelectedRoles = new Set<string>();
-          roles.forEach(role => {
+          roles.forEach(roleObj => {
+            const role = roleObj.description;
             const usersInRole = allUsersList.filter(u => u.role === role);
-            const validUsersInRole = campaign.type === 'engagement' 
+            const validUsersInRole = campaign.type === 'engagement'
               ? usersInRole.filter(u => u.user_type_id === 2)
               : usersInRole;
             if (validUsersInRole.length > 0 && validUsersInRole.every(u => campaignUserIds.includes(u.id))) {
@@ -414,7 +455,6 @@ export const CampaignsPage: React.FC = () => {
             }
           });
           setFullySelectedRoles(newFullySelectedRoles);
-
           const newFullySelectedManufacturers = new Set<number>();
           (manufacturersData || []).forEach((m: any) => {
             const productsInManufacturer = allProductsList.filter(p => p.manufacturer_id === m.id);
@@ -438,14 +478,17 @@ export const CampaignsPage: React.FC = () => {
         name: '',
         type: '',
         goal: '',
+        goal_campaign: '',
         start_date: '',
         end_date: '',
         status: 'ativa',
+        reward_id: '',
       });
       setSelectedUsers([]);
       setSelectedProducts([]);
       setSelectedActions([]);
       fetchAuxiliaryData();
+      fetchRewardsPaginated(1);
     }
   };
 
@@ -457,9 +500,11 @@ export const CampaignsPage: React.FC = () => {
       name: '',
       type: '',
       goal: '',
+      goal_campaign: '',
       start_date: '',
       end_date: '',
       status: 'ativa',
+      reward_id: '',
     });
     setSelectedUsers([]);
     setSelectedProducts([]);
@@ -605,6 +650,8 @@ export const CampaignsPage: React.FC = () => {
           dataToSave.users = selectedUsers;
         }
 
+        dataToSave.reward_id = formData.reward_id || null;
+
         // NÃO envia goal na edição (somente na criação)
 
         // Envia conforme o tipo da campanha
@@ -629,11 +676,19 @@ export const CampaignsPage: React.FC = () => {
         // Goal para vendas e engajamento
         if (formData.type === 'sales') {
           dataToSave.goal = parseFloat(formData.goal);
+          if (formData.goal_campaign) {
+            dataToSave.goal_campaign = parseFloat(formData.goal_campaign);
+          }
+          dataToSave.reward_id = formData.reward_id || null;
           dataToSave.start_date = formData.start_date;
           dataToSave.end_date = formData.end_date;
           dataToSave.products = selectedProducts;
         } else if (formData.type === 'engagement') {
           dataToSave.goal = parseFloat(formData.goal);
+          if (formData.goal_campaign) {
+            dataToSave.goal_campaign = parseFloat(formData.goal_campaign);
+          }
+          dataToSave.reward_id = formData.reward_id || null;
           dataToSave.start_date = formData.start_date;
           dataToSave.end_date = formData.end_date;
           dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
@@ -861,8 +916,7 @@ export const CampaignsPage: React.FC = () => {
       setSelectedUsers(validUserIds);
 
       // Marca todos os cargos principais como totalmente selecionados
-      const roles = ['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor'];
-      setFullySelectedRoles(new Set(roles));
+      setFullySelectedRoles(new Set(roles.map(r => r.description)));
 
       addToast('success', `Todos os ${validUserIds.length} usuários foram selecionados!`);
     } catch (error) {
@@ -1043,6 +1097,17 @@ export const CampaignsPage: React.FC = () => {
     setFormData({ ...formData, goal: numericValue });
   };
 
+  const handleGoalCampaignChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (formData.type === 'sales') {
+      const formatted = formatCurrencyInput(value);
+      const numericValue = formatted.replace(/\./g, '').replace(',', '.');
+      setFormData({ ...formData, goal_campaign: numericValue });
+    } else {
+      setFormData({ ...formData, goal_campaign: value });
+    }
+  };
+
   // Obtém data mínima (hoje) no formato YYYY-MM-DD
   const getMinDate = () => {
     const today = new Date();
@@ -1164,7 +1229,7 @@ export const CampaignsPage: React.FC = () => {
                                 <Coins size={16} className="text-amber-500" />
                                 <span className="text-zinc-500 dark:text-zinc-500">Meta:</span>
                                 <span className="font-semibold text-zinc-900 dark:text-white">
-                                  {Math.floor(campaign.goal || 0)} coins
+                                  {Math.floor(campaign.goal || 0)} {coinName}
                                 </span>
                               </div>
                             )}
@@ -1240,7 +1305,7 @@ export const CampaignsPage: React.FC = () => {
                                   )}
                                   {campaign.type === 'engagement' && member.coins_total !== null && (
                                     <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                                      {member.coins_total} 🪙
+                                      {member.coins_total} {coinName}
                                     </span>
                                   )}
                                 </div>
@@ -1433,14 +1498,25 @@ export const CampaignsPage: React.FC = () => {
                               </p>
                             </div>
                             <div>
-                              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta</label>
+                              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta Individual</label>
                               <p className="text-sm font-medium text-zinc-900 dark:text-white">
                                 {editingCampaign.type === 'engagement'
-                                  ? `${Math.floor(editingCampaign.goal || 0)} coins`
-                                  : formatCurrency(formData.goal)
+                                  ? `${Math.floor(Number(editingCampaign.goal) || 0)} ${coinName}`
+                                  : formatCurrency(String(editingCampaign.goal))
                                 }
                               </p>
                             </div>
+                            {editingCampaign.goal_campaign && (
+                              <div>
+                                <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta Campanha</label>
+                                <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                                  {editingCampaign.type === 'engagement'
+                                    ? `${Math.floor(Number(editingCampaign.goal_campaign) || 0)} ${coinName}`
+                                    : formatCurrency(String(editingCampaign.goal_campaign))
+                                  }
+                                </p>
+                              </div>
+                            )}
                             <div>
                               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Início</label>
                               <p className="text-sm font-medium text-zinc-900 dark:text-white">
@@ -1475,39 +1551,67 @@ export const CampaignsPage: React.FC = () => {
 
                           {/* Meta para campanhas de vendas (editável) */}
                           {formData.type === 'sales' && (
-                            <div>
-                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta (R$) *</label>
-                              <input
-                                type="text"
-                                value={formData.goal ? formatCurrencyInput(formData.goal.replace(/\./g, '').replace(',', '.')) : ''}
-                                onChange={handleGoalChange}
-                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
-                                  formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                                }`}
-                                placeholder="R$ 0,00"
-                              />
-                              {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta Individual (R$) *</label>
+                                <input
+                                  type="text"
+                                  value={formData.goal ? formatCurrencyInput(formData.goal.replace(/\./g, '').replace(',', '.')) : ''}
+                                  onChange={handleGoalChange}
+                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                    formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                  }`}
+                                  placeholder="R$ 0,00"
+                                />
+                                {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta Campanha (R$) (Opcional)</label>
+                                <input
+                                  type="text"
+                                  value={formData.goal_campaign ? formatCurrencyInput(formData.goal_campaign.replace(/\./g, '').replace(',', '.')) : ''}
+                                  onChange={handleGoalCampaignChange}
+                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                    formErrors.goal_campaign ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                  }`}
+                                  placeholder="R$ 0,00"
+                                />
+                                {formErrors.goal_campaign && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal_campaign}</p>}
+                              </div>
                             </div>
                           )}
 
                           {/* Meta para campanhas de engajamento (editável) */}
                           {formData.type === 'engagement' && (
-                            <div>
-                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta (Coins) *</label>
-                              <input
-                                type="number"
-                                value={formData.goal}
-                                onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
-                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
-                                  formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                                }`}
-                                placeholder="Ex: 100"
-                                min="0"
-                              />
-                              {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
-                              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                Defina a meta de coins que os participantes devem alcançar
-                              </p>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta Individual ({coinName.charAt(0).toUpperCase() + coinName.slice(1)}) *</label>
+                                <input
+                                  type="number"
+                                  value={formData.goal}
+                                  onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
+                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                    formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                  }`}
+                                  placeholder="Ex: 100"
+                                  min="0"
+                                />
+                                {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta Campanha ({coinName.charAt(0).toUpperCase() + coinName.slice(1)}) (Opcional)</label>
+                                <input
+                                  type="number"
+                                  value={formData.goal_campaign}
+                                  onChange={handleGoalCampaignChange}
+                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                    formErrors.goal_campaign ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                  }`}
+                                  placeholder="Ex: 500"
+                                  min="0"
+                                />
+                                {formErrors.goal_campaign && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal_campaign}</p>}
+                              </div>
                             </div>
                           )}
 
@@ -1553,6 +1657,41 @@ export const CampaignsPage: React.FC = () => {
                           <option value="ativa">Ativa</option>
                           <option value="inativa">Inativa</option>
                         </select>
+                      </div>
+
+                      {/* Card de Prêmio da Campanha */}
+                      <div className="pt-2">
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Prêmio da Campanha (Opcional)</label>
+                        <div className={`p-4 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center min-h-[140px] ${formData.reward_id ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-900/10' : 'border-zinc-200 dark:border-zinc-700'}`}>
+                          {(() => {
+                            const selectedReward = rewards.find(r => r.id === formData.reward_id);
+                            if (selectedReward) {
+                              return (
+                                <div className="flex flex-col items-center text-center space-y-2 w-full">
+                                  <div className="w-16 h-16 rounded-xl overflow-hidden border border-emerald-200 dark:border-emerald-800 shadow-sm bg-white dark:bg-zinc-800">
+                                    {selectedReward.images?.[0]?.image_full_url ? (
+                                      <img src={selectedReward.images[0].image_full_url} alt={selectedReward.name} className="w-full h-full object-cover" />
+                                    ) : <div className="w-full h-full flex items-center justify-center text-zinc-300"><ShoppingBag /></div>}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-bold text-zinc-900 dark:text-white">{selectedReward.name}</p>
+                                    <div className="flex gap-3 justify-center mt-1">
+                                      <button type="button" onClick={() => setIsRewardModalOpen(true)} className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline uppercase">Trocar</button>
+                                      <button type="button" onClick={() => setFormData({ ...formData, reward_id: '' })} className="text-[10px] font-bold text-red-500 hover:underline uppercase">Remover</button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="text-center space-y-2">
+                                <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto text-zinc-400"><Gift size={20} /></div>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">Nenhum prêmio vinculado</p>
+                                <button type="button" onClick={() => setIsRewardModalOpen(true)} className="px-4 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg text-[10px] font-bold hover:opacity-90 transition-all">Vincular Prêmio</button>
+                              </div>
+                            );
+                          })()}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1652,27 +1791,30 @@ export const CampaignsPage: React.FC = () => {
                             Filtrar por Cargo
                           </p>
                           <div className="flex flex-wrap gap-2">
-                            {['Atendente', 'Vendedor', 'Representante', 'Consultor', 'Supervisor'].map((role) => (
-                              <button
-                                key={role}
-                                onClick={() => handleSelectAllByRole(role)}
-                                disabled={selectByRoleLoading !== null}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
-                                  areAllUsersSelectedByRole(role)
-                                    ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
-                                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-emerald-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
-                                } disabled:opacity-50 disabled:cursor-not-allowed`}
-                              >
-                                {selectByRoleLoading === role ? (
-                                  <Loader2 size={12} className="animate-spin" />
-                                ) : (
-                                  <>
-                                    {areAllUsersSelectedByRole(role) ? <Check size={12} /> : <Plus size={12} />}
-                                    {role}
-                                  </>
-                                )}
-                              </button>
-                            ))}
+                            {roles.map((roleObj) => {
+                              const role = roleObj.description;
+                              return (
+                                <button
+                                  key={role}
+                                  onClick={() => handleSelectAllByRole(role)}
+                                  disabled={selectByRoleLoading !== null}
+                                  className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
+                                    areAllUsersSelectedByRole(role)
+                                      ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
+                                      : 'bg-white text-zinc-600 border-zinc-200 hover:border-emerald-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
+                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
+                                  {selectByRoleLoading === role ? (
+                                    <Loader2 size={12} className="animate-spin" />
+                                  ) : (
+                                    <>
+                                      {areAllUsersSelectedByRole(role) ? <Check size={12} /> : <Plus size={12} />}
+                                      {role}
+                                    </>
+                                  )}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                       </div>
@@ -1771,7 +1913,7 @@ export const CampaignsPage: React.FC = () => {
                                   {user.coin_balance !== undefined && user.coin_balance > 0 && (
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
                                       <Coins size={10} />
-                                      {user.coin_balance.toLocaleString('pt-BR')}
+                                      {user.coin_balance.toLocaleString('pt-BR')} {coinName}
                                     </span>
                                   )}
                                   {/* Badge de aviso para Admin em campanha de engajamento */}
@@ -1816,8 +1958,8 @@ export const CampaignsPage: React.FC = () => {
                     <div className="space-y-3">
                       <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
                         {editingCampaign?.type === 'engagement'
-                          ? 'Selecione as ações e defina quantos coins serão ganhos (obrigatório para campanhas de engajamento):'
-                          : 'Selecione as ações e defina quantos coins serão ganhos:'}
+                          ? `Selecione as ações e defina quantos ${coinName} serão ganhos (obrigatório para campanhas de engajamento):`
+                          : `Selecione as ações e defina quantos ${coinName} serão ganhos:`}
                       </p>
 
                       {/* Mensagem de Erro de Validação de Ações */}
@@ -1881,7 +2023,7 @@ export const CampaignsPage: React.FC = () => {
                               </button>
                               {isSelected && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">Coins:</span>
+                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">{coinName.charAt(0).toUpperCase() + coinName.slice(1)}:</span>
                                   <input
                                     type="number"
                                     min="0"
@@ -2244,6 +2386,85 @@ export const CampaignsPage: React.FC = () => {
           )}
         </AnimatePresence>
 
+        {/* Modal de Seleção de Recompensa */}
+        <AnimatePresence>
+          {isRewardModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden border border-zinc-200 dark:border-zinc-800 flex flex-col max-h-[90vh]"
+              >
+                <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
+                  <h3 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                    <Gift className="text-emerald-500" />
+                    Selecionar Prêmio
+                  </h3>
+                  <button onClick={() => setIsRewardModalOpen(false)} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="p-6 flex-1 overflow-y-auto space-y-6">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={20} />
+                    <input
+                      type="text"
+                      placeholder="Buscar prêmio por nome..."
+                      className="w-full pl-10 pr-4 py-3 border border-zinc-200 dark:border-zinc-700 rounded-2xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                      value={rewardSearch}
+                      onChange={(e) => setRewardSearch(e.target.value)}
+                    />
+                  </div>
+
+                  {loadingRewards ? (
+                    <div className="flex justify-center py-12"><Loader2 className="animate-spin text-emerald-500" size={40} /></div>
+                  ) : rewards.length === 0 ? (
+                    <div className="text-center py-12 text-zinc-500">Nenhum prêmio encontrado.</div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {rewards.map(reward => (
+                        <button
+                          key={reward.id}
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, reward_id: reward.id });
+                            setIsRewardModalOpen(false);
+                          }}
+                          className={`group relative flex flex-col p-3 rounded-2xl border-2 transition-all ${
+                            formData.reward_id === reward.id
+                              ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 shadow-md'
+                              : 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-800 hover:border-emerald-300'
+                          }`}
+                        >
+                          <div className="aspect-square rounded-xl bg-zinc-100 dark:bg-zinc-900 mb-2 overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                            {reward.images?.[0]?.image_full_url ? (
+                              <img src={reward.images[0].image_full_url} alt={reward.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                            ) : <div className="w-full h-full flex items-center justify-center text-zinc-400"><ShoppingBag size={24} /></div>}
+                          </div>
+                          <p className="text-xs font-bold text-zinc-900 dark:text-white line-clamp-2 text-center">{reward.name}</p>
+                          {formData.reward_id === reward.id && (
+                            <div className="absolute top-2 right-2 bg-emerald-500 text-white p-1 rounded-full shadow-lg"><Check size={12} /></div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {rewardsTotalPages > 1 && (
+                  <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-center gap-4">
+                    <button type="button" onClick={() => fetchRewardsPaginated(rewardsPage - 1, rewardSearch)} disabled={rewardsPage === 1} className="p-2 border rounded-lg disabled:opacity-50"><ChevronLeft /></button>
+                    <span className="flex items-center text-sm font-medium">Página {rewardsPage} de {rewardsTotalPages}</span>
+                    <button type="button" onClick={() => fetchRewardsPaginated(rewardsPage + 1, rewardSearch)} disabled={rewardsPage === rewardsTotalPages} className="p-2 border rounded-lg disabled:opacity-50"><ChevronRight /></button>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
         {/* Ranking Modal */}
         <AnimatePresence>
           {rankingModal.isOpen && rankingModal.campaign && (
@@ -2334,7 +2555,7 @@ export const CampaignsPage: React.FC = () => {
                               }`}>
                                 {rankingModal.campaign?.type === 'sales'
                                   ? formatCurrency(String(salesAmount !== null ? salesAmount : item.value || 0))
-                                  : `${coinsTotal !== null ? coinsTotal : item.value || 0} 🪙`
+                                  : `${coinsTotal !== null ? coinsTotal : item.value || 0} ${coinName}`
                                 }
                               </p>
                             </div>
