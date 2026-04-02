@@ -245,7 +245,7 @@ export const api = {
 
   updateUser: async (token: string, id: number, formData: FormData) => {
     const response = await fetch(`${API_BASE_URL}/users/${id}`, {
-      method: 'PUT',
+      method: 'POST',
       headers: getHeaders(token, true),
       body: formData,
     });
