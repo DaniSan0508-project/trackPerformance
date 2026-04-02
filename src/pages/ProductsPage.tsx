@@ -74,6 +74,18 @@ export const ProductsPage: React.FC = () => {
   const [loadingManufacturers, setLoadingManufacturers] = useState(false);
   const [loadingGroups, setLoadingGroups] = useState(false);
 
+  // ── Manufacturer management panel state ─────────────────────────────────────
+  const [mfrPagedList, setMfrPagedList] = useState<Manufacturer[]>([]);
+  const [mfrPage, setMfrPage] = useState(1);
+  const [mfrTotalPages, setMfrTotalPages] = useState(1);
+  const [mfrTotalItems, setMfrTotalItems] = useState(0);
+  const [mfrSearch, setMfrSearch] = useState('');
+  const debouncedMfrSearch = useDebounce(mfrSearch, 400);
+  const [mfrLoading, setMfrLoading] = useState(false);
+  const [newMfrName, setNewMfrName] = useState('');
+  const [mfrSaving, setMfrSaving] = useState(false);
+  const [mfrError, setMfrError] = useState<string | null>(null);
+
   // ─── Fetch products ──────────────────────────────────────────────────────────
   const fetchProducts = useCallback(
     async (page = 1, search = '', type: 'name' | 'barcode' = 'name') => {
@@ -127,6 +139,72 @@ export const ProductsPage: React.FC = () => {
     }
   }, [token]);
 
+  // ─── Fetch paginated manufacturers (manage panel) ─────────────────────────
+  const fetchManufacturersPaged = useCallback(
+    async (page = 1, search = '') => {
+      if (!token) return;
+      setMfrLoading(true);
+      try {
+        const data = await api.getManufacturersPaginated(token, page, search);
+        setMfrPagedList(data.data ?? []);
+        setMfrPage(data.current_page ?? 1);
+        setMfrTotalPages(data.last_page ?? 1);
+        setMfrTotalItems(data.total ?? 0);
+      } catch (err: any) {
+        console.error('Error fetching manufacturers paged:', err);
+      } finally {
+        setMfrLoading(false);
+      }
+    },
+    [token]
+  );
+
+  // Trigger paged fetch when panel is open and search/page changes
+  useEffect(() => {
+    if (isManagingManufacturers) {
+      fetchManufacturersPaged(mfrPage, debouncedMfrSearch);
+    }
+  }, [isManagingManufacturers, mfrPage, debouncedMfrSearch, fetchManufacturersPaged]);
+
+  // Reset to page 1 when search changes in the mfr panel
+  useEffect(() => {
+    setMfrPage(1);
+  }, [debouncedMfrSearch]);
+
+  // ─── Add manufacturer ────────────────────────────────────────────────────────
+  const handleAddManufacturer = async () => {
+    const trimmed = newMfrName.trim();
+    if (!trimmed) {
+      setMfrError('Nome do fabricante é obrigatório.');
+      return;
+    }
+    if (!token) return;
+    setMfrError(null);
+    setMfrSaving(true);
+    try {
+      await api.createManufacturer(token, { name: trimmed });
+      setNewMfrName('');
+      addToast('success', 'Fabricante cadastrado com sucesso!');
+      // Refresh both the panel list and the dropdown
+      await Promise.all([
+        fetchManufacturersPaged(1, debouncedMfrSearch),
+        fetchManufacturers(),
+      ]);
+      setMfrPage(1);
+    } catch (err: any) {
+      console.error('Error creating manufacturer:', err);
+      const msg =
+        err.response?.data?.errors?.name?.[0] ||
+        err.response?.data?.message ||
+        err.message ||
+        'Erro ao cadastrar fabricante.';
+      setMfrError(msg);
+      addToast('error', msg);
+    } finally {
+      setMfrSaving(false);
+    }
+  };
+
   // Trigger list fetch on page / search / filterType change
   useEffect(() => {
     fetchProducts(currentPage, debouncedSearchTerm, filterType);
@@ -165,6 +243,11 @@ export const ProductsPage: React.FC = () => {
     setIsManagingProductGroups(false);
     setFormData({ name: '', barcode: '', manufacturer_id: '', product_group_id: '' });
     setFormErrors({});
+    // reset mfr panel
+    setMfrSearch('');
+    setMfrPage(1);
+    setNewMfrName('');
+    setMfrError(null);
   };
 
   // ─── Submit ──────────────────────────────────────────────────────────────────
@@ -435,23 +518,73 @@ export const ProductsPage: React.FC = () => {
                   </button>
                 </div>
 
-                {/* ── Manufacturers list panel ──────────────────────────────── */}
+                {/* ── Manufacturers management panel ────────────────────── */}
                 {isManagingManufacturers ? (
-                  <div className="p-6 max-h-[60vh] overflow-y-auto">
-                    {loadingManufacturers ? (
-                      <div className="flex justify-center py-8">
-                        <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                  <div className="flex flex-col" style={{ maxHeight: '72vh' }}>
+
+                    {/* ── Inline add form ─────────────────────────────────── */}
+                    <div className="px-6 pt-5 pb-4 border-b border-zinc-100 dark:border-zinc-800 space-y-3">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newMfrName}
+                          onChange={(e) => { setNewMfrName(e.target.value); setMfrError(null); }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddManufacturer(); } }}
+                          placeholder="Nome do novo fabricante..."
+                          className={`flex-1 p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 text-sm ${
+                            mfrError ? 'border-red-400 focus:ring-red-400' : 'border-zinc-300 dark:border-zinc-600'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddManufacturer}
+                          disabled={mfrSaving}
+                          className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl transition-colors flex items-center gap-1.5 text-sm font-medium flex-shrink-0"
+                          title="Adicionar fabricante"
+                        >
+                          {mfrSaving
+                            ? <Loader2 size={16} className="animate-spin" />
+                            : <Plus size={16} />}
+                          {mfrSaving ? 'Salvando...' : 'Adicionar'}
+                        </button>
                       </div>
-                    ) : manufacturers.length === 0 ? (
-                      <p className="text-center text-zinc-500 dark:text-zinc-400 py-6">
-                        Nenhum fabricante cadastrado.
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {manufacturers.map((m) => (
-                          <div
+                      {mfrError && (
+                        <p className="text-xs text-red-600 dark:text-red-400">{mfrError}</p>
+                      )}
+
+                      {/* Search */}
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                        <input
+                          type="text"
+                          value={mfrSearch}
+                          onChange={(e) => setMfrSearch(e.target.value)}
+                          placeholder="Pesquisar fabricante..."
+                          className="w-full pl-9 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {/* ── Paginated list ───────────────────────────────────── */}
+                    <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2 min-h-0">
+                      {mfrLoading ? (
+                        <div className="flex justify-center py-8">
+                          <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                        </div>
+                      ) : mfrPagedList.length === 0 ? (
+                        <div className="text-center py-8">
+                          <Building2 className="w-10 h-10 text-zinc-300 dark:text-zinc-600 mx-auto mb-2" />
+                          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                            {mfrSearch ? 'Nenhum fabricante encontrado.' : 'Nenhum fabricante cadastrado.'}
+                          </p>
+                        </div>
+                      ) : (
+                        mfrPagedList.map((m) => (
+                          <motion.div
                             key={m.id}
-                            className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors"
                           >
                             <div className="w-9 h-9 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
                               <Building2 size={15} className="text-emerald-600 dark:text-emerald-400" />
@@ -466,8 +599,36 @@ export const ProductsPage: React.FC = () => {
                                 </p>
                               )}
                             </div>
-                          </div>
-                        ))}
+                          </motion.div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* ── Pagination ───────────────────────────────────────── */}
+                    {mfrTotalItems > 0 && (
+                      <div className="flex items-center justify-between px-6 py-3 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {mfrTotalItems} fabricante{mfrTotalItems !== 1 ? 's' : ''}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setMfrPage((p) => Math.max(p - 1, 1))}
+                            disabled={mfrPage === 1 || mfrLoading}
+                            className="p-1.5 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 transition-colors"
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
+                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 px-1 whitespace-nowrap">
+                            {mfrPage} / {mfrTotalPages}
+                          </span>
+                          <button
+                            onClick={() => setMfrPage((p) => Math.min(p + 1, mfrTotalPages))}
+                            disabled={mfrPage === mfrTotalPages || mfrLoading}
+                            className="p-1.5 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 transition-colors"
+                          >
+                            <ChevronRight size={16} />
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -576,9 +737,15 @@ export const ProductsPage: React.FC = () => {
                         </select>
                         <button
                           type="button"
-                          onClick={() => setIsManagingManufacturers(true)}
+                          onClick={() => {
+                            setMfrSearch('');
+                            setMfrPage(1);
+                            setNewMfrName('');
+                            setMfrError(null);
+                            setIsManagingManufacturers(true);
+                          }}
                           className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors flex-shrink-0"
-                          title="Ver fabricantes cadastrados"
+                          title="Gerenciar fabricantes"
                         >
                           <Settings size={20} />
                         </button>

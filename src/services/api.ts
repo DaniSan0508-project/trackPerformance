@@ -543,6 +543,28 @@ export const api = {
     return allProducts;
   },
 
+  getManufacturersPaginated: async (token: string, page = 1, search = '') => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    queryParams.append('per_page', '10');
+    if (search) {
+      queryParams.append('filter[name]', search);
+    }
+    const response = await fetch(`${API_BASE_URL}/manufacturers?${queryParams.toString()}`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
+  createManufacturer: async (token: string, data: { name: string }) => {
+    const response = await fetch(`${API_BASE_URL}/manufacturers`, {
+      method: 'POST',
+      headers: getHeaders(token),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
   getAllManufacturers: async (token: string) => {
     const allManufacturers: any[] = [];
     let currentPage = 1;
