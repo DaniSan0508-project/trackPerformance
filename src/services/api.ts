@@ -468,6 +468,21 @@ export const api = {
     return handleResponse(response);
   },
 
+  importCampaignSales: async (token: string, campaignId: number, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/sales/import`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        // Não definir Content-Type para deixar o browser definir com boundary
+      },
+      body: formData,
+    });
+    return handleResponse(response);
+  },
+
   getAllUsers: async (token: string, page = 1, perPage = 10) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());

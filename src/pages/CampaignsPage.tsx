@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift, Upload, FileSpreadsheet } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus, Role } from '../types';
@@ -147,6 +147,18 @@ export const CampaignsPage: React.FC = () => {
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [selectedActions, setSelectedActions] = useState<{ id: number; coins: number }[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
+
+  // Importação de vendas
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importingCampaign, setImportingCampaign] = useState<Campaign | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    total_rows: number;
+    success_count: number;
+    error_count: number;
+    errors: Array<{ row: number; external_id: string; reason: string }>;
+  } | null>(null);
 
   // Estado para controlar os inputs de coins das ações (permite edição livre)
   const [actionCoinsInputs, setActionCoinsInputs] = useState<{ [key: number]: string }>({});
@@ -514,6 +526,39 @@ export const CampaignsPage: React.FC = () => {
     setFullySelectedManufacturers(new Set());
     setFormErrors({});
     setActionSearch('');
+  };
+
+  const handleCloseImportModal = () => {
+    setIsImportModalOpen(false);
+    setImportingCampaign(null);
+    setImportFile(null);
+    setImporting(false);
+    setImportResult(null);
+  };
+
+  const handleImportFile = async () => {
+    if (!importFile || !importingCampaign || !token) return;
+
+    setImporting(true);
+    try {
+      const result = await api.importCampaignSales(token, importingCampaign.id, importFile);
+      setImportResult(result);
+      
+      if (result.success_count > 0) {
+        addToast('success', `Importação concluída: ${result.success_count} vendas registradas com sucesso!`);
+      } else {
+        addToast('warning', `Nenhuma venda foi registrada. Verifique os erros.`);
+      }
+      
+      // Recarregar dados da campanha
+      await fetchCampaigns();
+    } catch (error: any) {
+      console.error('Error importing sales:', error);
+      const errorMessage = error.response?.data?.message || 'Erro ao importar vendas. Verifique o arquivo.';
+      addToast('error', errorMessage);
+    } finally {
+      setImporting(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -2075,11 +2120,27 @@ export const CampaignsPage: React.FC = () => {
 
                   {activeTab === 'products' && (
                     <div className="space-y-3">
-                      <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-                        {editingCampaign?.type === 'sales'
-                          ? 'Selecione os produtos relacionados à campanha (obrigatório para campanhas de vendas):'
-                          : 'Selecione os produtos relacionados à campanha:'}
-                      </p>
+                      <div className="flex items-center justify-between mb-4">
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                          {editingCampaign?.type === 'sales'
+                            ? 'Selecione os produtos relacionados à campanha (obrigatório para campanhas de vendas):'
+                            : 'Selecione os produtos relacionados à campanha:'}
+                        </p>
+                        {/* Botão de Importar Vendas - apenas para campanhas de vendas e administradores */}
+                        {editingCampaign && editingCampaign.type === 'sales' && currentUser?.user_type_id === 1 && (
+                          <button
+                            onClick={() => {
+                              setImportingCampaign(editingCampaign);
+                              setIsImportModalOpen(true);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-xl hover:bg-primary-700 transition-colors shadow-lg shadow-primary-500/20"
+                            title="Importar vendas por arquivo XLSX ou CSV"
+                          >
+                            <Upload size={18} />
+                            Importar Vendas
+                          </button>
+                        )}
+                      </div>
 
                       {/* Filtros e busca de produtos */}
                       <div className="flex gap-2 mb-4">
@@ -2570,6 +2631,200 @@ export const CampaignsPage: React.FC = () => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Modal de Importação de Vendas */}
+      <AnimatePresence>
+        {isImportModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={handleCloseImportModal}
+              className="absolute inset-0"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 z-10"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                    <FileSpreadsheet className="text-primary-600" size={24} />
+                    Importar Vendas
+                  </h2>
+                  {importingCampaign && (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                      Campanha: {importingCampaign.name}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={handleCloseImportModal}
+                  disabled={importing}
+                  className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors disabled:opacity-50"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-4">
+                {!importResult ? (
+                  <>
+                    {/* Instruções */}
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                      <p className="text-sm font-semibold text-blue-800 dark:text-blue-400 mb-2">
+                        📋 Formato do Arquivo
+                      </p>
+                      <ul className="text-xs text-blue-700 dark:text-blue-500 space-y-1">
+                        <li>• Formatos aceitos: <strong>.xlsx</strong>, <strong>.xls</strong> ou <strong>.csv</strong></li>
+                        <li>• Coluna A: <strong>external_id</strong> (ID externo do usuário)</li>
+                        <li>• Coluna B: <strong>barcode</strong> (código de barras do produto)</li>
+                        <li>• Coluna C: <strong>sale_date</strong> (data no formato YYYY-MM-DD)</li>
+                        <li>• Coluna D: <strong>amount</strong> (valor da venda)</li>
+                        <li>• A primeira linha (cabeçalho) é ignorada automaticamente</li>
+                        <li>• Apenas produtos vinculados à campanha serão considerados</li>
+                      </ul>
+                    </div>
+
+                    {/* Upload */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                        Selecione o arquivo *
+                      </label>
+                      <div className="border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-xl p-6 text-center hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
+                        <input
+                          type="file"
+                          accept=".xlsx,.xls,.csv"
+                          onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                          className="hidden"
+                          id="import-file-input"
+                          disabled={importing}
+                        />
+                        <label htmlFor="import-file-input" className="cursor-pointer">
+                          <Upload className="mx-auto text-zinc-400 mb-2" size={32} />
+                          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                            {importFile ? (
+                              <span className="text-primary-600 dark:text-primary-400 font-medium">
+                                {importFile.name}
+                              </span>
+                            ) : (
+                              <span>Clique para selecionar ou arraste o arquivo aqui</span>
+                            )}
+                          </p>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
+                            Formatos: .xlsx, .xls, .csv
+                          </p>
+                        </label>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* Resultados */
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-4 text-center">
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Total de Linhas</p>
+                        <p className="text-2xl font-bold text-zinc-900 dark:text-white">{importResult.total_rows}</p>
+                      </div>
+                      <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 text-center">
+                        <p className="text-xs text-primary-600 dark:text-primary-400 mb-1">Sucesso</p>
+                        <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">{importResult.success_count}</p>
+                      </div>
+                      <div className={`rounded-xl p-4 text-center ${
+                        importResult.error_count > 0
+                          ? 'bg-red-50 dark:bg-red-900/20'
+                          : 'bg-emerald-50 dark:bg-emerald-900/20'
+                      }`}>
+                        <p className={`text-xs mb-1 ${
+                          importResult.error_count > 0
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-emerald-600 dark:text-emerald-400'
+                        }`}>Erros</p>
+                        <p className={`text-2xl font-bold ${
+                          importResult.error_count > 0
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-emerald-600 dark:text-emerald-400'
+                        }`}>{importResult.error_count}</p>
+                      </div>
+                    </div>
+
+                    {/* Lista de erros */}
+                    {importResult.errors.length > 0 && (
+                      <div className="max-h-64 overflow-y-auto border border-red-200 dark:border-red-800 rounded-xl">
+                        <div className="bg-red-50 dark:bg-red-900/20 px-4 py-2 border-b border-red-200 dark:border-red-800">
+                          <p className="text-sm font-semibold text-red-800 dark:text-red-400">
+                            ⚠️ Linhas com erro
+                          </p>
+                        </div>
+                        <div className="divide-y divide-red-100 dark:divide-red-900/30">
+                          {importResult.errors.slice(0, 10).map((error, idx) => (
+                            <div key={idx} className="px-4 py-2 text-xs">
+                              <span className="text-red-600 dark:text-red-400 font-medium">Linha {error.row}:</span>
+                              <span className="text-red-700 dark:text-red-300 ml-2">{error.reason}</span>
+                              {error.external_id && (
+                                <span className="text-red-500 dark:text-red-400 ml-2">(ID: {error.external_id})</span>
+                              )}
+                            </div>
+                          ))}
+                          {importResult.errors.length > 10 && (
+                            <div className="px-4 py-2 text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/10">
+                              + {importResult.errors.length - 10} erros não exibidos
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 flex justify-end gap-3">
+                {!importResult ? (
+                  <>
+                    <button
+                      onClick={handleCloseImportModal}
+                      disabled={importing}
+                      className="px-4 py-2 text-zinc-700 dark:text-zinc-300 font-medium hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleImportFile}
+                      disabled={!importFile || importing}
+                      className="px-6 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {importing ? (
+                        <>
+                          <Loader2 className="animate-spin" size={18} />
+                          Importando...
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={18} />
+                          Importar
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleCloseImportModal}
+                    className="px-6 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors"
+                  >
+                    Fechar
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </Layout>
   );
 };
