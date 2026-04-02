@@ -1446,14 +1446,29 @@ export const CampaignsPage: React.FC = () => {
                 className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-7xl overflow-hidden border border-zinc-200 dark:border-zinc-800 max-h-[95vh] flex flex-col"
               >
                 <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
-                  <div>
-                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
-                      {editingCampaign ? 'Editar Campanha' : 'Nova Campanha'}
-                    </h2>
-                    {editingCampaign && (
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                        Altere nome, status e vínculos
-                      </p>
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+                        {editingCampaign ? 'Editar Campanha' : 'Nova Campanha'}
+                      </h2>
+                      {editingCampaign && (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                          Altere nome, status e vínculos
+                        </p>
+                      )}
+                    </div>
+                    {/* Ícone de Importar Vendas - apenas para campanhas de vendas e administradores */}
+                    {editingCampaign && editingCampaign.type === 'sales' && currentUser?.user_type_id === 1 && (
+                      <button
+                        onClick={() => {
+                          setImportingCampaign(editingCampaign);
+                          setIsImportModalOpen(true);
+                        }}
+                        className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-lg"
+                        title="Importar vendas por arquivo XLSX ou CSV"
+                      >
+                        <FileSpreadsheet size={20} />
+                      </button>
                     )}
                   </div>
                   <button onClick={handleCloseModal} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
@@ -2120,27 +2135,11 @@ export const CampaignsPage: React.FC = () => {
 
                   {activeTab === 'products' && (
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between mb-4">
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                          {editingCampaign?.type === 'sales'
-                            ? 'Selecione os produtos relacionados à campanha (obrigatório para campanhas de vendas):'
-                            : 'Selecione os produtos relacionados à campanha:'}
-                        </p>
-                        {/* Botão de Importar Vendas - apenas para campanhas de vendas e administradores */}
-                        {editingCampaign && editingCampaign.type === 'sales' && currentUser?.user_type_id === 1 && (
-                          <button
-                            onClick={() => {
-                              setImportingCampaign(editingCampaign);
-                              setIsImportModalOpen(true);
-                            }}
-                            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-xl hover:bg-primary-700 transition-colors shadow-lg shadow-primary-500/20"
-                            title="Importar vendas por arquivo XLSX ou CSV"
-                          >
-                            <Upload size={18} />
-                            Importar Vendas
-                          </button>
-                        )}
-                      </div>
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+                        {editingCampaign?.type === 'sales'
+                          ? 'Selecione os produtos relacionados à campanha (obrigatório para campanhas de vendas):'
+                          : 'Selecione os produtos relacionados à campanha:'}
+                      </p>
 
                       {/* Filtros e busca de produtos */}
                       <div className="flex gap-2 mb-4">
