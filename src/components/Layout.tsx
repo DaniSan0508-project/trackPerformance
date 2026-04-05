@@ -144,13 +144,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
              <Logo />
           </div>
 
-          <div className="hidden md:flex items-center bg-zinc-100 dark:bg-zinc-800 rounded-xl px-3 py-1.5 w-96 transition-colors duration-200">
-            <Search size={18} className="text-zinc-400" />
-            <input 
-              type="text" 
-              placeholder="Pesquisar..." 
-              className="bg-transparent border-none focus:ring-0 text-sm w-full ml-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500"
-            />
+          <div className="hidden md:block">
+            {/* Espaçador para manter o alinhamento do lado direito quando não há busca */}
           </div>
 
           <div className="flex items-center gap-3 md:gap-6">
@@ -161,19 +156,18 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             >
               {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
             </button>
-
-            <button className="relative p-2 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-all">
-              <Bell size={20} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-zinc-900"></span>
-            </button>
             
             <div className="flex items-center gap-3 pl-3 border-l border-zinc-200 dark:border-zinc-800">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-zinc-900 dark:text-white">{user.name}</p>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">{user.user_type}</p>
               </div>
-              <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-bold border-2 border-primary-50 dark:border-primary-900/50 shadow-sm">
-                {user.name.charAt(0)}
+              <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-bold border-2 border-primary-50 dark:border-primary-900/50 shadow-sm overflow-hidden">
+                {user.profile_image_url ? (
+                  <img src={user.profile_image_url} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  user.name.charAt(0)
+                )}
               </div>
             </div>
           </div>
