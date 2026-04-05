@@ -11,6 +11,26 @@ import { rewardSchema } from '../validators/schemas';
 
 const MAX_IMAGES = 3;
 
+const LocalImagePreview: React.FC<{ file: File }> = ({ file }) => {
+  const [url, setUrl] = React.useState<string>('');
+
+  React.useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  if (!url) return null;
+
+  return (
+    <img
+      src={url}
+      alt="Preview"
+      className="w-full h-full object-cover"
+    />
+  );
+};
+
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -294,21 +314,36 @@ export const RewardsPage: React.FC = () => {
       data.append('stock', formData.stock);
       data.append('is_active', formData.is_active);
 
-      // Debug: log das imagens sendo enviadas
-      console.log('Imagens para enviar:', formData.images.length);
-      formData.images.forEach((image, index) => {
-        console.log(`Imagem ${index}:`, image.name, image.size, 'bytes');
-        data.append('images[]', image);
-      });
-
-      if (formData.images.length > 0) {
-        data.append('primary_image_index', formData.primary_image_index);
-      }
-
       if (editingReward) {
+        // Envia apenas os campos de texto na rota de atualização
         await api.updateReward(token, editingReward.id, data);
+
+        // Se houver NOVAS imagens, envia na rota específica para não apagar as antigas
+        if (formData.images.length > 0) {
+          const imageFormData = new FormData();
+          formData.images.forEach((image) => {
+            imageFormData.append('images[]', image);
+          });
+
+          // Envia o índice da principal apenas se estiver setado para alguma das novas imagens
+          if (formData.primary_image_index) {
+            imageFormData.append('primary_image_index', formData.primary_image_index);
+          }
+
+          await api.addRewardImages(token, editingReward.id, imageFormData);
+        }
+
         addToast('success', 'Recompensa atualizada com sucesso!');
       } else {
+        // When creating, we still send initial images
+        formData.images.forEach((image) => {
+          data.append('images[]', image);
+        });
+
+        if (formData.images.length > 0) {
+          data.append('primary_image_index', formData.primary_image_index);
+        }
+
         await api.createReward(token, data);
         addToast('success', 'Recompensa criada com sucesso!');
       }
@@ -415,7 +450,8 @@ export const RewardsPage: React.FC = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
-      const remainingSlots = MAX_IMAGES - formData.images.length;
+      const currentTotalImages = formData.images.length + formData.existingImages.length;
+      const remainingSlots = MAX_IMAGES - currentTotalImages;
       
       if (remainingSlots <= 0) {
         addToast('error', `Máximo de ${MAX_IMAGES} imagens atingido.`);
@@ -438,10 +474,75 @@ export const RewardsPage: React.FC = () => {
     setFormData(prev => ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index),
-      primary_image_index: prev.primary_image_index && parseInt(prev.primary_image_index) >= index 
-        ? String(Math.max(0, parseInt(prev.primary_image_index) - 1))
-        : prev.primary_image_index,
     }));
+  };
+
+  const handleRemoveExistingImage = async (imageId: number) => {
+    if (!token || !editingReward) return;
+    
+    try {
+      await api.deleteRewardImage(token, editingReward.id, imageId);
+      setFormData(prev => ({
+        ...prev,
+        existingImages: prev.existingImages.filter(img => img.id !== imageId)
+      }));
+      addToast('success', 'Imagem excluída com sucesso!');
+      // Atualiza a lista para garantir que se a primária foi excluída, a próxima apareça como tal
+      fetchRewards(currentPage, searchTerm);
+    } catch (error: any) {
+      console.error('Error removing image:', error);
+      addToast('error', error.message || 'Erro ao excluir imagem.');
+    }
+  };
+
+  const [replacingImageId, setReplacingImageId] = useState<number | null>(null);
+  const replaceInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleUpdateExistingImage = async (imageId: number, file?: File, isPrimary?: number) => {
+    if (!token || !editingReward) return;
+    
+    try {
+      const data = new FormData();
+      data.append('_method', 'PUT');
+      if (file) data.append('image', file);
+      if (isPrimary !== undefined) data.append('is_primary', String(isPrimary));
+      
+      const response = await api.updateRewardImage(token, editingReward.id, imageId, data);
+      
+      // Obtém a nova URL da resposta ou usa o arquivo local como fallback
+      const apiImageData = response.data || response;
+      const serverUrl = apiImageData?.image_full_url;
+      const localPreview = file ? URL.createObjectURL(file) : '';
+      
+      // Só adiciona o timestamp se for uma URL real (http), não se for um blob local
+      const finalUrl = serverUrl 
+        ? `${serverUrl}${serverUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
+        : localPreview;
+
+      // Atualiza o estado local
+      setFormData(prev => ({
+        ...prev,
+        existingImages: prev.existingImages.map(img => {
+          if (img.id === imageId) {
+            return {
+              ...img,
+              ...apiImageData,
+              image_full_url: finalUrl || img.image_full_url,
+              is_primary: isPrimary === 1 || (isPrimary === undefined && img.is_primary),
+            };
+          }
+          if (isPrimary === 1) return { ...img, is_primary: false };
+          return img;
+        })
+      }));
+      
+      addToast('success', 'Imagem atualizada com sucesso!');
+      fetchRewards(currentPage, searchTerm);
+      setReplacingImageId(null);
+    } catch (error: any) {
+      console.error('Error updating image:', error);
+      addToast('error', error.message || 'Erro ao atualizar imagem.');
+    }
   };
 
   const handleOpenReward = (reward: Reward) => {
@@ -1123,13 +1224,49 @@ export const RewardsPage: React.FC = () => {
                       Imagens
                     </label>
                     <div className="grid grid-cols-4 gap-3 mb-3">
-                      {formData.images.map((image, index) => (
-                        <div key={index} className="relative aspect-square rounded-xl overflow-hidden border-2 border-zinc-200 dark:border-zinc-700 group">
+                      {/* Existing Images */}
+                      {formData.existingImages.map((image, index) => (
+                        <div key={`existing-${image.id}`} className="relative aspect-square rounded-xl overflow-hidden border-2 border-zinc-200 dark:border-zinc-700 group">
                           <img
-                            src={URL.createObjectURL(image)}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-full object-cover"
+                            src={image.image_full_url}
+                            alt={`Existing ${index + 1}`}
+                            className="w-full h-full object-cover cursor-pointer"
+                            onClick={() => {
+                              setReplacingImageId(image.id);
+                              replaceInputRef.current?.click();
+                            }}
+                            title="Clique para substituir esta imagem"
                           />
+                          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveExistingImage(image.id)}
+                              className="p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                              title="Remover"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Input oculto para substituir imagem */}
+                      <input
+                        type="file"
+                        className="hidden"
+                        ref={replaceInputRef}
+                        accept="image/*"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0] && replacingImageId) {
+                            handleUpdateExistingImage(replacingImageId, e.target.files[0]);
+                          }
+                        }}
+                      />
+
+                      {/* New Images */}
+                      {formData.images.map((image, index) => (
+                        <div key={`new-${index}`} className="relative aspect-square rounded-xl overflow-hidden border-2 border-zinc-200 dark:border-zinc-700 group">
+                          <LocalImagePreview file={image} />
                           <button
                             type="button"
                             onClick={() => handleRemoveImage(index)}
@@ -1137,24 +1274,17 @@ export const RewardsPage: React.FC = () => {
                           >
                             <X size={14} />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setFormData(prev => ({ ...prev, primary_image_index: String(index) }))}
-                            className={`absolute bottom-1 left-1 p-1 rounded-full transition-all ${
-                              String(index) === formData.primary_image_index
-                                ? 'bg-primary-500 text-white'
-                                : 'bg-black/50 text-white opacity-0 group-hover:opacity-100'
-                            }`}
-                            title="Definir como principal"
-                          >
-                            <Camera size={14} />
-                          </button>
                         </div>
                       ))}
-                      <label className="aspect-square rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 flex flex-col items-center justify-center cursor-pointer hover:border-primary-500 dark:hover:border-primary-500 transition-colors bg-zinc-50 dark:bg-zinc-800/50">
+
+                      <label className={`aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-colors bg-zinc-50 dark:bg-zinc-800/50 ${
+                        (formData.images.length + formData.existingImages.length) >= MAX_IMAGES 
+                          ? 'border-zinc-200 dark:border-zinc-800 cursor-not-allowed opacity-50' 
+                          : 'border-zinc-300 dark:border-zinc-700 cursor-pointer hover:border-primary-500 dark:hover:border-primary-500'
+                      }`}>
                         <Camera size={24} className="text-zinc-400 mb-1" />
                         <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                          {formData.images.length}/{MAX_IMAGES}
+                          {formData.images.length + formData.existingImages.length}/{MAX_IMAGES}
                         </span>
                         <input
                           type="file"
@@ -1162,13 +1292,13 @@ export const RewardsPage: React.FC = () => {
                           multiple
                           className="hidden"
                           onChange={handleImageChange}
-                          disabled={formData.images.length >= MAX_IMAGES}
+                          disabled={(formData.images.length + formData.existingImages.length) >= MAX_IMAGES}
                         />
                       </label>
                     </div>
                     {formData.images.length > 0 && (
                       <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        Clique na câmera para definir a imagem principal (atual: {parseInt(formData.primary_image_index) + 1}ª)
+                        Novas imagens serão adicionadas à galeria.
                       </p>
                     )}
                     {formErrors.images && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.images}</p>}
