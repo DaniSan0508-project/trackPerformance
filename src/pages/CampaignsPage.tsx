@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift, Upload, FileSpreadsheet } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift, Upload, FileSpreadsheet, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus, Role, EngagementAction } from '../types';
@@ -569,6 +569,18 @@ export const CampaignsPage: React.FC = () => {
     setImportFile(null);
     setImporting(false);
     setImportResult(null);
+  };
+
+  const handleDownloadTemplate = () => {
+    const headers = ['external_id', 'barcode', 'sale_date', 'amount'];
+    const csvContent = "data:text/csv;charset=utf-8," + headers.join(',');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "modelo_importacao_vendas.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleImportFile = async () => {
@@ -2743,9 +2755,18 @@ export const CampaignsPage: React.FC = () => {
                   <>
                     {/* Instruções */}
                     <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-                      <p className="text-sm font-semibold text-blue-800 dark:text-blue-400 mb-2">
-                        📋 Formato do Arquivo
-                      </p>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-semibold text-blue-800 dark:text-blue-400">
+                          📋 Formato do Arquivo
+                        </p>
+                        <button
+                          onClick={handleDownloadTemplate}
+                          className="flex items-center gap-1.5 px-3 py-1 bg-blue-100 dark:bg-blue-800/50 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-700/50 transition-all border border-blue-200 dark:border-blue-700"
+                        >
+                          <Download size={14} />
+                          Baixar Modelo (.csv)
+                        </button>
+                      </div>
                       <ul className="text-xs text-blue-700 dark:text-blue-500 space-y-1">
                         <li>• Formatos aceitos: <strong>.xlsx</strong>, <strong>.xls</strong> ou <strong>.csv</strong></li>
                         <li>• Coluna A: <strong>external_id</strong> (ID externo do usuário)</li>
