@@ -326,7 +326,7 @@ export const ProductsPage: React.FC = () => {
             </button>
             <button
               onClick={handleOpenModal}
-              className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
+              className="bg-primary-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-primary-700 shadow-sm transition-all flex items-center gap-2"
             >
               <Plus size={18} />
               Novo Produto
@@ -345,7 +345,7 @@ export const ProductsPage: React.FC = () => {
                   ? 'Buscar por nome do produto...'
                   : 'Buscar por código de barras...'
               }
-              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -353,7 +353,7 @@ export const ProductsPage: React.FC = () => {
           <select
             value={filterType}
             onChange={(e) => handleFilterTypeChange(e.target.value as 'name' | 'barcode')}
-            className="w-full md:w-52 p-2.5 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white transition-colors duration-200 cursor-pointer"
+            className="w-full md:w-52 p-2.5 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white transition-colors duration-200 cursor-pointer"
           >
             <option value="name">Filtrar por Nome</option>
             <option value="barcode">Filtrar por Cód. de Barras</option>
@@ -363,7 +363,7 @@ export const ProductsPage: React.FC = () => {
         {/* ── Content ────────────────────────────────────────────────────────── */}
         {loading && products.length === 0 ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+            <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
           </div>
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
@@ -388,7 +388,7 @@ export const ProductsPage: React.FC = () => {
                   className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-all duration-200 flex flex-col"
                 >
                   <div className="flex items-start gap-3 mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0 border border-emerald-200 dark:border-emerald-800">
+                    <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center text-primary-600 dark:text-primary-400 flex-shrink-0 border border-primary-200 dark:border-primary-800">
                       <Package size={22} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -531,7 +531,7 @@ export const ProductsPage: React.FC = () => {
                           onChange={(e) => { setNewMfrName(e.target.value); setMfrError(null); }}
                           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddManufacturer(); } }}
                           placeholder="Nome do novo fabricante..."
-                          className={`flex-1 p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 text-sm ${
+                          className={`flex-1 p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 text-sm ${
                             mfrError ? 'border-red-400 focus:ring-red-400' : 'border-zinc-300 dark:border-zinc-600'
                           }`}
                         />
@@ -539,7 +539,7 @@ export const ProductsPage: React.FC = () => {
                           type="button"
                           onClick={handleAddManufacturer}
                           disabled={mfrSaving}
-                          className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl transition-colors flex items-center gap-1.5 text-sm font-medium flex-shrink-0"
+                          className="px-3.5 py-2.5 bg-primary-600 hover:bg-primary-700 disabled:opacity-60 text-white rounded-xl transition-colors flex items-center gap-1.5 text-sm font-medium flex-shrink-0"
                           title="Adicionar fabricante"
                         >
                           {mfrSaving
@@ -560,7 +560,7 @@ export const ProductsPage: React.FC = () => {
                           value={mfrSearch}
                           onChange={(e) => setMfrSearch(e.target.value)}
                           placeholder="Pesquisar fabricante..."
-                          className="w-full pl-9 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm"
+                          className="w-full pl-9 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 text-sm"
                         />
                       </div>
                     </div>
@@ -584,9 +584,9 @@ export const ProductsPage: React.FC = () => {
                             key={m.id}
                             initial={{ opacity: 0, y: 6 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors"
+                            className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:border-primary-300 dark:hover:border-primary-700 transition-colors"
                           >
-                            <div className="w-9 h-9 bg-gradient-to-br from-primary-100 to-teal-100 dark:from-primary-900/30 dark:to-teal-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <div className="w-9 h-9 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 rounded-lg flex items-center justify-center flex-shrink-0">
                               <Building2 size={15} className="text-primary-600 dark:text-primary-400" />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -650,7 +650,7 @@ export const ProductsPage: React.FC = () => {
                             key={g.id}
                             className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700"
                           >
-                            <div className="w-9 h-9 bg-gradient-to-br from-primary-100 to-teal-100 dark:from-primary-900/30 dark:to-teal-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <div className="w-9 h-9 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 rounded-lg flex items-center justify-center flex-shrink-0">
                               <Tag size={15} className="text-primary-600 dark:text-primary-400" />
                             </div>
                             <div className="flex-1 min-w-0">

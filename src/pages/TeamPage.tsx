@@ -495,8 +495,8 @@ export const TeamPage: React.FC = () => {
 
   const getUserTypeColor = (typeId: number) => {
     return typeId === 1
-      ? 'bg-primary-100 text-primary-800 border-primary-200'
-      : 'bg-teal-50 text-teal-700 border-teal-200';
+      ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
+      : 'bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800';
   };
 
   const formatLastLogin = (lastLoginAt: string | null) => {
@@ -601,8 +601,7 @@ export const TeamPage: React.FC = () => {
                             {getUserTypeLabel(user.user_type_id)}
                           </span>
                           {user.role && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
-                              <Briefcase size={10} className="mr-1" />
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 border border-primary-200 dark:bg-primary-900/40 dark:text-primary-300 dark:border-primary-800">
                               {user.role}
                             </span>
                           )}
@@ -613,7 +612,7 @@ export const TeamPage: React.FC = () => {
                       {isAdmin && (
                         <button
                           onClick={() => handleViewCoinStatement(user)}
-                          className="p-2 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                          className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
                           title="Ver extrato de moedas"
                         >
                           <FileText size={16} />

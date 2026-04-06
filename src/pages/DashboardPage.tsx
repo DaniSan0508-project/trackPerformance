@@ -265,14 +265,18 @@ export const DashboardPage = () => {
                         const labels = Object.keys(actionsSummary.actions).map(k => actionLabelMap[k] ?? k);
                         const values = Object.values(actionsSummary.actions);
 
+                        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary-500').trim() || '#10b981';
+                        const primaryDark = getComputedStyle(document.documentElement).getPropertyValue('--color-primary-600').trim() || '#059669';
+                        const primaryLight = getComputedStyle(document.documentElement).getPropertyValue('--color-primary-400').trim() || '#34d399';
+
                         const chartData = {
                             labels,
                             datasets: [
                                 {
                                     label: 'Ações',
                                     data: values,
-                                    backgroundColor: isDark ? 'rgba(52, 211, 153, 0.75)' : 'rgba(16, 185, 129, 0.80)',
-                                    hoverBackgroundColor: isDark ? 'rgba(52, 211, 153, 1)' : 'rgba(16, 185, 129, 1)',
+                                    backgroundColor: primaryColor,
+                                    hoverBackgroundColor: isDark ? primaryLight : primaryDark,
                                     borderRadius: 6,
                                     borderSkipped: false,
                                 },

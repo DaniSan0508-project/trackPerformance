@@ -30,7 +30,7 @@ const campaignTypeLabels: Record<CampaignType, string> = {
 
 const campaignTypeColors: Record<CampaignType, string> = {
   sales: 'bg-[var(--color-primary-100)] text-[var(--color-primary-700)] dark:bg-[var(--color-primary-900/30)] dark:text-[var(--color-primary-400)]',
-  engagement: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  engagement: 'bg-[var(--color-primary-100)] text-[var(--color-primary-700)] dark:bg-[var(--color-primary-900/30)] dark:text-[var(--color-primary-400)]',
 };
 
 const campaignStatusLabels: Record<CampaignStatus, string> = {

@@ -7,6 +7,7 @@ import {
   Users,
   TrendingUp,
   Shield,
+  Settings,
   LogOut,
   Bell,
   Search,
@@ -119,7 +120,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           />
           <NavItem
             to="/settings"
-            icon={<Shield size={20} />}
+            icon={<Settings size={20} />}
             label="Administração"
             active={location.pathname === '/settings'}
           />
@@ -218,13 +219,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             active={location.pathname === '/surveys'}
           />
           <MobileNavItem
-            to="/reports"
-            icon={<BarChart3 size={24} />}
-            active={location.pathname === '/reports'}
-          />
-          <MobileNavItem
             to="/settings"
-            icon={<Shield size={24} />}
+            icon={<Settings size={24} />}
             active={location.pathname === '/settings'}
           />
           <button onClick={handleLogout} className="text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">

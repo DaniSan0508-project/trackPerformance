@@ -758,7 +758,7 @@ export const SurveysPage: React.FC = () => {
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-bold text-lg text-zinc-900 dark:text-white">{survey.title}</h3>
                             {survey.is_published ? (
-                              <span className="px-2 py-1 rounded-full text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 flex items-center gap-1">
+                              <span className="px-2 py-1 rounded-full text-xs font-bold bg-[var(--color-primary-100)] dark:bg-[var(--color-primary-900/30)] text-[var(--color-primary-700)] dark:text-[var(--color-primary-400)] flex items-center gap-1">
                                 <CheckCircle size={12} />
                                 Publicada
                               </span>

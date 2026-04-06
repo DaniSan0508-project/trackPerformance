@@ -291,11 +291,11 @@ export const FeedbacksPage: React.FC = () => {
                       animate={{ opacity: 1, y: 0 }}
                       className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6 flex flex-col items-center text-center hover:shadow-md transition-all duration-200"
                     >
-                      <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 dark:text-zinc-500 mb-4 overflow-hidden border border-zinc-100 dark:border-zinc-700">
+                      <div className="w-14 h-14 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 mb-4 overflow-hidden border border-primary-200 dark:border-primary-800">
                         {user.profile_image_url ? (
                           <img src={getFullImageUrl(user.profile_image_url) || ''} alt={user.name} className="w-full h-full object-cover" />
                         ) : (
-                          <User size={32} />
+                          <User size={28} />
                         )}
                       </div>
                       <h3 className="font-semibold text-lg text-zinc-900 dark:text-white mb-1">{user.name}</h3>
@@ -378,11 +378,11 @@ export const FeedbacksPage: React.FC = () => {
                         animate={{ opacity: 1, y: 0 }}
                         className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6 flex gap-4 transition-colors duration-200"
                       >
-                        <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 dark:text-zinc-500 flex-shrink-0 overflow-hidden border border-zinc-100 dark:border-zinc-700">
+                        <div className="w-14 h-14 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 flex-shrink-0 overflow-hidden border border-primary-200 dark:border-primary-800">
                           {!isAnonymous && sender?.profile_image_url ? (
                             <img src={getFullImageUrl(sender.profile_image_url) || ''} alt={sender.name} className="w-full h-full object-cover" />
                           ) : (
-                            <User size={24} />
+                            <User size={28} />
                           )}
                         </div>
                         <div className="flex-1">
@@ -488,11 +488,11 @@ export const FeedbacksPage: React.FC = () => {
                         animate={{ opacity: 1, y: 0 }}
                         className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6 flex gap-4 transition-colors duration-200"
                       >
-                        <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 dark:text-zinc-500 flex-shrink-0 overflow-hidden border border-zinc-100 dark:border-zinc-700">
+                        <div className="w-14 h-14 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 flex-shrink-0 overflow-hidden border border-primary-200 dark:border-primary-800">
                           {!isAnonymous && sender?.profile_image_url ? (
                             <img src={getFullImageUrl(sender.profile_image_url) || ''} alt={sender.name} className="w-full h-full object-cover" />
                           ) : (
-                            <User size={24} />
+                            <User size={28} />
                           )}
                         </div>
                         <div className="flex-1">
@@ -583,11 +583,11 @@ export const FeedbacksPage: React.FC = () => {
                 
                 <form onSubmit={handleSendFeedback} className="p-6 space-y-4">
                   <div className="flex items-center gap-3 mb-4 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
-                    <div className="w-10 h-10 bg-zinc-200 dark:bg-zinc-700 rounded-full flex items-center justify-center text-zinc-500 dark:text-zinc-400 overflow-hidden">
+                    <div className="w-14 h-14 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 overflow-hidden border border-primary-200 dark:border-primary-800">
                       {selectedUser.profile_image_url ? (
                         <img src={getFullImageUrl(selectedUser.profile_image_url) || ''} alt={selectedUser.name} className="w-full h-full object-cover" />
                       ) : (
-                        <User size={20} />
+                        <User size={28} />
                       )}
                     </div>
                     <div>
