@@ -7,6 +7,70 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
+/* 
+ * Primary color CSS variables
+ * These are dynamically updated by ThemeContext based on tenant configuration
+ * Default values use emerald-600 (#059669) as fallback
+ */
+:root {
+  --color-primary-50: #ecfdf5;
+  --color-primary-100: #d1fae5;
+  --color-primary-200: #a7f3d0;
+  --color-primary-300: #6ee7b7;
+  --color-primary-400: #34d399;
+  --color-primary-500: #10b981;
+  --color-primary-600: #059669;
+  --color-primary-700: #047857;
+  --color-primary-800: #065f46;
+  --color-primary-900: #064e3b;
+}
+
+/*
+ * Utility classes for primary color
+ * Use these classes instead of hardcoded Tailwind color classes
+ */
+.bg-primary-50 { background-color: var(--color-primary-50); }
+.bg-primary-100 { background-color: var(--color-primary-100); }
+.bg-primary-200 { background-color: var(--color-primary-200); }
+.bg-primary-300 { background-color: var(--color-primary-300); }
+.bg-primary-400 { background-color: var(--color-primary-400); }
+.bg-primary-500 { background-color: var(--color-primary-500); }
+.bg-primary-600 { background-color: var(--color-primary-600); }
+.bg-primary-700 { background-color: var(--color-primary-700); }
+.bg-primary-800 { background-color: var(--color-primary-800); }
+.bg-primary-900 { background-color: var(--color-primary-900); }
+
+.text-primary-400 { color: var(--color-primary-400); }
+.text-primary-500 { color: var(--color-primary-500); }
+.text-primary-600 { color: var(--color-primary-600); }
+.text-primary-700 { color: var(--color-primary-700); }
+.text-primary-800 { color: var(--color-primary-800); }
+
+.border-primary-100 { border-color: var(--color-primary-100); }
+.border-primary-200 { border-color: var(--color-primary-200); }
+.border-primary-300 { border-color: var(--color-primary-300); }
+.border-primary-500 { border-color: var(--color-primary-500); }
+.border-primary-800 { border-color: var(--color-primary-800); }
+
+.focus\:ring-primary-500:focus { --tw-ring-color: var(--color-primary-500); }
+.focus\:border-primary-500:focus { border-color: var(--color-primary-500); }
+
+.hover\:bg-primary-700:hover { background-color: var(--color-primary-700); }
+.hover\:text-primary-600:hover { color: var(--color-primary-600); }
+
+.from-primary-100 { --tw-gradient-from: var(--color-primary-100); }
+.to-primary-100 { --tw-gradient-to: var(--color-primary-100); }
+
+/* Dark mode variants */
+.dark\:bg-primary-900\/20:where(.dark, .dark *) { background-color: color-mix(in srgb, var(--color-primary-900) 20%, transparent); }
+.dark\:bg-primary-900\/30:where(.dark, .dark *) { background-color: color-mix(in srgb, var(--color-primary-900) 30%, transparent); }
+.dark\:text-primary-400:where(.dark, .dark *) { color: var(--color-primary-400); }
+.dark\:border-primary-800:where(.dark, .dark *) { border-color: var(--color-primary-800); }
+.dark\:border-primary-900\/30:where(.dark, .dark *) { border-color: color-mix(in srgb, var(--color-primary-900) 30%, transparent); }
+.dark\:border-primary-900\/50:where(.dark, .dark *) { border-color: color-mix(in srgb, var(--color-primary-900) 50%, transparent); }
+.dark\:from-primary-900\/30:where(.dark, .dark *) { --tw-gradient-from: color-mix(in srgb, var(--color-primary-900) 30%, transparent); }
+.dark\:to-primary-900\/30:where(.dark, .dark *) { --tw-gradient-to: color-mix(in srgb, var(--color-primary-900) 30%, transparent); }
+
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;

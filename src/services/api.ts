@@ -245,7 +245,7 @@ export const api = {
 
   updateUser: async (token: string, id: number, formData: FormData) => {
     const response = await fetch(`${API_BASE_URL}/users/${id}`, {
-      method: 'PUT',
+      method: 'POST',
       headers: getHeaders(token, true),
       body: formData,
     });
@@ -400,6 +400,33 @@ export const api = {
     return handleResponse(response);
   },
 
+  deleteRewardImage: async (token: string, rewardId: number, imageId: number) => {
+    const response = await fetch(`${API_BASE_URL}/rewards/${rewardId}/images/${imageId}`, {
+      method: 'DELETE',
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
+  updateRewardImage: async (token: string, rewardId: number, imageId: number, formData: FormData) => {
+    // Para multipart/form-data com PUT, muitas vezes é necessário usar POST e passar _method=PUT
+    const response = await fetch(`${API_BASE_URL}/rewards/${rewardId}/images/${imageId}`, {
+      method: 'POST',
+      headers: getHeaders(token, true),
+      body: formData,
+    });
+    return handleResponse(response);
+  },
+
+  addRewardImages: async (token: string, rewardId: number, formData: FormData) => {
+    const response = await fetch(`${API_BASE_URL}/rewards/${rewardId}/images`, {
+      method: 'POST',
+      headers: getHeaders(token, true),
+      body: formData,
+    });
+    return handleResponse(response);
+  },
+
   getCampaigns: async (token: string, page = 1, search = '') => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
@@ -464,6 +491,21 @@ export const api = {
   getCampaignActions: async (token: string, campaignId: number) => {
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/actions?per_page=9999`, {
       headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
+  importCampaignSales: async (token: string, campaignId: number, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/sales/import`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        // Não definir Content-Type para deixar o browser definir com boundary
+      },
+      body: formData,
     });
     return handleResponse(response);
   },
@@ -794,6 +836,13 @@ export const api = {
   getEngagementActionsSummary: async (token: string, period?: string) => {
     const query = period ? `?period=${encodeURIComponent(period)}` : '';
     const response = await fetch(`${API_BASE_URL}/dashboard/engagement-actions-summary${query}`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
+  getEngagementActions: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/engagement-actions`, {
       headers: getHeaders(token),
     });
     return handleResponse(response);

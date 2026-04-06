@@ -518,7 +518,7 @@ export const ProductsPage: React.FC = () => {
                   </button>
                 </div>
 
-                {/* ── Manufacturers management panel ────────────────────── */}
+                {/* ── Manufacturers list panel ──────────────────────────────── */}
                 {isManagingManufacturers ? (
                   <div className="flex flex-col" style={{ maxHeight: '72vh' }}>
 
@@ -569,7 +569,7 @@ export const ProductsPage: React.FC = () => {
                     <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2 min-h-0">
                       {mfrLoading ? (
                         <div className="flex justify-center py-8">
-                          <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                          <Loader2 className="w-6 h-6 text-primary-600 animate-spin" />
                         </div>
                       ) : mfrPagedList.length === 0 ? (
                         <div className="text-center py-8">
@@ -586,8 +586,8 @@ export const ProductsPage: React.FC = () => {
                             animate={{ opacity: 1, y: 0 }}
                             className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors"
                           >
-                            <div className="w-9 h-9 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Building2 size={15} className="text-emerald-600 dark:text-emerald-400" />
+                            <div className="w-9 h-9 bg-gradient-to-br from-primary-100 to-teal-100 dark:from-primary-900/30 dark:to-teal-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Building2 size={15} className="text-primary-600 dark:text-primary-400" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate">
@@ -637,7 +637,7 @@ export const ProductsPage: React.FC = () => {
                   <div className="p-6 max-h-[60vh] overflow-y-auto">
                     {loadingGroups ? (
                       <div className="flex justify-center py-8">
-                        <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                        <Loader2 className="w-6 h-6 text-primary-600 animate-spin" />
                       </div>
                     ) : productGroups.length === 0 ? (
                       <p className="text-center text-zinc-500 dark:text-zinc-400 py-6">
@@ -650,8 +650,8 @@ export const ProductsPage: React.FC = () => {
                             key={g.id}
                             className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700"
                           >
-                            <div className="w-9 h-9 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Tag size={15} className="text-emerald-600 dark:text-emerald-400" />
+                            <div className="w-9 h-9 bg-gradient-to-br from-primary-100 to-teal-100 dark:from-primary-900/30 dark:to-teal-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Tag size={15} className="text-primary-600 dark:text-primary-400" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate">
@@ -677,7 +677,7 @@ export const ProductsPage: React.FC = () => {
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         placeholder="Ex: Dipirona Sódica 1g 10 Comprimidos"
-                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                           formErrors.name
                             ? 'border-red-500 focus:ring-red-500'
                             : 'border-zinc-300 dark:border-zinc-600'
@@ -698,7 +698,7 @@ export const ProductsPage: React.FC = () => {
                         value={formData.barcode}
                         onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
                         placeholder="Ex: 7896004710011"
-                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 font-mono ${
+                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 font-mono ${
                           formErrors.barcode
                             ? 'border-red-500 focus:ring-red-500'
                             : 'border-zinc-300 dark:border-zinc-600'
@@ -724,7 +724,7 @@ export const ProductsPage: React.FC = () => {
                               manufacturer_id: e.target.value ? Number(e.target.value) : '',
                             })
                           }
-                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                         >
                           <option value="">
                             {loadingManufacturers ? 'Carregando...' : 'Selecione um fabricante (opcional)'}
@@ -767,7 +767,7 @@ export const ProductsPage: React.FC = () => {
                               product_group_id: e.target.value ? Number(e.target.value) : '',
                             })
                           }
-                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                         >
                           <option value="">
                             {loadingGroups ? 'Carregando...' : 'Selecione um grupo (opcional)'}
@@ -801,7 +801,7 @@ export const ProductsPage: React.FC = () => {
                       <button
                         type="submit"
                         disabled={saving}
-                        className="flex-1 px-4 py-2.5 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+                        className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
                       >
                         {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
                         {saving ? 'Salvando...' : 'Salvar'}

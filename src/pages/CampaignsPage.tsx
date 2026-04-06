@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift, Upload, FileSpreadsheet } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus, Role } from '../types';
+import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus, Role, EngagementAction } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -29,7 +29,7 @@ const campaignTypeLabels: Record<CampaignType, string> = {
 };
 
 const campaignTypeColors: Record<CampaignType, string> = {
-  sales: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  sales: 'bg-[var(--color-primary-100)] text-[var(--color-primary-700)] dark:bg-[var(--color-primary-900/30)] dark:text-[var(--color-primary-400)]',
   engagement: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
 };
 
@@ -40,7 +40,7 @@ const campaignStatusLabels: Record<CampaignStatus, string> = {
 };
 
 const campaignStatusColors: Record<CampaignStatus, string> = {
-  ativa: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
+  ativa: 'bg-[var(--color-primary-100)] dark:bg-[var(--color-primary-900/30)] text-[var(--color-primary-700)] dark:text-[var(--color-primary-400)]',
   pausada: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
   finalizada: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400',
 };
@@ -64,6 +64,7 @@ const actionLabels: Record<string, string> = {
   send_feedback: 'Enviar Feedback',
   answer_survey: 'Responder Pesquisa',
   create_post: 'Criar Post',
+  change_profile_photo: 'Alterar Foto do Perfil',
 };
 
 const defaultActionCoins: Record<string, number> = {
@@ -147,6 +148,23 @@ export const CampaignsPage: React.FC = () => {
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [selectedActions, setSelectedActions] = useState<{ id: number; coins: number }[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
+
+  // Ações de engajamento (buscadas da API)
+  const [engagementActions, setEngagementActions] = useState<EngagementAction[]>([]);
+  const [loadingEngagementActions, setLoadingEngagementActions] = useState(false);
+  const [manuallyUnselectedActions, setManuallyUnselectedActions] = useState<number[]>([]);
+
+  // Importação de vendas
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importingCampaign, setImportingCampaign] = useState<Campaign | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    total_rows: number;
+    success_count: number;
+    error_count: number;
+    errors: Array<{ row: number; external_id: string; reason: string }>;
+  } | null>(null);
 
   // Estado para controlar os inputs de coins das ações (permite edição livre)
   const [actionCoinsInputs, setActionCoinsInputs] = useState<{ [key: number]: string }>({});
@@ -422,21 +440,21 @@ export const CampaignsPage: React.FC = () => {
           const campaignUserIds = (usersRes.data || []).map((u: any) => u.id);
           setSelectedUsers(campaignUserIds);
           setUsers(allUsersList.slice(0, 10)); // Mostra os primeiros 10 na lista auxiliar
-          
+
           // Processar Produtos/Ações
           const campaignProductIds = (productsRes.data || []).map((p: any) => p.id);
           setSelectedProducts(campaignProductIds);
-          
+
           // Carregar prêmios
           fetchRewardsPaginated(1);
 
           if (campaign.type === 'engagement') {
-            const campaignActions = (actionsRes.data || []).map((a: any) => ({ 
-              id: a.id, 
-              coins: parseInt(a.coins) || 0 
+            const campaignActions = (actionsRes.data || []).map((a: any) => ({
+              id: a.id,
+              coins: parseInt(a.coins) || 0
             }));
             setSelectedActions(campaignActions);
-            
+
             const coinsInputsMap: { [key: number]: string } = {};
             campaignActions.forEach(a => { coinsInputsMap[a.id] = a.coins.toString(); });
             setActionCoinsInputs(coinsInputsMap);
@@ -492,6 +510,34 @@ export const CampaignsPage: React.FC = () => {
     }
   };
 
+  // Função para buscar ações de engajamento (chamada ao clicar na aba Actions)
+  const loadEngagementActions = useCallback(async () => {
+    if (!token || loadingEngagementActions) return;
+
+    setLoadingEngagementActions(true);
+    try {
+      const response = await api.getEngagementActions(token);
+      // A API retorna array direto, não dentro de { data: ... }
+      const actionsData = Array.isArray(response) ? response : (response?.data || []);
+      setEngagementActions(actionsData);
+    } catch (error) {
+      console.error('Error loading engagement actions:', error);
+      addToast('error', 'Erro ao carregar ações de engajamento.');
+    } finally {
+      setLoadingEngagementActions(false);
+    }
+  }, [token, loadingEngagementActions, addToast]);
+
+  // Buscar ações automaticamente quando mudar para a aba Actions
+  useEffect(() => {
+    if (activeTab === 'actions' && 
+        (formData.type === 'engagement' || editingCampaign?.type === 'engagement') &&
+        !loadingEngagementActions && 
+        engagementActions.length === 0) {
+      loadEngagementActions();
+    }
+  }, [activeTab, formData.type, editingCampaign?.type, loadEngagementActions, engagementActions.length, loadingEngagementActions]);
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingCampaign(null);
@@ -509,11 +555,45 @@ export const CampaignsPage: React.FC = () => {
     setSelectedUsers([]);
     setSelectedProducts([]);
     setSelectedActions([]);
+    setManuallyUnselectedActions([]);
     setActionCoinsInputs({});
     setFullySelectedRoles(new Set());
     setFullySelectedManufacturers(new Set());
     setFormErrors({});
     setActionSearch('');
+  };
+
+  const handleCloseImportModal = () => {
+    setIsImportModalOpen(false);
+    setImportingCampaign(null);
+    setImportFile(null);
+    setImporting(false);
+    setImportResult(null);
+  };
+
+  const handleImportFile = async () => {
+    if (!importFile || !importingCampaign || !token) return;
+
+    setImporting(true);
+    try {
+      const result = await api.importCampaignSales(token, importingCampaign.id, importFile);
+      setImportResult(result);
+      
+      if (result.success_count > 0) {
+        addToast('success', `Importação concluída: ${result.success_count} vendas registradas com sucesso!`);
+      } else {
+        addToast('warning', `Nenhuma venda foi registrada. Verifique os erros.`);
+      }
+      
+      // Recarregar dados da campanha
+      await fetchCampaigns();
+    } catch (error: any) {
+      console.error('Error importing sales:', error);
+      const errorMessage = error.response?.data?.message || 'Erro ao importar vendas. Verifique o arquivo.';
+      addToast('error', errorMessage);
+    } finally {
+      setImporting(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -858,11 +938,16 @@ export const CampaignsPage: React.FC = () => {
           delete newInputs[actionId];
           return newInputs;
         });
+        // Rastreia que esta ação foi desmarcada manualmente
+        setManuallyUnselectedActions(prev => [...prev, actionId]);
         return prev.filter(a => a.id !== actionId);
+      } else {
+        // Ao marcar, remove da lista de desmarcadas manualmente
+        setManuallyUnselectedActions(prev => prev.filter(id => id !== actionId));
+        const action = engagementActions.find(a => a.id === actionId);
+        const defaultCoins = action ? defaultActionCoins[action.name] || 10 : 10;
+        return [...prev, { id: actionId, coins: defaultCoins }];
       }
-      const action = ENGAGEMENT_ACTIONS.find(a => a.id === actionId);
-      const defaultCoins = action ? defaultActionCoins[action.name] || 10 : 10;
-      return [...prev, { id: actionId, coins: defaultCoins }];
     });
   };
 
@@ -1144,7 +1229,7 @@ export const CampaignsPage: React.FC = () => {
             {isAdmin && (
               <button
                 onClick={() => handleOpenModal()}
-                className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
+                className="bg-primary-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-primary-700 shadow-sm transition-all flex items-center gap-2"
               >
                 <Plus size={18} />
                 Nova Campanha
@@ -1160,7 +1245,7 @@ export const CampaignsPage: React.FC = () => {
             <input
               type="text"
               placeholder="Buscar por nome..."
-              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -1170,7 +1255,7 @@ export const CampaignsPage: React.FC = () => {
         {/* Campaigns List */}
         {loading && campaigns.length === 0 ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+            <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
           </div>
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
@@ -1189,7 +1274,7 @@ export const CampaignsPage: React.FC = () => {
                 const isAtiva = campaign.status === 'ativa' || (campaign.status as any) === 'active' || campaign.is_active === 1;
                 const statusLabel = isAtiva ? 'Ativa' : 'Inativa';
                 const statusColor = isAtiva 
-                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' 
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400' 
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400';
 
                 return (
@@ -1201,8 +1286,8 @@ export const CampaignsPage: React.FC = () => {
                   >
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex items-start gap-4 flex-1">
-                        <div className="bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-xl">
-                          <Target className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                        <div className="bg-primary-100 dark:bg-primary-900/30 p-3 rounded-xl">
+                          <Target className="w-6 h-6 text-primary-600 dark:text-primary-400" />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -1219,7 +1304,7 @@ export const CampaignsPage: React.FC = () => {
                             {/* Meta apenas para campanhas de vendas */}
                             {campaign.type === 'sales' && (
                               <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                                <TrendingUp size={16} className="text-emerald-500" />
+                                <TrendingUp size={16} className="text-primary-500" />
                                 <span className="text-zinc-500 dark:text-zinc-500">Meta:</span>
                                 <span className="font-semibold text-zinc-900 dark:text-white">{formatCurrency(campaign.goal)}</span>
                               </div>
@@ -1299,7 +1384,7 @@ export const CampaignsPage: React.FC = () => {
                                     )}
                                   </div>
                                   {campaign.type === 'sales' && member.sales_amount !== null && (
-                                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                    <span className="text-xs font-semibold text-primary-600 dark:text-primary-400">
                                       {formatCurrency(String(member.sales_amount))}
                                     </span>
                                   )}
@@ -1330,7 +1415,7 @@ export const CampaignsPage: React.FC = () => {
                           <>
                             <button
                               onClick={() => handleOpenModal(campaign)}
-                              className="p-2 text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                              className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
                               title="Editar"
                             >
                               <Edit2 size={18} />
@@ -1401,14 +1486,29 @@ export const CampaignsPage: React.FC = () => {
                 className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-7xl overflow-hidden border border-zinc-200 dark:border-zinc-800 max-h-[95vh] flex flex-col"
               >
                 <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
-                  <div>
-                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
-                      {editingCampaign ? 'Editar Campanha' : 'Nova Campanha'}
-                    </h2>
-                    {editingCampaign && (
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                        Altere nome, status e vínculos
-                      </p>
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+                        {editingCampaign ? 'Editar Campanha' : 'Nova Campanha'}
+                      </h2>
+                      {editingCampaign && (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                          Altere nome, status e vínculos
+                        </p>
+                      )}
+                    </div>
+                    {/* Ícone de Importar Vendas - apenas para campanhas de vendas e administradores */}
+                    {editingCampaign && editingCampaign.type === 'sales' && currentUser?.user_type_id === 1 && (
+                      <button
+                        onClick={() => {
+                          setImportingCampaign(editingCampaign);
+                          setIsImportModalOpen(true);
+                        }}
+                        className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-lg"
+                        title="Importar vendas por arquivo XLSX ou CSV"
+                      >
+                        <FileSpreadsheet size={20} />
+                      </button>
                     )}
                   </div>
                   <button onClick={handleCloseModal} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
@@ -1422,7 +1522,7 @@ export const CampaignsPage: React.FC = () => {
                     onClick={() => setActiveTab('basic')}
                     className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                       activeTab === 'basic'
-                        ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
+                        ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 border-b-2 border-primary-500'
                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
                   >
@@ -1432,7 +1532,7 @@ export const CampaignsPage: React.FC = () => {
                     onClick={() => setActiveTab('users')}
                     className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                       activeTab === 'users'
-                        ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
+                        ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 border-b-2 border-primary-500'
                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
                   >
@@ -1441,10 +1541,13 @@ export const CampaignsPage: React.FC = () => {
                   {/* Aba de ações: apenas para engajamento (criação e update) */}
                   {formData.type === 'engagement' || editingCampaign?.type === 'engagement' ? (
                     <button
-                      onClick={() => setActiveTab('actions')}
+                      onClick={() => {
+                        setActiveTab('actions');
+                        loadEngagementActions();
+                      }}
                       className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                         activeTab === 'actions'
-                          ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
+                          ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 border-b-2 border-primary-500'
                           : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                       }`}
                     >
@@ -1457,7 +1560,7 @@ export const CampaignsPage: React.FC = () => {
                       onClick={() => setActiveTab('products')}
                       className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                         activeTab === 'products'
-                          ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500'
+                          ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 border-b-2 border-primary-500'
                           : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                       }`}
                     >
@@ -1476,7 +1579,7 @@ export const CampaignsPage: React.FC = () => {
                           type="text"
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                          className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                             formErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                           }`}
                           placeholder="Ex: Black Friday"
@@ -1540,7 +1643,7 @@ export const CampaignsPage: React.FC = () => {
                             <select
                               value={formData.type}
                               onChange={(e) => setFormData({ ...formData, type: e.target.value as CampaignType })}
-                              className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                              className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                             >
                               <option value="">Selecione o tipo de campanha</option>
                               <option value="sales">Vendas</option>
@@ -1558,7 +1661,7 @@ export const CampaignsPage: React.FC = () => {
                                   type="text"
                                   value={formData.goal ? formatCurrencyInput(formData.goal.replace(/\./g, '').replace(',', '.')) : ''}
                                   onChange={handleGoalChange}
-                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                                     formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   }`}
                                   placeholder="R$ 0,00"
@@ -1571,7 +1674,7 @@ export const CampaignsPage: React.FC = () => {
                                   type="text"
                                   value={formData.goal_campaign ? formatCurrencyInput(formData.goal_campaign.replace(/\./g, '').replace(',', '.')) : ''}
                                   onChange={handleGoalCampaignChange}
-                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                                     formErrors.goal_campaign ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   }`}
                                   placeholder="R$ 0,00"
@@ -1623,7 +1726,7 @@ export const CampaignsPage: React.FC = () => {
                                 value={formData.start_date}
                                 onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                                 min={getMinDate()}
-                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
+                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
                                   formErrors.start_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                 }`}
                               />
@@ -1637,7 +1740,7 @@ export const CampaignsPage: React.FC = () => {
                                 value={formData.end_date}
                                 onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                                 min={formData.start_date || getMinDate()}
-                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
+                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
                                   formErrors.end_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                 }`}
                               />
@@ -1652,7 +1755,7 @@ export const CampaignsPage: React.FC = () => {
                         <select
                           value={formData.status}
                           onChange={(e) => setFormData({ ...formData, status: e.target.value as CampaignStatus })}
-                          className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                          className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                         >
                           <option value="ativa">Ativa</option>
                           <option value="inativa">Inativa</option>
@@ -1662,13 +1765,13 @@ export const CampaignsPage: React.FC = () => {
                       {/* Card de Prêmio da Campanha */}
                       <div className="pt-2">
                         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Prêmio da Campanha (Opcional)</label>
-                        <div className={`p-4 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center min-h-[140px] ${formData.reward_id ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-900/10' : 'border-zinc-200 dark:border-zinc-700'}`}>
+                        <div className={`p-4 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center min-h-[140px] ${formData.reward_id ? 'border-primary-500 bg-primary-50/30 dark:bg-primary-900/10' : 'border-zinc-200 dark:border-zinc-700'}`}>
                           {(() => {
                             const selectedReward = rewards.find(r => r.id === formData.reward_id);
                             if (selectedReward) {
                               return (
                                 <div className="flex flex-col items-center text-center space-y-2 w-full">
-                                  <div className="w-16 h-16 rounded-xl overflow-hidden border border-emerald-200 dark:border-emerald-800 shadow-sm bg-white dark:bg-zinc-800">
+                                  <div className="w-16 h-16 rounded-xl overflow-hidden border border-primary-200 dark:border-primary-800 shadow-sm bg-white dark:bg-zinc-800">
                                     {selectedReward.images?.[0]?.image_full_url ? (
                                       <img src={selectedReward.images[0].image_full_url} alt={selectedReward.name} className="w-full h-full object-cover" />
                                     ) : <div className="w-full h-full flex items-center justify-center text-zinc-300"><ShoppingBag /></div>}
@@ -1676,7 +1779,7 @@ export const CampaignsPage: React.FC = () => {
                                   <div>
                                     <p className="text-sm font-bold text-zinc-900 dark:text-white">{selectedReward.name}</p>
                                     <div className="flex gap-3 justify-center mt-1">
-                                      <button type="button" onClick={() => setIsRewardModalOpen(true)} className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline uppercase">Trocar</button>
+                                      <button type="button" onClick={() => setIsRewardModalOpen(true)} className="text-[10px] font-bold text-primary-600 dark:text-primary-400 hover:underline uppercase">Trocar</button>
                                       <button type="button" onClick={() => setFormData({ ...formData, reward_id: '' })} className="text-[10px] font-bold text-red-500 hover:underline uppercase">Remover</button>
                                     </div>
                                   </div>
@@ -1752,7 +1855,7 @@ export const CampaignsPage: React.FC = () => {
                             placeholder={`Buscar por ${userFilterType === 'name' ? 'nome' : 'e-mail'}...`}
                             value={userSearch}
                             onChange={(e) => setUserSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+                            className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
                           />
                         </div>
                       </div>
@@ -1769,7 +1872,7 @@ export const CampaignsPage: React.FC = () => {
                             className={`px-4 py-2 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm border ${
                               selectedUsers.length > 0
                                 ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
-                                : 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-700 shadow-emerald-500/20'
+                                : 'bg-primary-600 text-white border-primary-500 hover:bg-primary-700 shadow-primary-500/20'
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
                           >
                             {loadingSelectAllUsers ? (
@@ -1800,8 +1903,8 @@ export const CampaignsPage: React.FC = () => {
                                   disabled={selectByRoleLoading !== null}
                                   className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
                                     areAllUsersSelectedByRole(role)
-                                      ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
-                                      : 'bg-white text-zinc-600 border-zinc-200 hover:border-emerald-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
+                                      ? 'bg-primary-100 text-primary-700 border-primary-300 dark:bg-primary-900/40 dark:text-primary-300 dark:border-primary-700'
+                                      : 'bg-white text-zinc-600 border-zinc-200 hover:border-primary-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
                                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
                                   {selectByRoleLoading === role ? (
@@ -1821,15 +1924,15 @@ export const CampaignsPage: React.FC = () => {
 
                       {loadingAux ? (
                         <div className="flex justify-center py-8">
-                          <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                          <Loader2 className="w-6 h-6 text-primary-600 animate-spin" />
                         </div>
                       ) : users.length === 0 ? (
                         <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum usuário encontrado.</p>
                       ) : (
                         <>
                           {/* Contador de selecionados */}
-                          <div className="mb-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl">
-                            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                          <div className="mb-3 p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl">
+                            <p className="text-sm font-semibold text-primary-700 dark:text-primary-400">
                               👥 {selectedUsers.length} usuário(s) selecionado(s)
                             </p>
                           </div>
@@ -1848,13 +1951,13 @@ export const CampaignsPage: React.FC = () => {
                                 animate={{ opacity: 1, scale: 1 }}
                                 className={`p-4 rounded-xl border-2 transition-all duration-200 text-left group ${
                                   selectedUsers.includes(user.id)
-                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 shadow-md'
-                                    : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm'
+                                    ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 shadow-md'
+                                    : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-sm'
                                 }`}
                               >
                                 <div className="flex items-start gap-3">
                                   {/* Avatar */}
-                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 border-2 border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 overflow-hidden flex-shrink-0">
+                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-100 to-teal-100 dark:from-primary-900/30 dark:to-teal-900/30 border-2 border-primary-200 dark:border-primary-800 flex items-center justify-center text-primary-600 dark:text-primary-400 overflow-hidden flex-shrink-0">
                                     {user.profile_image_url ? (
                                       <img
                                         src={getFullImageUrl(user.profile_image_url) || ''}
@@ -1874,7 +1977,7 @@ export const CampaignsPage: React.FC = () => {
                                       {user.name}
                                     </p>
                                     {user.role && (
-                                      <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-0.5">
+                                      <p className="text-[10px] font-semibold text-primary-600 dark:text-primary-400 uppercase tracking-wider mb-0.5">
                                         {user.role}
                                       </p>
                                     )}
@@ -1891,8 +1994,8 @@ export const CampaignsPage: React.FC = () => {
                                   {/* Check de selecionado */}
                                   <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                                     selectedUsers.includes(user.id)
-                                      ? 'bg-emerald-500 border-emerald-500'
-                                      : 'border-zinc-300 dark:border-zinc-600 group-hover:border-emerald-400'
+                                      ? 'bg-primary-500 border-primary-500'
+                                      : 'border-zinc-300 dark:border-zinc-600 group-hover:border-primary-400'
                                   }`}>
                                     {selectedUsers.includes(user.id) && (
                                       <Check size={14} className="text-white" />
@@ -1904,7 +2007,7 @@ export const CampaignsPage: React.FC = () => {
                                 <div className="mt-3 flex items-center gap-2 flex-wrap">
                                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
                                     user.user_type_id === 1
-                                      ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800'
+                                      ? 'bg-primary-100 text-primary-800 border-primary-200 dark:bg-primary-900/30 dark:text-primary-400 dark:border-primary-800'
                                       : 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/20 dark:text-teal-400 dark:border-teal-800'
                                   }`}>
                                     <Shield size={10} className="mr-1" />
@@ -1991,84 +2094,108 @@ export const CampaignsPage: React.FC = () => {
                       </div>
 
                       <div className="grid gap-3 max-h-80 overflow-y-auto">
-                        {ENGAGEMENT_ACTIONS.filter(action =>
-                          actionLabels[action.name].toLowerCase().includes(actionSearch.toLowerCase())
-                        ).map((action) => {
-                          const isSelected = selectedActions.find(a => a.id === action.id);
-                          return (
-                            <div
-                              key={action.id}
-                              className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
-                                isSelected
-                                  ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
-                                  : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-amber-300 dark:hover:border-amber-700'
-                              }`}
-                            >
-                              <button
-                                onClick={() => toggleAction(action.id)}
-                                className="flex items-center gap-3 flex-1 text-left"
-                              >
-                                <div className={`w-5 h-5 rounded border flex items-center justify-center ${
-                                  isSelected
-                                    ? 'bg-amber-500 border-amber-500'
-                                    : 'border-zinc-300 dark:border-zinc-600'
-                                }`}>
-                                  {isSelected && <Check size={14} className="text-white" />}
+                        {loadingEngagementActions ? (
+                          <div className="flex flex-col items-center justify-center py-8">
+                            <Loader2 className="w-6 h-6 text-primary-600 animate-spin mb-2" />
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">Carregando ações...</p>
+                          </div>
+                        ) : engagementActions.length === 0 ? (
+                          <div className="text-center py-8 text-zinc-500 dark:text-zinc-400">
+                            <p className="text-sm">Clique aqui para carregar as ações de engajamento.</p>
+                          </div>
+                        ) : (
+                          engagementActions
+                            .filter(action => {
+                              const actionLabel = actionLabels[action.name] || action.name;
+                              return actionLabel.toLowerCase().includes(actionSearch.toLowerCase());
+                            })
+                            .map((action) => {
+                              const isDisabled = !action.is_enabled && !manuallyUnselectedActions.includes(action.id);
+                              const campaignName = action.campaign?.name;
+                              const isSelected = selectedActions.find(a => a.id === action.id);
+                              const actionLabel = actionLabels[action.name] || action.name;
+                              
+                              // Permite desmarcar ações já selecionadas, mesmo que estejam em uso em outra campanha
+                              const canToggle = isSelected || !isDisabled;
+
+                              return (
+                                <div
+                                  key={action.id}
+                                  className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                                    isSelected
+                                      ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
+                                      : isDisabled
+                                        ? 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700 opacity-60'
+                                        : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-amber-300 dark:hover:border-amber-700'
+                                  }`}
+                                >
+                                  <button
+                                    onClick={() => canToggle && toggleAction(action.id)}
+                                    disabled={!canToggle}
+                                    className="flex items-center gap-3 flex-1 text-left disabled:cursor-not-allowed"
+                                  >
+                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+                                      isSelected
+                                        ? 'bg-amber-500 border-amber-500'
+                                        : 'border-zinc-300 dark:border-zinc-600'
+                                    }`}>
+                                      {isSelected && <Check size={14} className="text-white" />}
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className={`font-medium text-sm ${
+                                        isDisabled && !isSelected ? 'text-zinc-500 dark:text-zinc-400' : 'text-zinc-900 dark:text-white'
+                                      }`}>
+                                        {actionLabel}
+                                      </p>
+                                      {isDisabled && campaignName && !isSelected && (
+                                        <p className="text-xs text-red-500 dark:text-red-400 mt-0.5 flex items-center gap-1">
+                                          <span>🚫</span> Em uso em: {campaignName}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </button>
+                                  {isSelected && !isDisabled && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                        {coinName.charAt(0).toUpperCase() + coinName.slice(1)}:
+                                      </span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={actionCoinsInputs[action.id] ?? (selectedActions.find(a => a.id === action.id)?.coins ?? defaultActionCoins[action.name] ?? 10)}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          if (val === '' || val === '-' || /^-?\d*$/.test(val)) {
+                                            setActionCoinsInputs(prev => ({ ...prev, [action.id]: val }));
+                                          }
+                                        }}
+                                        onBlur={(e) => {
+                                          const val = e.target.value.trim();
+                                          if (val === '' || val === '-') {
+                                            setActionCoinsInputs(prev => ({ ...prev, [action.id]: '0' }));
+                                            updateActionCoins(action.id, 0);
+                                            addToast('warning', 'Valor inválido. Definido como 0.');
+                                            return;
+                                          }
+                                          const numVal = parseInt(val);
+                                          if (isNaN(numVal) || numVal < 0) {
+                                            setActionCoinsInputs(prev => ({ ...prev, [action.id]: '0' }));
+                                            updateActionCoins(action.id, 0);
+                                            addToast('warning', 'Valores negativos não são permitidos. Definido como 0.');
+                                            return;
+                                          }
+                                          setActionCoinsInputs(prev => ({ ...prev, [action.id]: String(numVal) }));
+                                          updateActionCoins(action.id, numVal);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
+                                      />
+                                    </div>
+                                  )}
                                 </div>
-                                <div>
-                                  <p className="font-medium text-sm text-zinc-900 dark:text-white">
-                                    {actionLabels[action.name]}
-                                  </p>
-                                </div>
-                              </button>
-                              {isSelected && (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">{coinName.charAt(0).toUpperCase() + coinName.slice(1)}:</span>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={actionCoinsInputs[action.id] ?? (selectedActions.find(a => a.id === action.id)?.coins ?? defaultActionCoins[action.name] ?? 10)}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      // Permite digitar temporariamente
-                                      if (val === '' || val === '-' || /^-?\d*$/.test(val)) {
-                                        setActionCoinsInputs(prev => ({ ...prev, [action.id]: val }));
-                                      }
-                                    }}
-                                    onBlur={(e) => {
-                                      // Valida e atualiza o estado real apenas quando perde o foco
-                                      const val = e.target.value.trim();
-                                      
-                                      // Não permite vazio ou apenas "-"
-                                      if (val === '' || val === '-') {
-                                        setActionCoinsInputs(prev => ({ ...prev, [action.id]: '0' }));
-                                        updateActionCoins(action.id, 0);
-                                        addToast('warning', 'Valor inválido. Definido como 0.');
-                                        return;
-                                      }
-                                      
-                                      const numVal = parseInt(val);
-                                      
-                                      // Não permite negativos
-                                      if (isNaN(numVal) || numVal < 0) {
-                                        setActionCoinsInputs(prev => ({ ...prev, [action.id]: '0' }));
-                                        updateActionCoins(action.id, 0);
-                                        addToast('warning', 'Valores negativos não são permitidos. Definido como 0.');
-                                        return;
-                                      }
-                                      
-                                      // Valor válido
-                                      setActionCoinsInputs(prev => ({ ...prev, [action.id]: String(numVal) }));
-                                      updateActionCoins(action.id, numVal);
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                              );
+                            })
+                        )}
                       </div>
                     </div>
                   )}
@@ -2126,7 +2253,7 @@ export const CampaignsPage: React.FC = () => {
 
                       {loadingAux ? (
                         <div className="flex justify-center py-8">
-                          <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                          <Loader2 className="w-6 h-6 text-primary-600 animate-spin" />
                         </div>
                       ) : products.length === 0 ? (
                         <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum produto encontrado.</p>
@@ -2211,7 +2338,7 @@ export const CampaignsPage: React.FC = () => {
 
                           {loadingAux ? (
                             <div className="flex justify-center py-8">
-                              <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                              <Loader2 className="w-6 h-6 text-primary-600 animate-spin" />
                             </div>
                           ) : products.length === 0 ? (
                             <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">Nenhum produto encontrado.</p>
@@ -2365,7 +2492,7 @@ export const CampaignsPage: React.FC = () => {
                       type="button"
                       onClick={handleSubmit}
                       disabled={saving}
-                      className="px-8 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+                      className="px-8 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold flex items-center gap-2 shadow-lg shadow-primary-500/20"
                     >
                       {saving ? (
                         <>
@@ -2398,7 +2525,7 @@ export const CampaignsPage: React.FC = () => {
               >
                 <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
                   <h3 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                    <Gift className="text-emerald-500" />
+                    <Gift className="text-primary-500" />
                     Selecionar Prêmio
                   </h3>
                   <button onClick={() => setIsRewardModalOpen(false)} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
@@ -2412,14 +2539,14 @@ export const CampaignsPage: React.FC = () => {
                     <input
                       type="text"
                       placeholder="Buscar prêmio por nome..."
-                      className="w-full pl-10 pr-4 py-3 border border-zinc-200 dark:border-zinc-700 rounded-2xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full pl-10 pr-4 py-3 border border-zinc-200 dark:border-zinc-700 rounded-2xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
                       value={rewardSearch}
                       onChange={(e) => setRewardSearch(e.target.value)}
                     />
                   </div>
 
                   {loadingRewards ? (
-                    <div className="flex justify-center py-12"><Loader2 className="animate-spin text-emerald-500" size={40} /></div>
+                    <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary-500" size={40} /></div>
                   ) : rewards.length === 0 ? (
                     <div className="text-center py-12 text-zinc-500">Nenhum prêmio encontrado.</div>
                   ) : (
@@ -2434,8 +2561,8 @@ export const CampaignsPage: React.FC = () => {
                           }}
                           className={`group relative flex flex-col p-3 rounded-2xl border-2 transition-all ${
                             formData.reward_id === reward.id
-                              ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 shadow-md'
-                              : 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-800 hover:border-emerald-300'
+                              ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 shadow-md'
+                              : 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-800 hover:border-primary-300'
                           }`}
                         >
                           <div className="aspect-square rounded-xl bg-zinc-100 dark:bg-zinc-900 mb-2 overflow-hidden border border-zinc-200 dark:border-zinc-700">
@@ -2445,7 +2572,7 @@ export const CampaignsPage: React.FC = () => {
                           </div>
                           <p className="text-xs font-bold text-zinc-900 dark:text-white line-clamp-2 text-center">{reward.name}</p>
                           {formData.reward_id === reward.id && (
-                            <div className="absolute top-2 right-2 bg-emerald-500 text-white p-1 rounded-full shadow-lg"><Check size={12} /></div>
+                            <div className="absolute top-2 right-2 bg-primary-500 text-white p-1 rounded-full shadow-lg"><Check size={12} /></div>
                           )}
                         </button>
                       ))}
@@ -2493,7 +2620,7 @@ export const CampaignsPage: React.FC = () => {
                 <div className="flex-1 overflow-y-auto p-6">
                   {rankingModal.loading ? (
                     <div className="flex justify-center py-12">
-                      <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                      <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
                     </div>
                   ) : rankingModal.ranking.length === 0 ? (
                     <div className="text-center py-8">
@@ -2551,7 +2678,7 @@ export const CampaignsPage: React.FC = () => {
                                 {rankingModal.campaign?.type === 'sales' ? 'Vendas' : 'Pontuação'}
                               </p>
                               <p className={`font-black text-lg ${
-                                isTop3 ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-700 dark:text-zinc-300'
+                                isTop3 ? 'text-primary-600 dark:text-primary-400' : 'text-zinc-700 dark:text-zinc-300'
                               }`}>
                                 {rankingModal.campaign?.type === 'sales'
                                   ? formatCurrency(String(salesAmount !== null ? salesAmount : item.value || 0))
@@ -2570,6 +2697,200 @@ export const CampaignsPage: React.FC = () => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Modal de Importação de Vendas */}
+      <AnimatePresence>
+        {isImportModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={handleCloseImportModal}
+              className="absolute inset-0"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 z-10"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                    <FileSpreadsheet className="text-primary-600" size={24} />
+                    Importar Vendas
+                  </h2>
+                  {importingCampaign && (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                      Campanha: {importingCampaign.name}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={handleCloseImportModal}
+                  disabled={importing}
+                  className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors disabled:opacity-50"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-4">
+                {!importResult ? (
+                  <>
+                    {/* Instruções */}
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                      <p className="text-sm font-semibold text-blue-800 dark:text-blue-400 mb-2">
+                        📋 Formato do Arquivo
+                      </p>
+                      <ul className="text-xs text-blue-700 dark:text-blue-500 space-y-1">
+                        <li>• Formatos aceitos: <strong>.xlsx</strong>, <strong>.xls</strong> ou <strong>.csv</strong></li>
+                        <li>• Coluna A: <strong>external_id</strong> (ID externo do usuário)</li>
+                        <li>• Coluna B: <strong>barcode</strong> (código de barras do produto)</li>
+                        <li>• Coluna C: <strong>sale_date</strong> (data no formato YYYY-MM-DD)</li>
+                        <li>• Coluna D: <strong>amount</strong> (valor da venda)</li>
+                        <li>• A primeira linha (cabeçalho) é ignorada automaticamente</li>
+                        <li>• Apenas produtos vinculados à campanha serão considerados</li>
+                      </ul>
+                    </div>
+
+                    {/* Upload */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                        Selecione o arquivo *
+                      </label>
+                      <div className="border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-xl p-6 text-center hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
+                        <input
+                          type="file"
+                          accept=".xlsx,.xls,.csv"
+                          onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                          className="hidden"
+                          id="import-file-input"
+                          disabled={importing}
+                        />
+                        <label htmlFor="import-file-input" className="cursor-pointer">
+                          <Upload className="mx-auto text-zinc-400 mb-2" size={32} />
+                          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                            {importFile ? (
+                              <span className="text-primary-600 dark:text-primary-400 font-medium">
+                                {importFile.name}
+                              </span>
+                            ) : (
+                              <span>Clique para selecionar ou arraste o arquivo aqui</span>
+                            )}
+                          </p>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
+                            Formatos: .xlsx, .xls, .csv
+                          </p>
+                        </label>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* Resultados */
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-4 text-center">
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Total de Linhas</p>
+                        <p className="text-2xl font-bold text-zinc-900 dark:text-white">{importResult.total_rows}</p>
+                      </div>
+                      <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 text-center">
+                        <p className="text-xs text-primary-600 dark:text-primary-400 mb-1">Sucesso</p>
+                        <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">{importResult.success_count}</p>
+                      </div>
+                      <div className={`rounded-xl p-4 text-center ${
+                        importResult.error_count > 0
+                          ? 'bg-red-50 dark:bg-red-900/20'
+                          : 'bg-emerald-50 dark:bg-emerald-900/20'
+                      }`}>
+                        <p className={`text-xs mb-1 ${
+                          importResult.error_count > 0
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-emerald-600 dark:text-emerald-400'
+                        }`}>Erros</p>
+                        <p className={`text-2xl font-bold ${
+                          importResult.error_count > 0
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-emerald-600 dark:text-emerald-400'
+                        }`}>{importResult.error_count}</p>
+                      </div>
+                    </div>
+
+                    {/* Lista de erros */}
+                    {importResult.errors.length > 0 && (
+                      <div className="max-h-64 overflow-y-auto border border-red-200 dark:border-red-800 rounded-xl">
+                        <div className="bg-red-50 dark:bg-red-900/20 px-4 py-2 border-b border-red-200 dark:border-red-800">
+                          <p className="text-sm font-semibold text-red-800 dark:text-red-400">
+                            ⚠️ Linhas com erro
+                          </p>
+                        </div>
+                        <div className="divide-y divide-red-100 dark:divide-red-900/30">
+                          {importResult.errors.slice(0, 10).map((error, idx) => (
+                            <div key={idx} className="px-4 py-2 text-xs">
+                              <span className="text-red-600 dark:text-red-400 font-medium">Linha {error.row}:</span>
+                              <span className="text-red-700 dark:text-red-300 ml-2">{error.reason}</span>
+                              {error.external_id && (
+                                <span className="text-red-500 dark:text-red-400 ml-2">(ID: {error.external_id})</span>
+                              )}
+                            </div>
+                          ))}
+                          {importResult.errors.length > 10 && (
+                            <div className="px-4 py-2 text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/10">
+                              + {importResult.errors.length - 10} erros não exibidos
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 flex justify-end gap-3">
+                {!importResult ? (
+                  <>
+                    <button
+                      onClick={handleCloseImportModal}
+                      disabled={importing}
+                      className="px-4 py-2 text-zinc-700 dark:text-zinc-300 font-medium hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleImportFile}
+                      disabled={!importFile || importing}
+                      className="px-6 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {importing ? (
+                        <>
+                          <Loader2 className="animate-spin" size={18} />
+                          Importando...
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={18} />
+                          Importar
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleCloseImportModal}
+                    className="px-6 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors"
+                  >
+                    Fechar
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </Layout>
   );
 };

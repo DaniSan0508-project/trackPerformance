@@ -217,7 +217,7 @@ export const DashboardPage = () => {
                     {/* Header: title + period selector */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                         <h3 className="font-bold text-lg flex items-center gap-2 text-zinc-900 dark:text-white">
-                            <ChartNoAxesColumn size={20} className="text-emerald-600"/>
+                            <ChartNoAxesColumn size={20} className="text-primary-600"/>
                             Índice de Engajamento por Ação
                         </h3>
                         <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1 text-sm">
@@ -233,7 +233,7 @@ export const DashboardPage = () => {
                                     onClick={() => setActionsPeriod(opt.value)}
                                     className={`px-3 py-1 rounded-md font-medium transition-colors duration-150 ${
                                         actionsPeriod === opt.value
-                                            ? 'bg-emerald-500 text-white shadow-sm'
+                                            ? 'bg-primary-500 text-white shadow-sm'
                                             : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                                     }`}
                                 >
@@ -324,7 +324,7 @@ export const DashboardPage = () => {
                     transition={{duration: 0.5, delay: 0.38, ease: 'easeOut'}}
                     className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
                     <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-zinc-900 dark:text-white">
-                        <User size={20} className="text-emerald-600"/>
+                        <User size={20} className="text-primary-600"/>
                         Top Jogadores
                     </h3>
                     {loadingTop ? (
@@ -352,7 +352,7 @@ export const DashboardPage = () => {
                                                         <span className="text-xl">{medal}</span>
                                                         <div className="flex items-center gap-3">
                                                             <div
-                                                                className="w-14 h-14 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 overflow-hidden border-2 border-emerald-200 dark:border-emerald-800 flex-shrink-0">
+                                                                className="w-14 h-14 bg-gradient-to-br from-primary-100 to-teal-100 dark:from-primary-900/30 dark:to-teal-900/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 overflow-hidden border-2 border-primary-200 dark:border-primary-800 flex-shrink-0">
                                                                 {p.profile_image_url ? (
                                                                     <img
                                                                         src={getFullImageUrl(p.profile_image_url) || ''}
@@ -371,7 +371,7 @@ export const DashboardPage = () => {
                                                 </div>
                                                 <div className="mt-2 h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                                                     <motion.div
-                                                        className="h-full bg-emerald-500 dark:bg-emerald-600"
+                                                        className="h-full bg-primary-500 dark:bg-primary-600"
                                                         initial={{width: 0}}
                                                         animate={{width: `${percent}%`}}
                                                         transition={{duration: 0.9, delay: 0.55 + i * 0.1, ease: 'easeOut'}}
@@ -393,7 +393,7 @@ export const DashboardPage = () => {
                     transition={{duration: 0.5, delay: 0.46, ease: 'easeOut'}}
                     className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
                     <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-zinc-900 dark:text-white">
-                        <ChartNoAxesColumn size={20} className="text-emerald-600"/>
+                        <ChartNoAxesColumn size={20} className="text-primary-600"/>
                         Campanhas
                     </h3>
                     {loadingCampaigns ? (
@@ -418,13 +418,10 @@ export const DashboardPage = () => {
                                             <div className="flex items-center gap-3">
                                                 <span>Progresso:</span>
                                                 <div className="flex-1">
-                                                    <div className="w-full h-3 bg-zinc-100 dark:bg-zinc-700 rounded-full overflow-hidden">
-                                                        <motion.div
-                                                            className="h-full bg-emerald-500 dark:bg-emerald-600"
-                                                            initial={{width: 0}}
-                                                            animate={{width: `${c.progress_percentage}%`}}
-                                                            transition={{duration: 0.9, delay: 0.62 + i * 0.08, ease: 'easeOut'}}
-                                                        />
+                                                    <div
+                                                        className="w-full h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-emerald-500 dark:bg-emerald-600"
+                                                             style={{width: `${c.progress_percentage}%`}}/>
                                                     </div>
                                                 </div>
                                                 <span className="w-12 text-right">{c.progress_percentage}%</span>
@@ -444,7 +441,7 @@ export const DashboardPage = () => {
                     transition={{duration: 0.5, delay: 0.54, ease: 'easeOut'}}
                     className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
                     <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-zinc-900 dark:text-white">
-                        <ChartNoAxesColumn size={20} className="text-emerald-600"/>
+                        <ChartNoAxesColumn size={20} className="text-primary-600"/>
                         Índice de Engajamento por Loja
                     </h3>
                     {loadingEngagementIndex ? (
@@ -471,7 +468,7 @@ export const DashboardPage = () => {
                                             <div className="relative">
                                                 <div className="w-full h-4 bg-zinc-100 dark:bg-zinc-700 rounded-full overflow-hidden">
                                                     <motion.div
-                                                        className="h-full bg-emerald-500 dark:bg-emerald-600"
+                                                        className="h-full bg-primary-500 dark:bg-primary-600"
                                                         initial={{width: 0}}
                                                         animate={{width: `${(store.score / (maxScore || 1)) * 100}%`}}
                                                         transition={{duration: 0.9, delay: 0.7 + i * 0.07, ease: 'easeOut'}}
@@ -531,7 +528,7 @@ const StatCard = ({label, value, change, positive, delay = 0}: {
                 initial={{scale: 0.8, opacity: 0}}
                 animate={{scale: 1, opacity: 1}}
                 transition={{duration: 0.3, delay: delay + 0.2}}
-                className={`text-xs font-bold px-2 py-1 rounded-lg ${positive ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}`}>
+                className={`text-xs font-bold px-2 py-1 rounded-lg ${positive ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}`}>
                 {change}
             </motion.span>
         </div>

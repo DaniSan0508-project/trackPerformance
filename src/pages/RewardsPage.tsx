@@ -11,6 +11,26 @@ import { rewardSchema } from '../validators/schemas';
 
 const MAX_IMAGES = 3;
 
+const LocalImagePreview: React.FC<{ file: File }> = ({ file }) => {
+  const [url, setUrl] = React.useState<string>('');
+
+  React.useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  if (!url) return null;
+
+  return (
+    <img
+      src={url}
+      alt="Preview"
+      className="w-full h-full object-cover"
+    />
+  );
+};
+
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -294,21 +314,36 @@ export const RewardsPage: React.FC = () => {
       data.append('stock', formData.stock);
       data.append('is_active', formData.is_active);
 
-      // Debug: log das imagens sendo enviadas
-      console.log('Imagens para enviar:', formData.images.length);
-      formData.images.forEach((image, index) => {
-        console.log(`Imagem ${index}:`, image.name, image.size, 'bytes');
-        data.append('images[]', image);
-      });
-
-      if (formData.images.length > 0) {
-        data.append('primary_image_index', formData.primary_image_index);
-      }
-
       if (editingReward) {
+        // Envia apenas os campos de texto na rota de atualização
         await api.updateReward(token, editingReward.id, data);
+
+        // Se houver NOVAS imagens, envia na rota específica para não apagar as antigas
+        if (formData.images.length > 0) {
+          const imageFormData = new FormData();
+          formData.images.forEach((image) => {
+            imageFormData.append('images[]', image);
+          });
+
+          // Envia o índice da principal apenas se estiver setado para alguma das novas imagens
+          if (formData.primary_image_index) {
+            imageFormData.append('primary_image_index', formData.primary_image_index);
+          }
+
+          await api.addRewardImages(token, editingReward.id, imageFormData);
+        }
+
         addToast('success', 'Recompensa atualizada com sucesso!');
       } else {
+        // When creating, we still send initial images
+        formData.images.forEach((image) => {
+          data.append('images[]', image);
+        });
+
+        if (formData.images.length > 0) {
+          data.append('primary_image_index', formData.primary_image_index);
+        }
+
         await api.createReward(token, data);
         addToast('success', 'Recompensa criada com sucesso!');
       }
@@ -415,7 +450,8 @@ export const RewardsPage: React.FC = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
-      const remainingSlots = MAX_IMAGES - formData.images.length;
+      const currentTotalImages = formData.images.length + formData.existingImages.length;
+      const remainingSlots = MAX_IMAGES - currentTotalImages;
       
       if (remainingSlots <= 0) {
         addToast('error', `Máximo de ${MAX_IMAGES} imagens atingido.`);
@@ -438,10 +474,75 @@ export const RewardsPage: React.FC = () => {
     setFormData(prev => ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index),
-      primary_image_index: prev.primary_image_index && parseInt(prev.primary_image_index) >= index 
-        ? String(Math.max(0, parseInt(prev.primary_image_index) - 1))
-        : prev.primary_image_index,
     }));
+  };
+
+  const handleRemoveExistingImage = async (imageId: number) => {
+    if (!token || !editingReward) return;
+    
+    try {
+      await api.deleteRewardImage(token, editingReward.id, imageId);
+      setFormData(prev => ({
+        ...prev,
+        existingImages: prev.existingImages.filter(img => img.id !== imageId)
+      }));
+      addToast('success', 'Imagem excluída com sucesso!');
+      // Atualiza a lista para garantir que se a primária foi excluída, a próxima apareça como tal
+      fetchRewards(currentPage, searchTerm);
+    } catch (error: any) {
+      console.error('Error removing image:', error);
+      addToast('error', error.message || 'Erro ao excluir imagem.');
+    }
+  };
+
+  const [replacingImageId, setReplacingImageId] = useState<number | null>(null);
+  const replaceInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleUpdateExistingImage = async (imageId: number, file?: File, isPrimary?: number) => {
+    if (!token || !editingReward) return;
+    
+    try {
+      const data = new FormData();
+      data.append('_method', 'PUT');
+      if (file) data.append('image', file);
+      if (isPrimary !== undefined) data.append('is_primary', String(isPrimary));
+      
+      const response = await api.updateRewardImage(token, editingReward.id, imageId, data);
+      
+      // Obtém a nova URL da resposta ou usa o arquivo local como fallback
+      const apiImageData = response.data || response;
+      const serverUrl = apiImageData?.image_full_url;
+      const localPreview = file ? URL.createObjectURL(file) : '';
+      
+      // Só adiciona o timestamp se for uma URL real (http), não se for um blob local
+      const finalUrl = serverUrl 
+        ? `${serverUrl}${serverUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
+        : localPreview;
+
+      // Atualiza o estado local
+      setFormData(prev => ({
+        ...prev,
+        existingImages: prev.existingImages.map(img => {
+          if (img.id === imageId) {
+            return {
+              ...img,
+              ...apiImageData,
+              image_full_url: finalUrl || img.image_full_url,
+              is_primary: isPrimary === 1 || (isPrimary === undefined && img.is_primary),
+            };
+          }
+          if (isPrimary === 1) return { ...img, is_primary: false };
+          return img;
+        })
+      }));
+      
+      addToast('success', 'Imagem atualizada com sucesso!');
+      fetchRewards(currentPage, searchTerm);
+      setReplacingImageId(null);
+    } catch (error: any) {
+      console.error('Error updating image:', error);
+      addToast('error', error.message || 'Erro ao atualizar imagem.');
+    }
   };
 
   const handleOpenReward = (reward: Reward) => {
@@ -496,7 +597,7 @@ export const RewardsPage: React.FC = () => {
             {isAdmin && (
               <button
                 onClick={() => handleOpenModal()}
-                className="bg-emerald-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
+                className="bg-primary-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-primary-700 shadow-sm transition-all flex items-center gap-2"
               >
                 <Plus size={18} />
                 Nova Recompensa
@@ -511,7 +612,7 @@ export const RewardsPage: React.FC = () => {
             onClick={() => setActiveTab('rewards')}
             className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors ${
               activeTab === 'rewards'
-                ? 'bg-emerald-600 text-white'
+                ? 'bg-primary-600 text-white'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
             }`}
           >
@@ -524,7 +625,7 @@ export const RewardsPage: React.FC = () => {
             onClick={() => setActiveTab('redemptions')}
             className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors ${
               activeTab === 'redemptions'
-                ? 'bg-emerald-600 text-white'
+                ? 'bg-primary-600 text-white'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
             }`}
           >
@@ -544,7 +645,7 @@ export const RewardsPage: React.FC = () => {
             <input
               type="text"
               placeholder="Buscar recompensas..."
-              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -554,7 +655,7 @@ export const RewardsPage: React.FC = () => {
         {/* Rewards List */}
         {loading && rewards.length === 0 ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+            <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
           </div>
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
@@ -633,7 +734,7 @@ export const RewardsPage: React.FC = () => {
                             e.stopPropagation();
                             handleOpenModal(reward);
                           }}
-                          className="p-1.5 bg-white/90 dark:bg-zinc-800/90 text-emerald-600 dark:text-emerald-400 rounded-lg shadow-md hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                          className="p-1.5 bg-white/90 dark:bg-zinc-800/90 text-primary-600 dark:text-primary-400 rounded-lg shadow-md hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
                           title="Editar"
                         >
                           <Edit2 size={16} />
@@ -710,7 +811,7 @@ export const RewardsPage: React.FC = () => {
                     setRedemptionFilterStatus(e.target.value as RedemptionStatus | '');
                     setRedemptionsPage(1);
                   }}
-                  className="flex-1 md:flex-none md:w-48 p-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                  className="flex-1 md:flex-none md:w-48 p-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                 >
                   <option value="">Todos</option>
                   <option value="pending">Pendente</option>
@@ -733,7 +834,7 @@ export const RewardsPage: React.FC = () => {
             {/* Redemptions List */}
             {redemptionsLoading && redemptions.length === 0 ? (
               <div className="flex justify-center py-12">
-                <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
               </div>
             ) : (
               <div className="space-y-4">
@@ -771,7 +872,7 @@ export const RewardsPage: React.FC = () => {
                                   </span>
                                 )}
                                 {redemption.status === 'approved' && (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400">
                                     <CheckCircle size={14} />
                                     Disponível para Retirada
                                   </span>
@@ -861,7 +962,7 @@ export const RewardsPage: React.FC = () => {
                                   <button
                                     onClick={() => handleApproveRedemption(redemption.id)}
                                     disabled={updatingRedemptionId === redemption.id}
-                                    className="flex-1 lg:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                                    className="flex-1 lg:flex-none px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                                     title="Aprovar resgate"
                                   >
                                     {updatingRedemptionId === redemption.id ? (
@@ -1038,7 +1139,7 @@ export const RewardsPage: React.FC = () => {
                             key={img.id}
                             onClick={() => setCurrentImageIndex(idx)}
                             className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
-                              currentImageIndex === idx ? 'border-emerald-500 ring-2 ring-emerald-100 dark:ring-emerald-900/30' : 'border-transparent opacity-60 hover:opacity-100'
+                              currentImageIndex === idx ? 'border-primary-500 ring-2 ring-primary-100 dark:ring-primary-900/30' : 'border-transparent opacity-60 hover:opacity-100'
                             }`}
                           >
                             <img src={img.image_full_url} alt="" className="w-full h-full object-cover" />
@@ -1082,7 +1183,7 @@ export const RewardsPage: React.FC = () => {
                       <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-zinc-500 dark:text-zinc-400">Estoque disponível:</span>
-                          <span className={`font-medium ${selectedReward.stock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                          <span className={`font-medium ${selectedReward.stock > 0 ? 'text-primary-600 dark:text-primary-400' : 'text-red-600 dark:text-red-400'}`}>
                             {selectedReward.stock} unidades
                           </span>
                         </div>
@@ -1090,141 +1191,7 @@ export const RewardsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
-                    <button
-                      onClick={() => handleOpenRedemption(selectedReward)}
-                      disabled={!selectedReward.is_active || selectedReward.stock <= 0}
-                      className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 dark:shadow-none disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-                    >
-                      <Gift size={20} />
-                      Resgatar Recompensa
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* Redemption Confirmation Modal */}
-        <AnimatePresence>
-          {redemptionModal.isOpen && redemptionModal.reward && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={handleCloseRedemption}>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-zinc-200 dark:border-zinc-800"
-              >
-                <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
-                      <Gift className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Confirmar Resgate</h2>
-                  </div>
-                  <button onClick={handleCloseRedemption} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 p-1 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-                    <X size={24} />
-                  </button>
-                </div>
-
-                <div className="p-6 space-y-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-20 h-20 rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden flex-shrink-0">
-                      {getRewardImages(redemptionModal.reward).length > 0 ? (
-                        <img
-                          src={getRewardImages(redemptionModal.reward)[0].image_full_url}
-                          alt={redemptionModal.reward.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-zinc-300 dark:text-zinc-600">
-                          <Package size={32} />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-zinc-900 dark:text-white mb-1">{redemptionModal.reward.name}</h3>
-                      <div className="flex items-center gap-2 text-amber-500 font-bold">
-                        <Coins size={16} className="fill-current" />
-                        <span>{parseFloat(redemptionModal.reward.price_coins as string).toLocaleString('pt-BR', { minimumFractionDigits: 0 })} {coinName}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
-                    <p className="text-sm text-amber-800 dark:text-amber-400">
-                      <strong>Atenção:</strong> Este resgate será realizado com suas {coinName} atuais. Após a confirmação, não será possível cancelar.
-                    </p>
-                  </div>
-
-                  {/* Validação de saldo */}
-                  {(() => {
-                    const userBalance = currentUser?.coin_balance || 0;
-                    const rewardPrice = parseFloat(redemptionModal.reward.price_coins as string);
-                    const hasEnoughBalance = userBalance >= rewardPrice;
-                    
-                    return !hasEnoughBalance ? (
-                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-                        <p className="text-sm text-red-800 dark:text-red-400 font-semibold mb-2">
-                          ⚠️ Saldo insuficiente
-                        </p>
-                        <div className="text-xs text-red-700 dark:text-red-400 space-y-1">
-                          <div className="flex justify-between">
-                            <span>Valor necessário:</span>
-                            <span className="font-medium">{rewardPrice.toLocaleString('pt-BR')} {coinName}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Seu saldo:</span>
-                            <span className="font-medium">{userBalance.toLocaleString('pt-BR')} {coinName}</span>
-                          </div>
-                          <div className="flex justify-between pt-2 border-t border-red-200 dark:border-red-800">
-                            <span>Faltam:</span>
-                            <span className="font-bold">{(rewardPrice - userBalance).toLocaleString('pt-BR')} {coinName}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ) : null;
-                  })()}
-
-                  <div className="flex items-center justify-between text-sm pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                    <span className="text-zinc-500 dark:text-zinc-400">Seu saldo atual:</span>
-                    <span className="font-medium text-zinc-900 dark:text-white flex items-center gap-1">
-                      <Coins size={14} className="text-amber-500" />
-                      {currentUser?.coin_balance || 0} moedas
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={handleCloseRedemption}
-                    disabled={redemptionModal.isProcessing}
-                    className="flex-1 px-4 py-3 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 font-medium rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={executeRedemption}
-                    disabled={redemptionModal.isProcessing || (currentUser?.coin_balance || 0) < parseFloat(redemptionModal.reward.price_coins as string)}
-                    className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    title={(currentUser?.coin_balance || 0) < parseFloat(redemptionModal.reward.price_coins as string) ? 'Saldo insuficiente' : ''}
-                  >
-                    {redemptionModal.isProcessing ? (
-                      <>
-                        <Loader2 size={20} className="animate-spin" />
-                        Processando...
-                      </>
-                    ) : (
-                      <>
-                        <Gift size={20} />
-                        Confirmar Resgate
-                      </>
-                    )}
-                  </button>
+                  {/* Reward footer removed as redemption is disabled */}
                 </div>
               </motion.div>
             </div>
@@ -1257,13 +1224,49 @@ export const RewardsPage: React.FC = () => {
                       Imagens
                     </label>
                     <div className="grid grid-cols-4 gap-3 mb-3">
-                      {formData.images.map((image, index) => (
-                        <div key={index} className="relative aspect-square rounded-xl overflow-hidden border-2 border-zinc-200 dark:border-zinc-700 group">
+                      {/* Existing Images */}
+                      {formData.existingImages.map((image, index) => (
+                        <div key={`existing-${image.id}`} className="relative aspect-square rounded-xl overflow-hidden border-2 border-zinc-200 dark:border-zinc-700 group">
                           <img
-                            src={URL.createObjectURL(image)}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-full object-cover"
+                            src={image.image_full_url}
+                            alt={`Existing ${index + 1}`}
+                            className="w-full h-full object-cover cursor-pointer"
+                            onClick={() => {
+                              setReplacingImageId(image.id);
+                              replaceInputRef.current?.click();
+                            }}
+                            title="Clique para substituir esta imagem"
                           />
+                          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveExistingImage(image.id)}
+                              className="p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                              title="Remover"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Input oculto para substituir imagem */}
+                      <input
+                        type="file"
+                        className="hidden"
+                        ref={replaceInputRef}
+                        accept="image/*"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0] && replacingImageId) {
+                            handleUpdateExistingImage(replacingImageId, e.target.files[0]);
+                          }
+                        }}
+                      />
+
+                      {/* New Images */}
+                      {formData.images.map((image, index) => (
+                        <div key={`new-${index}`} className="relative aspect-square rounded-xl overflow-hidden border-2 border-zinc-200 dark:border-zinc-700 group">
+                          <LocalImagePreview file={image} />
                           <button
                             type="button"
                             onClick={() => handleRemoveImage(index)}
@@ -1271,24 +1274,17 @@ export const RewardsPage: React.FC = () => {
                           >
                             <X size={14} />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setFormData(prev => ({ ...prev, primary_image_index: String(index) }))}
-                            className={`absolute bottom-1 left-1 p-1 rounded-full transition-all ${
-                              String(index) === formData.primary_image_index
-                                ? 'bg-emerald-500 text-white'
-                                : 'bg-black/50 text-white opacity-0 group-hover:opacity-100'
-                            }`}
-                            title="Definir como principal"
-                          >
-                            <Camera size={14} />
-                          </button>
                         </div>
                       ))}
-                      <label className="aspect-square rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors bg-zinc-50 dark:bg-zinc-800/50">
+
+                      <label className={`aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-colors bg-zinc-50 dark:bg-zinc-800/50 ${
+                        (formData.images.length + formData.existingImages.length) >= MAX_IMAGES 
+                          ? 'border-zinc-200 dark:border-zinc-800 cursor-not-allowed opacity-50' 
+                          : 'border-zinc-300 dark:border-zinc-700 cursor-pointer hover:border-primary-500 dark:hover:border-primary-500'
+                      }`}>
                         <Camera size={24} className="text-zinc-400 mb-1" />
                         <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                          {formData.images.length}/{MAX_IMAGES}
+                          {formData.images.length + formData.existingImages.length}/{MAX_IMAGES}
                         </span>
                         <input
                           type="file"
@@ -1296,13 +1292,13 @@ export const RewardsPage: React.FC = () => {
                           multiple
                           className="hidden"
                           onChange={handleImageChange}
-                          disabled={formData.images.length >= MAX_IMAGES}
+                          disabled={(formData.images.length + formData.existingImages.length) >= MAX_IMAGES}
                         />
                       </label>
                     </div>
                     {formData.images.length > 0 && (
                       <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        Clique na câmera para definir a imagem principal (atual: {parseInt(formData.primary_image_index) + 1}ª)
+                        Novas imagens serão adicionadas à galeria.
                       </p>
                     )}
                     {formErrors.images && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.images}</p>}
@@ -1314,7 +1310,7 @@ export const RewardsPage: React.FC = () => {
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                         formErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                       }`}
                       placeholder="Ex: Camiseta"
@@ -1327,7 +1323,7 @@ export const RewardsPage: React.FC = () => {
                     <textarea
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 resize-none ${
+                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 resize-none ${
                         formErrors.description ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                       }`}
                       placeholder="Ex: Camiseta personalizada da empresa"
@@ -1343,7 +1339,7 @@ export const RewardsPage: React.FC = () => {
                         type="number"
                         value={formData.price_coins}
                         onChange={(e) => setFormData({ ...formData, price_coins: e.target.value })}
-                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                           formErrors.price_coins ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                         }`}
                         placeholder="100"
@@ -1358,7 +1354,7 @@ export const RewardsPage: React.FC = () => {
                         type="number"
                         value={formData.stock}
                         onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                           formErrors.stock ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                         }`}
                         placeholder="50"
@@ -1373,7 +1369,7 @@ export const RewardsPage: React.FC = () => {
                     <select
                       value={formData.is_active}
                       onChange={(e) => setFormData({ ...formData, is_active: e.target.value })}
-                      className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                      className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                     >
                       <option value="1">Ativo</option>
                       <option value="0">Inativo</option>
@@ -1391,7 +1387,7 @@ export const RewardsPage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={saving}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-xl shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                       {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                       {saving ? 'Salvando...' : 'Salvar'}

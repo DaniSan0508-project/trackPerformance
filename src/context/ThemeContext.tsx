@@ -1,24 +1,45 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { generateColorShades, DEFAULT_PRIMARY_COLOR } from '../utils/colorUtils';
 
 type Theme = 'light' | 'dark';
 
 interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
+  primaryColor: string;
+  setPrimaryColor: (color: string) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Always initialize with 'light' mode as requested
-  const [theme, setTheme] = useState<Theme>('light');
+  // Initialize theme from localStorage or default to 'light'
+  const [theme, setTheme] = useState<Theme>(() => {
+    // Check localStorage for saved theme
+    const savedTheme = localStorage.getItem('theme') as Theme | null;
+    // Validate saved theme and return it, otherwise default to 'light'
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      return savedTheme;
+    }
+    return 'light';
+  });
+  const [primaryColor, setPrimaryColor] = useState<string>(DEFAULT_PRIMARY_COLOR);
+
+  // Update CSS variables when primaryColor changes
+  useEffect(() => {
+    const root = document.documentElement;
+    const shades = generateColorShades(primaryColor);
+    
+    // Set CSS custom properties for primary color shades
+    Object.entries(shades).forEach(([shade, value]) => {
+      root.style.setProperty(`--color-primary-${shade}`, value);
+    });
+  }, [primaryColor]);
 
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
     root.classList.add(theme);
-    // We still save to localStorage in case we want to revert to persisting preference later,
-    // but currently we ignore it on initialization.
     localStorage.setItem('theme', theme);
   }, [theme]);
 
@@ -27,7 +48,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, primaryColor, setPrimaryColor }}>
       {children}
     </ThemeContext.Provider>
   );
