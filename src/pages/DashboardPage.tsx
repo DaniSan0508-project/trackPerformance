@@ -1,5 +1,4 @@
 import React, {useEffect, useState} from 'react';
-import {Layout} from '../components/Layout';
 import {ChartNoAxesColumn, User} from 'lucide-react';
 import {useAuth} from '../context/AuthContext';
 import {useTheme} from '../context/ThemeContext';
@@ -164,8 +163,7 @@ export const DashboardPage = () => {
     if (!user) return null;
 
     return (
-        <Layout>
-            <div className="p-4 md:p-8 space-y-6">
+        <div className="p-4 md:p-8 space-y-6">
                 <motion.div
                     initial={{opacity: 0, y: -10}}
                     animate={{opacity: 1, y: 0}}
@@ -494,7 +492,7 @@ export const DashboardPage = () => {
                                                         return Object.entries(store.breakdown).map(([k, v]) => (
                                                             <div key={k} className="flex justify-between">
                                                                 <span>{labelMap[k] ?? k.replace('_', ' ')}:</span>
-                                                                <span>{fmt(v)}</span>
+                                                                <span>{fmt(v as number)}</span>
                                                             </div>
                                                         ));
                                                     })()}
@@ -508,7 +506,6 @@ export const DashboardPage = () => {
                     )}
                 </motion.div>
             </div>
-        </Layout>
     );
 };
 

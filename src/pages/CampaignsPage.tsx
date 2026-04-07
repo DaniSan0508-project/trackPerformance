@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout } from '../components/Layout';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift, Upload, FileSpreadsheet, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus, Role, EngagementAction } from '../types';
+import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus, Role, EngagementAction, Reward } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -37,12 +36,14 @@ const campaignStatusLabels: Record<CampaignStatus, string> = {
   ativa: 'Ativa',
   pausada: 'Pausada',
   finalizada: 'Finalizada',
+  inativa: 'Inativa',
 };
 
 const campaignStatusColors: Record<CampaignStatus, string> = {
   ativa: 'bg-[var(--color-primary-100)] dark:bg-[var(--color-primary-900/30)] text-[var(--color-primary-700)] dark:text-[var(--color-primary-400)]',
   pausada: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
   finalizada: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400',
+  inativa: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
 };
 
 // Ações de engajamento com valores de coins conforme especificação
@@ -292,7 +293,7 @@ export const CampaignsPage: React.FC = () => {
     if (!token) return;
     setLoadingRewards(true);
     try {
-      const response = await api.getRewards(token, page, search, 'campaign');
+      const response = await api.getRewards(token, page, search);
       setRewards(response.data || []);
       setRewardsTotalPages(response.meta?.last_page || response.last_page || 1);
       setRewardsPage(response.meta?.current_page || response.current_page || 1);
@@ -1215,7 +1216,7 @@ export const CampaignsPage: React.FC = () => {
   };
 
   return (
-    <Layout>
+    <>
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
@@ -1331,7 +1332,7 @@ export const CampaignsPage: React.FC = () => {
                               </div>
                             )}
                             <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                              <Calendar size={16} className="text-blue-500" />
+                              <Calendar size={16} className="text-[var(--color-primary-500)]" />
                               <span className="text-zinc-500 dark:text-zinc-500">Período:</span>
                               <span className="font-medium text-zinc-900 dark:text-white">
                                 {formatDate(campaign.start_date)} até {formatDate(campaign.end_date)}
@@ -1733,29 +1734,35 @@ export const CampaignsPage: React.FC = () => {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Data de Início *</label>
-                              <input
-                                type="date"
-                                value={formData.start_date}
-                                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                                min={getMinDate()}
-                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
-                                  formErrors.start_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                                }`}
-                              />
+                              <div className="relative">
+                                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
+                                <input
+                                  type="date"
+                                  value={formData.start_date}
+                                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                                  min={getMinDate()}
+                                  className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
+                                    formErrors.start_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                  }`}
+                                />
+                              </div>
                               {formErrors.start_date && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.start_date}</p>}
                             </div>
 
                             <div>
                               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Data de Término *</label>
-                              <input
-                                type="date"
-                                value={formData.end_date}
-                                onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                                min={formData.start_date || getMinDate()}
-                                className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${
+                              <div className="relative">
+                                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
+                                <input
+                                  type="date"
+                                  value={formData.end_date}
+                                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                                  min={formData.start_date || getMinDate()}
+                                  className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
                                   formErrors.end_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                 }`}
-                              />
+                                />
+                              </div>
                               {formErrors.end_date && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.end_date}</p>}
                             </div>
                           </div>
@@ -2912,6 +2919,6 @@ export const CampaignsPage: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
-    </Layout>
+    </>
   );
 };

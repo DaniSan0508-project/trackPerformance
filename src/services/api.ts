@@ -1,4 +1,4 @@
-import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward, Campaign, CampaignAction, Product, CampaignRanking, Redemption, RedemptionStatus, Survey } from '../types';
+import { PaginatedResponse, Store, StoreGroup, TenantConfig, Post, User, Feedback, Reward, Campaign, CampaignAction, Product, CampaignRanking, Redemption, RedemptionStatus, Survey, SurveyStatus } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8010/api/v1';
 

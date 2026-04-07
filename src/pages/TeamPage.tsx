@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout } from '../components/Layout';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera, LogOut, Store as StoreIcon, FileText, Eye, EyeOff, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { User as UserType, Role } from '../types';
+import { User as UserType, Role, Store } from '../types';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -514,7 +513,7 @@ export const TeamPage: React.FC = () => {
   };
 
   return (
-    <Layout>
+    <>
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
@@ -1081,6 +1080,6 @@ export const TeamPage: React.FC = () => {
         token={token}
         onClose={handleCloseCoinStatement}
       />
-    </Layout>
+    </>
   );
 };

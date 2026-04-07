@@ -173,7 +173,7 @@ export interface Reward {
 }
 
 export type CampaignType = 'sales' | 'engagement';
-export type CampaignStatus = 'ativa' | 'inativa';
+export type CampaignStatus = 'ativa' | 'inativa' | 'pausada' | 'finalizada';
 
 export interface Campaign {
   id: number;
@@ -193,6 +193,8 @@ export interface Campaign {
   products?: CampaignProduct[];
   actions?: CampaignAction[];
   ranking?: CampaignRanking[];
+  podium?: CampaignRanking[]; // Top 3 ranking retornado pela API
+  reward_id?: number | string | null;
 }
 
 export interface CampaignProduct {
@@ -276,26 +278,6 @@ export interface CampaignRanking {
   coins_total: number | null;
 }
 
-export interface Campaign {
-  id: number;
-  tenant_id: number;
-  name: string;
-  type: CampaignType;
-  goal: string;
-  goal_campaign?: string | number | null;
-  start_date: string;
-  end_date: string;
-  status: CampaignStatus;
-  is_active?: number; // Manter para compatibilidade com dados antigos
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-  users?: User[];
-  products?: CampaignProduct[];
-  actions?: CampaignAction[];
-  ranking?: CampaignRanking[];
-  podium?: CampaignRanking[]; // Top 3 ranking retornado pela API
-}
 
 export type RedemptionStatus = 'pending' | 'approved' | 'rejected' | 'completed';
 

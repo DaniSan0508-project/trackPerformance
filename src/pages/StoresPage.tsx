@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout } from '../components/Layout';
 import { Search, Store, Plus, Loader2, RefreshCw, ChevronLeft, ChevronRight, Phone, Mail, Edit2, X, Save, CheckCircle, Trash2, Settings, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -389,7 +388,7 @@ export const StoresPage: React.FC = () => {
   };
 
   return (
-    <Layout>
+    <>
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
@@ -743,6 +742,6 @@ export const StoresPage: React.FC = () => {
           )}
         </AnimatePresence>
       </div>
-    </Layout>
+    </>
   );
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
@@ -15,6 +15,7 @@ import { RewardsPage } from './pages/RewardsPage';
 import { CampaignsPage } from './pages/CampaignsPage';
 import { SurveysPage } from './pages/SurveysPage';
 import { ProductsPage } from './pages/ProductsPage';
+import { Layout } from './components/Layout';
 
 // Componente interno para sincronizar cor primária
 const AppContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -27,6 +28,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 };
 
+const ProtectedLayout = () => (
+  <ProtectedRoute>
+    <Layout />
+  </ProtectedRoute>
+);
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -36,86 +43,21 @@ export default function App() {
             <Router>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/stores"
-                  element={
-                    <ProtectedRoute>
-                      <StoresPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/posts"
-                  element={
-                    <ProtectedRoute>
-                      <PostsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/feedbacks"
-                  element={
-                    <ProtectedRoute>
-                      <FeedbacksPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/team"
-                  element={
-                    <ProtectedRoute>
-                      <TeamPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/rewards"
-                  element={
-                    <ProtectedRoute>
-                      <RewardsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/campaigns"
-                  element={
-                    <ProtectedRoute>
-                      <CampaignsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/surveys"
-                  element={
-                    <ProtectedRoute>
-                      <SurveysPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/products"
-                  element={
-                    <ProtectedRoute>
-                      <ProductsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <ProtectedRoute>
-                      <SettingsPage />
-                    </ProtectedRoute>
-                  }
-                />
+                
+                {/* Rotas Protegidas com Layout Persistente */}
+                <Route element={<ProtectedLayout />}>
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/stores" element={<StoresPage />} />
+                  <Route path="/posts" element={<PostsPage />} />
+                  <Route path="/feedbacks" element={<FeedbacksPage />} />
+                  <Route path="/team" element={<TeamPage />} />
+                  <Route path="/rewards" element={<RewardsPage />} />
+                  <Route path="/campaigns" element={<CampaignsPage />} />
+                  <Route path="/surveys" element={<SurveysPage />} />
+                  <Route path="/products" element={<ProductsPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                </Route>
+
                 <Route path="/" element={<Navigate to="/dashboard" />} />
               </Routes>
             </Router>

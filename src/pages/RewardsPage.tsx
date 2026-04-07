@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout } from '../components/Layout';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, ShoppingBag, Package, Coins, Images as ImagesIcon, X, Plus, Camera, Trash2, Edit2, Save, Gift, ClipboardList, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -571,7 +570,7 @@ export const RewardsPage: React.FC = () => {
   };
 
   return (
-    <Layout>
+    <>
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
@@ -867,7 +866,7 @@ export const RewardsPage: React.FC = () => {
                               <div className="flex items-center gap-2">
                                 {redemption.status === 'pending' && (
                                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
-                                    <Clock size={14} />
+                                    <Clock size={14} className="text-amber-600 dark:text-amber-400" />
                                     Pendente
                                   </span>
                                 )}
@@ -1399,6 +1398,6 @@ export const RewardsPage: React.FC = () => {
           )}
         </AnimatePresence>
       </div>
-    </Layout>
+    </>
   );
 };

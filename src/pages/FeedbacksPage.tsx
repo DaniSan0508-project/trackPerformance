@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout } from '../components/Layout';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquarePlus, User, Send, X, Inbox, PenSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -165,7 +164,7 @@ export const FeedbacksPage: React.FC = () => {
     });
 
     if (!result.success) {
-      const errorMessage = result.error.errors[0]?.message || 'Erro na validação';
+      const errorMessage = result.error.issues[0]?.message || 'Erro na validação';
       setFeedbackError(errorMessage);
       addToast('error', errorMessage);
       return;
@@ -192,8 +191,7 @@ export const FeedbacksPage: React.FC = () => {
   };
 
   return (
-    <Layout>
-      <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Feedbacks</h1>
@@ -648,6 +646,5 @@ export const FeedbacksPage: React.FC = () => {
           )}
         </AnimatePresence>
       </div>
-    </Layout>
   );
 };

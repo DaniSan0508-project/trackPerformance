@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout } from '../components/Layout';
 import {
   Search,
   Loader2,
@@ -305,8 +304,7 @@ export const ProductsPage: React.FC = () => {
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (
-    <Layout>
-      <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
 
         {/* ── Header ─────────────────────────────────────────────────────────── */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -816,7 +814,6 @@ export const ProductsPage: React.FC = () => {
         </AnimatePresence>
 
       </div>
-    </Layout>
   );
 };
 

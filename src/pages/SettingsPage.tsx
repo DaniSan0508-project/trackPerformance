@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout } from '../components/Layout';
 import { Search, Settings, Loader2, RefreshCw, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -75,7 +74,7 @@ const ConfigItem: React.FC<{ config: TenantConfig, onUpdate: (config: TenantConf
     if (validation) {
       const result = validation.safeParse(val);
       if (!result.success) {
-        return result.error.errors[0]?.message || 'Valor inválido';
+        return result.error.issues[0]?.message || 'Valor inválido';
       }
     }
     return null;
@@ -306,7 +305,7 @@ export const SettingsPage: React.FC = () => {
     if (validation) {
       const result = validation.safeParse(newValue);
       if (!result.success) {
-        const errorMessage = result.error.errors[0]?.message || 'Valor inválido';
+        const errorMessage = result.error.issues[0]?.message || 'Valor inválido';
         addToast('error', errorMessage);
         return false; // Retorna false para indicar falha
       }
@@ -333,8 +332,7 @@ export const SettingsPage: React.FC = () => {
   };
 
   return (
-    <Layout>
-      <div className="p-4 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Configurações do Sistema</h1>
@@ -426,6 +424,5 @@ export const SettingsPage: React.FC = () => {
           </div>
         )}
       </div>
-    </Layout>
   );
 };

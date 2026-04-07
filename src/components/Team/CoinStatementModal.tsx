@@ -160,23 +160,29 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
               <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
                 Data inicial
               </label>
-              <input
-                type="date"
-                value={filters.start_date}
-                onChange={(e) => handleFilterChange('start_date', e.target.value)}
-                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
-              />
+              <div className="relative">
+                <Calendar size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
+                <input
+                  type="date"
+                  value={filters.start_date}
+                  onChange={(e) => handleFilterChange('start_date', e.target.value)}
+                  className="w-full pl-8 pr-2.5 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
                 Data final
               </label>
-              <input
-                type="date"
-                value={filters.end_date}
-                onChange={(e) => handleFilterChange('end_date', e.target.value)}
-                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
-              />
+              <div className="relative">
+                <Calendar size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
+                <input
+                  type="date"
+                  value={filters.end_date}
+                  onChange={(e) => handleFilterChange('end_date', e.target.value)}
+                  className="w-full pl-8 pr-2.5 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -204,7 +210,7 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
                           {statement.description}
                         </p>
                         <div className="flex items-center gap-3 mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1 text-[var(--color-primary-600)] dark:text-[var(--color-primary-400)]">
                             <Calendar size={12} />
                             {statement.date}
                           </span>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
 import {
   Gamepad2,
   Users,
@@ -25,11 +25,7 @@ import {
     LucidePackage
 } from 'lucide-react';
 
-interface LayoutProps {
-  children: React.ReactNode;
-}
-
-export const Layout: React.FC<LayoutProps> = ({ children }) => {
+export const Layout: React.FC = () => {
   const { user, logout, logoUrl } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -42,7 +38,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   if (!user) return null;
 
-  const Logo = () => (
+  const logoContent = (
     logoUrl ? (
       <img src={logoUrl} alt="Logo" className="h-10 w-auto object-contain max-w-[180px]" />
     ) : (
@@ -60,7 +56,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 h-screen sticky top-0 transition-colors duration-200">
         <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-center md:justify-start min-h-[88px]">
-          <Logo />
+          {logoContent}
         </div>
         
         <nav className="flex-1 p-4 space-y-1">
@@ -142,7 +138,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Header */}
         <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 px-4 py-3 md:px-8 flex items-center justify-between sticky top-0 z-10 transition-colors duration-200">
           <div className="flex items-center gap-4 md:hidden">
-             <Logo />
+             {logoContent}
           </div>
 
           <div className="hidden md:block">
@@ -174,7 +170,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </header>
 
-        {children}
+        <Outlet />
 
         {/* Mobile Nav */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 px-6 py-3 flex justify-between items-center z-20 transition-colors duration-200">

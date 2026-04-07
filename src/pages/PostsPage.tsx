@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout } from '../components/Layout';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Post, Like, Comment, User as UserType } from '../types';
@@ -443,7 +442,7 @@ export const PostsPage: React.FC = () => {
   }, [debouncedUserName, filterStartDate, filterEndDate]);
 
   return (
-    <Layout>
+    <>
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
@@ -500,20 +499,26 @@ export const PostsPage: React.FC = () => {
             />
           </div>
           <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-            <input 
-              type="date" 
-              className="w-full md:w-40 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
-              value={filterStartDate}
-              onChange={(e) => setFilterStartDate(e.target.value)}
-              title="Data início"
-            />
-            <input 
-              type="date" 
-              className="w-full md:w-40 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
-              value={filterEndDate}
-              onChange={(e) => setFilterEndDate(e.target.value)}
-              title="Data fim"
-            />
+            <div className="relative w-full md:w-40">
+              <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
+              <input
+                type="date"
+                className="w-full pl-9 pr-2 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                value={filterStartDate}
+                onChange={(e) => setFilterStartDate(e.target.value)}
+                title="Data início"
+              />
+            </div>
+            <div className="relative w-full md:w-40">
+              <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
+              <input
+                type="date"
+                className="w-full pl-9 pr-2 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                value={filterEndDate}
+                onChange={(e) => setFilterEndDate(e.target.value)}
+                title="Data fim"
+              />
+            </div>
           </div>
           {(filterUserName || filterStartDate || filterEndDate) && (
             <button
@@ -1400,6 +1405,6 @@ export const PostsPage: React.FC = () => {
             </div>
           )}
         </AnimatePresence>
-    </Layout>
+    </>
   );
 };

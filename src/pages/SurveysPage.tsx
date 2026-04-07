@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Layout } from '../components/Layout';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, FileText, Calendar, Eye, Users, CheckCircle, XCircle, Clock, EyeOff, Plus, Edit2, Trash2, X, Save, Check, User as UserIcon, Shield, User, BarChart3, PlusCircle, GripVertical, Copy, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -82,7 +81,7 @@ export const SurveysPage: React.FC = () => {
   };
 
   // Usuários
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserType[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const debouncedUserSearch = useDebounce(userSearch, 500);
@@ -319,7 +318,7 @@ export const SurveysPage: React.FC = () => {
       // Busca a primeira página para saber o total
       const firstData = await api.getUsers(token!, 1, userSearch, userFilterType);
       const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
-      let allUsers: User[] = [...(firstData.data || [])];
+      let allUsers: UserType[] = [...(firstData.data || [])];
 
       if (totalPages > 1) {
         setSelectAllUsersProgress({ current: 1, total: totalPages });
@@ -360,7 +359,7 @@ export const SurveysPage: React.FC = () => {
       // Busca a primeira página para saber o total
       const firstData = await api.getUsers(token!, 1);
       const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
-      let allUsers: User[] = [...(firstData.data || [])];
+      let allUsers: UserType[] = [...(firstData.data || [])];
 
       for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
         const data = await api.getUsers(token!, currentPage);
@@ -659,7 +658,7 @@ export const SurveysPage: React.FC = () => {
   };
 
   return (
-    <Layout>
+    <>
       <div className="p-4 md:p-8 space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -792,7 +791,7 @@ export const SurveysPage: React.FC = () => {
 
                           <div className="flex flex-wrap gap-4 mt-3 text-sm">
                             <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                              <Calendar size={16} className="text-blue-500" />
+                              <Calendar size={16} className="text-[var(--color-primary-500)]" />
                               <span className="text-zinc-500 dark:text-zinc-500">Período:</span>
                               <span className="font-medium text-zinc-900 dark:text-white">
                                 {formatDate(survey.starts_at)} até {formatDate(survey.ends_at)}
@@ -1085,25 +1084,31 @@ export const SurveysPage: React.FC = () => {
                         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                           Data de Início *
                         </label>
-                        <input
-                          type="date"
-                          disabled={isReadOnly}
-                          value={formData.starts_at}
-                          onChange={(e) => setFormData({ ...formData, starts_at: e.target.value })}
-                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
-                        />
+                        <div className="relative">
+                          <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
+                          <input
+                            type="date"
+                            disabled={isReadOnly}
+                            value={formData.starts_at}
+                            onChange={(e) => setFormData({ ...formData, starts_at: e.target.value })}
+                            className="w-full pl-9 pr-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                          />
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                           Data de Término *
                         </label>
-                        <input
-                          type="date"
-                          disabled={isReadOnly}
-                          value={formData.ends_at}
-                          onChange={(e) => setFormData({ ...formData, ends_at: e.target.value })}
-                          className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60"
-                        />
+                        <div className="relative">
+                          <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
+                          <input
+                            type="date"
+                            disabled={isReadOnly}
+                            value={formData.ends_at}
+                            onChange={(e) => setFormData({ ...formData, ends_at: e.target.value })}
+                            className="w-full pl-9 pr-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -2058,6 +2063,6 @@ export const SurveysPage: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </Layout>
+    </>
   );
 };
