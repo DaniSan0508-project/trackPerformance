@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, Tenant, AuthResponse, RefreshResponse } from '../types';
-import { api } from '../services/api';
+import { authService } from '../services/auth/authService';
+import { tenantConfigsService } from '../services/tenantConfigs/tenantConfigsService';
+import { usersService } from '../services/users/usersService';
 import { DEFAULT_PRIMARY_COLOR } from '../utils/colorUtils';
 
 interface AuthContextType {
@@ -74,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const fetchTenantConfigs = async () => {
       if (!token) return;
       try {
-        const response = await api.getTenantConfigs(token, 1);
+        const response = await tenantConfigsService.getTenantConfigs(token, 1);
         const logoConfig = response.data.find(c => c.config_key === 'path_logo');
         const coinConfig = response.data.find(c => c.config_key === 'coin_name');
         const primaryColorConfig = response.data.find(c => c.config_key === 'primary_color');
@@ -155,7 +157,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!token) return;
 
     try {
-      const data: RefreshResponse = await api.refreshToken(token);
+      const data: RefreshResponse = await authService.refreshToken(token);
       setToken(data.access_token);
       
       // Update stored data with new token
@@ -199,7 +201,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!token || !user?.id) return;
       
       try {
-        const userData = await api.getUser(token, user.id);
+        const userData = await usersService.getUser(token, user.id);
         // Handle if response is wrapped in { data: ... } or direct
         const freshUser = userData.data || userData;
         

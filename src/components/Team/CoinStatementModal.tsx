@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, CoinStatementResponse, CoinStatement } from '../../types';
-import { api } from '../../services/api';
+import { coinsService } from '../../services/coins/coinsService';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { Calendar, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Search, X, Filter } from 'lucide-react';
@@ -46,7 +46,7 @@ export const CoinStatementModal: React.FC<CoinStatementModalProps> = ({
     
     setLoading(true);
     try {
-      const response = await api.getCoinStatements(token, user.id, currentPage, filters);
+      const response = await coinsService.getCoinStatements(token, user.id, currentPage, filters);
       setData(response);
     } catch (error: any) {
       console.error('Error fetching coin statements:', error);

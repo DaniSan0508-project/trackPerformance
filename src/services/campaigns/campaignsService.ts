@@ -1,0 +1,93 @@
+import { API_BASE_URL, getHeaders, handleResponse } from '../core/apiClient';
+import { Campaign } from '../../types';
+
+export const campaignsService = {
+  getCampaigns: async (token: string, page = 1, search = '') => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    queryParams.append('sort', '-created_at');
+    if (search) {
+      queryParams.append('filter[name]', search);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/campaigns?${queryParams.toString()}`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
+  getCampaignsWithPodium: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/app/campaigns`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
+  createCampaign: async (token: string, data: Partial<Campaign>) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns`, {
+      method: 'POST',
+      headers: getHeaders(token),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  updateCampaign: async (token: string, id: number, data: Partial<Campaign>) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(token),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  deleteCampaign: async (token: string, id: number) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
+  getCampaignUsers: async (token: string, campaignId: number) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/users?per_page=99999999`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
+  getCampaignProducts: async (token: string, campaignId: number) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/products?per_page=9999`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
+  getCampaignActions: async (token: string, campaignId: number) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/actions?per_page=9999`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
+  importCampaignSales: async (token: string, campaignId: number, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/sales/import`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    return handleResponse(response);
+  },
+
+  getCampaignRanking: async (token: string, campaignId: number) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/ranking`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+};
