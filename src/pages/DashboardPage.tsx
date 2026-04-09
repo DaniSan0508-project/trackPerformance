@@ -405,7 +405,8 @@ export const DashboardPage = () => {
                             {campaigns.map((c, i) => {
                                 const fmt = (n: number) => new Intl.NumberFormat('pt-BR').format(n);
                                 const participantLabel = c.type === 'sales' ? 'vendedores' : 'colaboradores';
-                                const goalLabel = c.type === 'engagement' ? `${fmt(c.goal)} ${coinName || 'coins'}` : fmt(c.goal);
+                                const goalValue = c.goal_campaign || c.goal || 0;
+                                const goalLabel = c.type === 'engagement' ? `${fmt(Number(goalValue))} ${coinName || 'coins'}` : fmt(Number(goalValue));
                                 return (
                                     <motion.div
                                         key={c.id}
