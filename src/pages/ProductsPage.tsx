@@ -18,7 +18,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Product, Manufacturer, ProductGroup } from '../types';
-import { api } from '../services/api';
+import { productsService, manufacturersService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { productSchema } from '../validators/schemas';
 
@@ -92,7 +92,7 @@ export const ProductsPage: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const data = await api.getProductsPaginated(token, page, search, type);
+        const data = await productsService.getProductsPaginated(token, page, search, type);
         setProducts(data.data);
         setCurrentPage(data.meta?.current_page ?? data.current_page ?? 1);
         setTotalPages(data.meta?.last_page ?? data.last_page ?? 1);
@@ -115,7 +115,7 @@ export const ProductsPage: React.FC = () => {
     if (!token) return;
     setLoadingManufacturers(true);
     try {
-      const data = await api.getAllManufacturers(token);
+      const data = await manufacturersService.getAllManufacturers(token);
       setManufacturers(data);
     } catch (err) {
       console.error('Error fetching manufacturers:', err);
@@ -129,7 +129,7 @@ export const ProductsPage: React.FC = () => {
     if (!token) return;
     setLoadingGroups(true);
     try {
-      const data = await api.getAllProductGroups(token);
+      const data = await productsService.getAllProductGroups(token);
       setProductGroups(data);
     } catch (err) {
       console.error('Error fetching product groups:', err);
@@ -144,7 +144,7 @@ export const ProductsPage: React.FC = () => {
       if (!token) return;
       setMfrLoading(true);
       try {
-        const data = await api.getManufacturersPaginated(token, page, search);
+        const data = await manufacturersService.getManufacturersPaginated(token, page, search);
         setMfrPagedList(data.data ?? []);
         setMfrPage(data.current_page ?? 1);
         setMfrTotalPages(data.last_page ?? 1);
@@ -181,7 +181,7 @@ export const ProductsPage: React.FC = () => {
     setMfrError(null);
     setMfrSaving(true);
     try {
-      await api.createManufacturer(token, { name: trimmed });
+      await manufacturersService.createManufacturer(token, { name: trimmed });
       setNewMfrName('');
       addToast('success', 'Fabricante cadastrado com sucesso!');
       // Refresh both the panel list and the dropdown
@@ -276,7 +276,7 @@ export const ProductsPage: React.FC = () => {
 
     setSaving(true);
     try {
-      await api.createProduct(token, {
+      await productsService.createProduct(token, {
         name: formData.name,
         barcode: formData.barcode,
         manufacturer_id: formData.manufacturer_id === '' ? null : Number(formData.manufacturer_id),
@@ -302,11 +302,8 @@ export const ProductsPage: React.FC = () => {
     }
   };
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="p-4 md:p-8 space-y-6">
-
-        {/* ── Header ─────────────────────────────────────────────────────────── */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Produtos</h1>

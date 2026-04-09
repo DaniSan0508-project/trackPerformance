@@ -3,7 +3,7 @@ import { Search, Settings, Loader2, RefreshCw, X, Check, ChevronLeft, ChevronRig
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { TenantConfig, PaginatedResponse } from '../types';
-import { api } from '../services/api';
+import { tenantConfigsService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { tenantConfigValidations } from '../validators/schemas';
 
@@ -274,7 +274,7 @@ export const SettingsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getTenantConfigs(token, page, search);
+      const data = await tenantConfigsService.getTenantConfigs(token, page, search);
       console.log('Configs API Response:', data);
       setConfigs(data.data);
       setCurrentPage(data.current_page);
@@ -312,7 +312,7 @@ export const SettingsPage: React.FC = () => {
     }
 
     try {
-      await api.updateTenantConfig(token, config.id, {
+      await tenantConfigsService.updateTenantConfig(token, config.id, {
         tenant_id: config.tenant_id,
         config_key: config.config_key,
         config_value: newValue

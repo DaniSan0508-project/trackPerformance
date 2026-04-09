@@ -3,7 +3,7 @@ import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, H
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Post, Like, Comment, User as UserType } from '../types';
-import { api } from '../services/api';
+import { postsService, usersService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { getFullImageUrl, extractYouTubeVideoId, formatRelativeDate, getYouTubeThumbnailUrl } from '../utils';
@@ -106,7 +106,7 @@ export const PostsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getPosts(token, page, filters);
+      const data = await postsService.getPosts(token, page, filters);
       setPosts(data.data);
       setCurrentPage(data.meta.current_page);
       setTotalPages(data.meta.last_page);
@@ -140,7 +140,7 @@ export const PostsPage: React.FC = () => {
     setLoadingUsers(true);
     try {
       // Fetch users in parallel
-      const promises = missingIds.map(id => api.getUser(token, id).catch(() => null));
+      const promises = missingIds.map(id => usersService.getUser(token, id).catch(() => null));
       const results = await Promise.all(promises);
       
       const newUsers: Record<number, UserType> = {};
@@ -203,7 +203,7 @@ export const PostsPage: React.FC = () => {
       }
       formData.append('survey_id', '1');
 
-      await api.createPost(token, formData);
+      await postsService.createPost(token, formData);
 
       // Reset and close
       setCreatePostModal(false);
@@ -233,7 +233,7 @@ export const PostsPage: React.FC = () => {
     
     setIsDeleting(post.id);
     try {
-      await api.deletePost(token, post.id);
+      await postsService.deletePost(token, post.id);
       setPosts(prev => prev.filter(p => p.id !== post.id));
       setActiveMenuPostId(null);
       addToast('success', 'Post excluído com sucesso!');
@@ -270,7 +270,7 @@ export const PostsPage: React.FC = () => {
     if (!token) return;
 
     try {
-      await api.deletePostComment(token, commentId);
+      await postsService.deletePostComment(token, commentId);
       // Atualiza o post na lista principal
       setPosts(prev => prev.map(p => {
         if (p.id === postId && p.comments) {
@@ -369,7 +369,7 @@ export const PostsPage: React.FC = () => {
       }
 
       // Usar API específica para FormData
-      await api.updatePostWithMedia(token, editPostModal.id, formData);
+      await postsService.updatePostWithMedia(token, editPostModal.id, formData);
 
       // Atualizar lista de posts (refresh completo)
       const dateFilter = filterStartDate && filterEndDate 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, CoinStatementResponse, CoinStatement } from '../../types';
-import { coinsService } from '../../services/coins/coinsService';
+import { coinsService } from '../../services';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { Calendar, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Search, X, Filter } from 'lucide-react';

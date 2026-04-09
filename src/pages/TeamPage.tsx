@@ -3,7 +3,7 @@ import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shie
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { User as UserType, Role, Store } from '../types';
-import { api } from '../services/api';
+import { usersService, storesService, rolesService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { userSchema, userUpdateSchema, roleSchema } from '../validators/schemas';
@@ -138,15 +138,13 @@ export const TeamPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getUsers(token, page, search);
-      console.log('Users API Response:', data);
+      const data = await usersService.getUsers(token, page, search);
       setUsers(data.data);
       setCurrentPage(data.meta?.current_page || data.current_page || 1);
       setTotalPages(data.meta?.last_page || data.last_page || 1);
       setTotalItems(data.meta?.total || data.total || 0);
       setFromItem(data.meta?.from || data.from || 0);
       setToItem(data.meta?.to || data.to || 0);
-      console.log('Pagination:', { page: data.meta?.current_page || data.current_page, totalPages: data.meta?.last_page || data.last_page, total: data.meta?.total || data.total });
     } catch (err: any) {
       console.error('Error fetching users:', err);
       setError(err.message || 'Não foi possível carregar o time.');
@@ -158,10 +156,8 @@ export const TeamPage: React.FC = () => {
   const fetchStores = useCallback(async () => {
     if (!token) return;
     try {
-      // Fetch stores (currently page 1)
-      const data = await api.getStores(token, 1, ''); 
-      // Filtra apenas as lojas ativas para o select
-      const activeStores = data.data.filter(store => store.active);
+      const data = await storesService.getStores(token, 1, ''); 
+      const activeStores = data.data.filter((store: any) => store.active);
       setStores(activeStores);
     } catch (error) {
       console.error('Error fetching stores', error);
@@ -171,7 +167,7 @@ export const TeamPage: React.FC = () => {
   const fetchRoles = useCallback(async () => {
     if (!token) return;
     try {
-      const data = await api.getRoles(token, 1, ''); // Busca primeira página para o select
+      const data = await rolesService.getRoles(token, 1, ''); 
       setRoles(data.data);
     } catch (error) {
       console.error('Error fetching roles', error);
@@ -182,7 +178,7 @@ export const TeamPage: React.FC = () => {
     if (!token) return;
     setLoadingRoles(true);
     try {
-      const data = await api.getRoles(token, page, search);
+      const data = await rolesService.getRoles(token, page, search);
       setRoles(data.data);
       setRolesPage(data.current_page || 1);
       setRolesTotalPages(data.last_page || 1);
@@ -222,7 +218,7 @@ export const TeamPage: React.FC = () => {
         name: user.name,
         email: user.email,
         phone: user.phone || '',
-        password: '', // Password not populated on edit
+        password: '', 
         user_type_id: user.user_type_id,
         store_id: user.store_id || '',
         role_id: user.role_id || '',
@@ -283,7 +279,7 @@ export const TeamPage: React.FC = () => {
     setEditingRole(null);
     setRoleFormData({ description: '' });
     setRoleFormErrors({});
-    fetchRoles(); // Atualiza a lista do select no form de usuários
+    fetchRoles(); 
   };
 
   const handleEditRole = (role: Role) => {
@@ -311,10 +307,10 @@ export const TeamPage: React.FC = () => {
     setSavingRole(true);
     try {
       if (editingRole) {
-        await api.updateRole(token, editingRole.id, roleFormData);
+        await rolesService.updateRole(token, editingRole.id, roleFormData);
         addToast('success', 'Cargo atualizado com sucesso!');
       } else {
-        await api.createRole(token, roleFormData);
+        await rolesService.createRole(token, roleFormData);
         addToast('success', 'Cargo criado com sucesso!');
       }
       setRoleFormData({ description: '' });
@@ -330,7 +326,7 @@ export const TeamPage: React.FC = () => {
   const executeDeleteRole = async (id: number) => {
     if (!token) return;
     try {
-      await api.deleteRole(token, id);
+      await rolesService.deleteRole(token, id);
       addToast('success', 'Cargo excluído com sucesso!');
       fetchRolesPaginated(rolesPage, rolesSearch);
     } catch (error: any) {
@@ -353,7 +349,6 @@ export const TeamPage: React.FC = () => {
     if (!token) return;
     setFormErrors({});
 
-    // Usa schema diferente para criação vs edição
     const schema = editingUser ? userUpdateSchema : userSchema;
     const result = schema.safeParse({
       name: formData.name,
@@ -405,10 +400,10 @@ export const TeamPage: React.FC = () => {
       }
 
       if (editingUser) {
-        await api.updateUser(token, editingUser.id, data);
+        await usersService.updateUser(token, editingUser.id, data);
         addToast('success', 'Usuário atualizado com sucesso!');
       } else {
-        await api.createUser(token, data);
+        await usersService.createUser(token, data);
         addToast('success', 'Usuário criado com sucesso!');
       }
 
@@ -417,7 +412,6 @@ export const TeamPage: React.FC = () => {
     } catch (error: any) {
       console.error('Error saving user:', error);
       
-      // Handle API validation errors
       if (error.response?.data?.errors) {
         const apiErrors = error.response.data.errors;
         const formattedErrors: { [key: string]: string } = {};
@@ -456,7 +450,7 @@ export const TeamPage: React.FC = () => {
     if (!token) return;
     setDeletingId(user.id);
     try {
-      await api.deleteUser(token, user.id);
+      await usersService.deleteUser(token, user.id);
       await fetchUsers(currentPage, searchTerm);
       addToast('success', 'Usuário excluído com sucesso!');
     } catch (error: any) {

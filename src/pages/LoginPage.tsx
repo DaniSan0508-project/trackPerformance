@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { LogIn, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
+import { authService, dashboardService, usersService, campaignsService, productsService, manufacturersService, rolesService, rewardsService, feedbacksService, postsService, redemptionsService, tenantConfigsService, surveysService, storesService, coinsService } from '../services';
 import { loginSchema } from '../validators/schemas';
 import loginBackgroundImage from '../resources/img-background-login.jpeg';
 
@@ -36,7 +36,7 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const data = await api.login({ email, password });
+      const data = await authService.login({ email, password });
       login(data, rememberMe);
       navigate('/dashboard');
     } catch (err: any) {

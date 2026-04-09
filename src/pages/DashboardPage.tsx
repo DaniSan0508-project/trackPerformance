@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {ChartNoAxesColumn, User} from 'lucide-react';
 import {useAuth} from '../context/AuthContext';
 import {useTheme} from '../context/ThemeContext';
-import {api} from '../services/api';
+import { authService, dashboardService, usersService, campaignsService, productsService, manufacturersService, rolesService, rewardsService, feedbacksService, postsService, redemptionsService, tenantConfigsService, surveysService, storesService, coinsService } from '../services';
 import {getFullImageUrl} from '../utils/formatters';
 import { motion } from 'motion/react';
 import {
@@ -77,7 +77,7 @@ export const DashboardPage = () => {
             if (!token) return;
             setLoadingStats(true);
             try {
-                const data = await api.getDashboard(token);
+                const data = await dashboardService.getDashboard(token);
 
                 // API returns keys as in example: active_users, engagement, coins_generated, redemptions
                 // Optionally inject random growth percentages for presentation (DEV flag)
@@ -106,7 +106,7 @@ export const DashboardPage = () => {
             if (!token) return;
             setLoadingTop(true);
             try {
-                const data = await api.getTopCollaborators(token);
+                const data = await dashboardService.getTopCollaborators(token);
                 // Expecting an array
                 setTop(Array.isArray(data) ? data : (data.data || []));
             } catch (err) {
@@ -120,7 +120,7 @@ export const DashboardPage = () => {
             if (!token) return;
             setLoadingCampaigns(true);
             try {
-                const data = await api.getActiveCampaigns(token);
+                const data = await dashboardService.getActiveCampaigns(token);
                 setCampaigns(Array.isArray(data) ? data : (data.data || []));
             } catch (err) {
                 console.error('Failed to load active campaigns', err);
@@ -133,7 +133,7 @@ export const DashboardPage = () => {
             if (!token) return;
             setLoadingEngagementIndex(true);
             try {
-                const data = await api.getEngagementIndex(token);
+                const data = await dashboardService.getEngagementIndex(token);
                 setEngagementIndex(Array.isArray(data) ? data : (data.data || []));
             } catch (err) {
                 console.error('Failed to load engagement index', err);
@@ -149,7 +149,7 @@ export const DashboardPage = () => {
             if (!token) return;
             setLoadingActions(true);
             try {
-                const data = await api.getEngagementActionsSummary(token, actionsPeriod);
+                const data = await dashboardService.getEngagementActionsSummary(token, actionsPeriod);
                 setActionsSummary(data);
             } catch (err) {
                 console.error('Failed to load engagement actions summary', err);

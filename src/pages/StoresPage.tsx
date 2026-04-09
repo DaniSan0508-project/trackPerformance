@@ -3,7 +3,7 @@ import { Search, Store, Plus, Loader2, RefreshCw, ChevronLeft, ChevronRight, Pho
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Store as StoreType, PaginatedResponse, StoreGroup } from '../types';
-import { api } from '../services/api';
+import { storesService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { storeSchema } from '../validators/schemas';
@@ -137,7 +137,7 @@ export const StoresPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getStores(token, page, search);
+      const data = await storesService.getStores(token, page, search);
       setStores(data.data);
       setCurrentPage(data.meta.current_page);
       setTotalPages(data.meta.last_page);
@@ -155,7 +155,7 @@ export const StoresPage: React.FC = () => {
   const fetchGroups = useCallback(async () => {
     if (!token) return;
     try {
-      const data = await api.getStoreGroups(token);
+      const data = await storesService.getStoreGroups(token);
       setGroups(data.data);
     } catch (error) {
       console.error('Error fetching groups', error);
@@ -280,9 +280,9 @@ export const StoresPage: React.FC = () => {
       console.log('Sending data:', dataToSave);
 
       if (editingStore) {
-        await api.updateStore(token, editingStore.id, dataToSave);
+        await storesService.updateStore(token, editingStore.id, dataToSave);
       } else {
-        await api.createStore(token, dataToSave);
+        await storesService.createStore(token, dataToSave);
       }
 
       await fetchStores(currentPage, searchTerm);
@@ -300,7 +300,7 @@ export const StoresPage: React.FC = () => {
     if (!token) return;
     setDeletingId(id);
     try {
-      await api.deleteStore(token, id);
+      await storesService.deleteStore(token, id);
       await fetchStores(currentPage, searchTerm);
       addToast('success', 'Loja excluída com sucesso!');
     } catch (error: any) {
@@ -330,7 +330,7 @@ export const StoresPage: React.FC = () => {
     if (!token || !newGroupName.trim()) return;
     setCreatingGroup(true);
     try {
-      await api.createStoreGroup(token, { name: newGroupName, active: true });
+      await storesService.createStoreGroup(token, { name: newGroupName, active: true });
       await fetchGroups();
       setNewGroupName('');
       addToast('success', 'Grupo criado com sucesso!');
@@ -345,7 +345,7 @@ export const StoresPage: React.FC = () => {
   const handleUpdateGroup = async (id: number, name: string) => {
     if (!token) return;
     try {
-      await api.updateStoreGroup(token, id, { name });
+      await storesService.updateStoreGroup(token, id, { name });
       await fetchGroups();
       addToast('success', 'Grupo atualizado com sucesso!');
     } catch (error) {
@@ -357,7 +357,7 @@ export const StoresPage: React.FC = () => {
   const executeDeleteGroup = async (id: number) => {
     if (!token) return;
     try {
-      await api.deleteStoreGroup(token, id);
+      await storesService.deleteStoreGroup(token, id);
       await fetchGroups();
       addToast('success', 'Grupo excluído com sucesso!');
     } catch (error) {

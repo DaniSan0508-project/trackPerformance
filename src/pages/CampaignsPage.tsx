@@ -3,7 +3,7 @@ import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Tra
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus, Role, EngagementAction, Reward } from '../types';
-import { api } from '../services/api';
+import { authService, dashboardService, usersService, campaignsService, productsService, manufacturersService, rolesService, rewardsService, feedbacksService, postsService, redemptionsService, tenantConfigsService, surveysService, storesService, coinsService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { campaignSchema } from '../validators/schemas';
@@ -233,10 +233,10 @@ export const CampaignsPage: React.FC = () => {
     try {
       // Carregar primeira página de usuários, produtos e fabricantes
       const [usersData, productsData, manufacturersData, rolesData] = await Promise.all([
-        api.getAllUsers(token, 1, 10).catch(() => null),
-        api.getProducts(token, 1, 10).catch(() => null),
-        api.getAllManufacturers(token).catch(() => null),
-        api.getAllRoles(token).catch(() => null),
+        usersService.getAllUsers(token, 1, 10).catch(() => null),
+        productsService.getProducts(token, 1, 10).catch(() => null),
+        manufacturersService.getAllManufacturers(token).catch(() => null),
+        rolesService.getRoles(token).catch(() => null),
       ]);
 
       if (usersData?.data) {
@@ -266,7 +266,7 @@ export const CampaignsPage: React.FC = () => {
   const fetchUsers = useCallback(async (page = 1, search = '', filterType: 'name' | 'email' = 'name') => {
     if (!token) return;
     try {
-      const response = await api.getUsers(token, page, search, filterType);
+      const response = await usersService.getUsers(token, page, search, filterType);
       setUsers(response.data || []);
       setUsersTotalPages(response.meta?.last_page || response.last_page || 1);
       setUsersPage(response.meta?.current_page || response.current_page || 1);
@@ -280,7 +280,7 @@ export const CampaignsPage: React.FC = () => {
     if (!token) return;
     try {
       const manufacturerIdParam = manufacturerId === 'all' ? undefined : manufacturerId;
-      const response = await api.getProductsPaginated(token, page, search, filterType, manufacturerIdParam);
+      const response = await productsService.getProductsPaginated(token, page, search, filterType, manufacturerIdParam);
       setProducts(response.data || []);
       setProductsTotalPages(response.meta?.last_page || response.last_page || 1);
       setProductsPage(response.meta?.current_page || response.current_page || 1);
@@ -293,7 +293,7 @@ export const CampaignsPage: React.FC = () => {
     if (!token) return;
     setLoadingRewards(true);
     try {
-      const response = await api.getRewards(token, page, search);
+      const response = await rewardsService.getRewards(token, page, search);
       setRewards(response.data || []);
       setRewardsTotalPages(response.meta?.last_page || response.last_page || 1);
       setRewardsPage(response.meta?.current_page || response.current_page || 1);
@@ -309,7 +309,7 @@ export const CampaignsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getCampaigns(token, page, search);
+      const data = await campaignsService.getCampaigns(token, page, search);
       setCampaigns(data.data);
       setCurrentPage(data.current_page);
       setTotalPages(data.last_page);
@@ -426,12 +426,12 @@ export const CampaignsPage: React.FC = () => {
         try {
           // Busca dados vinculados e listas auxiliares em paralelo
           const [usersRes, productsRes, actionsRes, allUsersList, allProductsList, manufacturersData] = await Promise.all([
-            api.getCampaignUsers(token, campaign.id).catch(() => ({ data: [] })),
-            campaign.type === 'sales' ? api.getCampaignProducts(token, campaign.id).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-            campaign.type === 'engagement' ? api.getCampaignActions(token, campaign.id).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-            api.getAllUsersComplete(token).catch(() => []),
-            api.getAllProductsComplete(token).catch(() => []),
-            api.getAllManufacturers(token).catch(() => []),
+            campaignsService.getCampaignUsers(token, campaign.id).catch(() => ({ data: [] })),
+            campaign.type === 'sales' ? campaignsService.getCampaignProducts(token, campaign.id).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+            campaign.type === 'engagement' ? campaignsService.getCampaignActions(token, campaign.id).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+            usersService.getAllUsersComplete(token).catch(() => []),
+            productsService.getAllProductsComplete(token).catch(() => []),
+            manufacturersService.getAllManufacturers(token).catch(() => []),
           ]);
 
           // Processar Fabricantes
@@ -517,7 +517,7 @@ export const CampaignsPage: React.FC = () => {
 
     setLoadingEngagementActions(true);
     try {
-      const response = await api.getEngagementActions(token);
+      const response = await dashboardService.getEngagementActions(token);
       // A API retorna array direto, não dentro de { data: ... }
       const actionsData = Array.isArray(response) ? response : (response?.data || []);
       setEngagementActions(actionsData);
@@ -589,7 +589,7 @@ export const CampaignsPage: React.FC = () => {
 
     setImporting(true);
     try {
-      const result = await api.importCampaignSales(token, importingCampaign.id, importFile);
+      const result = await campaignsService.importCampaignSales(token, importingCampaign.id, importFile);
       setImportResult(result);
       
       if (result.success_count > 0) {
@@ -789,10 +789,10 @@ export const CampaignsPage: React.FC = () => {
       }
 
       if (editingCampaign) {
-        await api.updateCampaign(token, editingCampaign.id, dataToSave);
+        await campaignsService.updateCampaign(token, editingCampaign.id, dataToSave);
         addToast('success', 'Campanha atualizada com sucesso!');
       } else {
-        await api.createCampaign(token, dataToSave);
+        await campaignsService.createCampaign(token, dataToSave);
         addToast('success', 'Campanha criada com sucesso!');
       }
 
@@ -846,7 +846,7 @@ export const CampaignsPage: React.FC = () => {
     if (!token) return;
     setDeletingId(campaign.id);
     try {
-      await api.deleteCampaign(token, campaign.id);
+      await campaignsService.deleteCampaign(token, campaign.id);
       await fetchCampaigns(currentPage, searchTerm);
       addToast('success', 'Campanha excluída com sucesso!');
     } catch (error: any) {
@@ -901,7 +901,7 @@ export const CampaignsPage: React.FC = () => {
         setRankingModal(prev => ({ ...prev, ranking: campaign.podium, loading: false }));
       } else {
         // Busca todas as campanhas com podium e filtra pela ID
-        const response = await api.getCampaignsWithPodium(token);
+        const response = await campaignsService.getCampaignsWithPodium(token);
         const campaignWithData = response.data.find(c => c.id === campaign.id);
         setRankingModal(prev => ({ 
           ...prev, 
@@ -1003,7 +1003,7 @@ export const CampaignsPage: React.FC = () => {
       const isCampaignEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
       
       // Usa o método otimizado do serviço de API
-      const allUsers = await api.getAllUsersComplete(token, userSearch, userFilterType);
+      const allUsers = await usersService.getAllUsersComplete(token, userSearch, userFilterType);
 
       // Filtra apenas usuários válidos para campanha de engajamento
       const validUserIds = isCampaignEngagement
@@ -1032,7 +1032,7 @@ export const CampaignsPage: React.FC = () => {
     setSelectByRoleLoading(role);
     try {
       // Usa o método otimizado do serviço de API
-      const allUsers = await api.getAllUsersComplete(token);
+      const allUsers = await usersService.getAllUsersComplete(token);
 
       // Filtra apenas usuários do cargo selecionado
       const roleUsers = allUsers.filter(u => u.role === role);
@@ -1099,7 +1099,7 @@ export const CampaignsPage: React.FC = () => {
     setSelectByManufacturerLoading(manufacturerName);
     try {
       // Busca todos os produtos do fabricante usando o filtro da API
-      const allProducts = await api.getAllProductsComplete(token, manufacturerId.toString(), 'manufacturer_id' as any);
+      const allProducts = await productsService.getAllProductsComplete(token, manufacturerId.toString(), 'manufacturer_id' as any);
 
       const validProductIds = allProducts.map(p => p.id);
 
@@ -1155,7 +1155,7 @@ export const CampaignsPage: React.FC = () => {
     setLoadingSelectAllProducts(true);
     try {
       // Usa o método otimizado do serviço de API
-      const allProducts = await api.getAllProductsComplete(token, productSearch, productFilterType);
+      const allProducts = await productsService.getAllProductsComplete(token, productSearch, productFilterType);
       const allProductIds = allProducts.map(p => p.id);
 
       // Adiciona todos os produtos à seleção

@@ -3,7 +3,7 @@ import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, ShoppingBag, Pac
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Reward, RewardImage, Redemption, RedemptionStatus } from '../types';
-import { api } from '../services/api';
+import { rewardsService, redemptionsService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { rewardSchema } from '../validators/schemas';
@@ -125,7 +125,7 @@ export const RewardsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getRewards(token, page, search);
+      const data = await rewardsService.getRewards(token, page, search);
       setRewards(data.data);
       setCurrentPage(data.meta.current_page);
       setTotalPages(data.meta.last_page);
@@ -157,7 +157,7 @@ export const RewardsPage: React.FC = () => {
         filters.status = redemptionFilterStatus;
       }
 
-      const data = await api.getRedemptions(token, page, filters);
+      const data = await redemptionsService.getRedemptions(token, page, filters);
       setRedemptions(data.data);
       setRedemptionsPage(data.current_page);
       setRedemptionsTotalPages(data.last_page);
@@ -176,7 +176,7 @@ export const RewardsPage: React.FC = () => {
     if (!token) return;
     setUpdatingRedemptionId(id);
     try {
-      await api.approveRedemption(token, id);
+      await redemptionsService.approveRedemption(token, id);
       addToast('success', 'Resgate aprovado com sucesso!');
       await fetchRedemptions(redemptionsPage, redemptionFilterStatus);
     } catch (err: any) {
@@ -191,7 +191,7 @@ export const RewardsPage: React.FC = () => {
     if (!token) return;
     setUpdatingRedemptionId(id);
     try {
-      await api.rejectRedemption(token, id);
+      await redemptionsService.rejectRedemption(token, id);
       addToast('success', 'Resgate rejeitado com sucesso!');
       await fetchRedemptions(redemptionsPage, redemptionFilterStatus);
     } catch (err: any) {
@@ -206,7 +206,7 @@ export const RewardsPage: React.FC = () => {
     if (!token) return;
     setUpdatingRedemptionId(id);
     try {
-      await api.completeRedemption(token, id);
+      await redemptionsService.completeRedemption(token, id);
       addToast('success', 'Resgate concluído com sucesso!');
       await fetchRedemptions(redemptionsPage, redemptionFilterStatus);
     } catch (err: any) {
@@ -315,7 +315,7 @@ export const RewardsPage: React.FC = () => {
 
       if (editingReward) {
         // Envia apenas os campos de texto na rota de atualização
-        await api.updateReward(token, editingReward.id, data);
+        await rewardsService.updateReward(token, editingReward.id, data);
 
         // Se houver NOVAS imagens, envia na rota específica para não apagar as antigas
         if (formData.images.length > 0) {
@@ -329,7 +329,7 @@ export const RewardsPage: React.FC = () => {
             imageFormData.append('primary_image_index', formData.primary_image_index);
           }
 
-          await api.addRewardImages(token, editingReward.id, imageFormData);
+          await rewardsService.addRewardImages(token, editingReward.id, imageFormData);
         }
 
         addToast('success', 'Recompensa atualizada com sucesso!');
@@ -343,7 +343,7 @@ export const RewardsPage: React.FC = () => {
           data.append('primary_image_index', formData.primary_image_index);
         }
 
-        await api.createReward(token, data);
+        await rewardsService.createReward(token, data);
         addToast('success', 'Recompensa criada com sucesso!');
       }
 
@@ -361,7 +361,7 @@ export const RewardsPage: React.FC = () => {
     if (!token) return;
     setDeletingId(reward.id);
     try {
-      await api.deleteReward(token, reward.id);
+      await rewardsService.deleteReward(token, reward.id);
       await fetchRewards(currentPage, searchTerm);
       addToast('success', 'Recompensa excluída com sucesso!');
     } catch (error: any) {
@@ -406,7 +406,7 @@ export const RewardsPage: React.FC = () => {
     
     setRedemptionModal(prev => ({ ...prev, isProcessing: true }));
     try {
-      await api.createRedemption(token, {
+      await redemptionsService.createRedemption(token, {
         items: [
           {
             reward_id: redemptionModal.reward.id,
@@ -480,7 +480,7 @@ export const RewardsPage: React.FC = () => {
     if (!token || !editingReward) return;
     
     try {
-      await api.deleteRewardImage(token, editingReward.id, imageId);
+      await rewardsService.deleteRewardImage(token, editingReward.id, imageId);
       setFormData(prev => ({
         ...prev,
         existingImages: prev.existingImages.filter(img => img.id !== imageId)
@@ -506,7 +506,7 @@ export const RewardsPage: React.FC = () => {
       if (file) data.append('image', file);
       if (isPrimary !== undefined) data.append('is_primary', String(isPrimary));
       
-      const response = await api.updateRewardImage(token, editingReward.id, imageId, data);
+      const response = await rewardsService.updateRewardImage(token, editingReward.id, imageId, data);
       
       // Obtém a nova URL da resposta ou usa o arquivo local como fallback
       const apiImageData = response.data || response;
@@ -651,7 +651,6 @@ export const RewardsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Rewards List */}
         {loading && rewards.length === 0 ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />

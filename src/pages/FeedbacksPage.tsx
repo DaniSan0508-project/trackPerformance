@@ -3,7 +3,7 @@ import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquarePlu
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { User as UserType, Feedback } from '../types';
-import { api } from '../services/api';
+import { feedbacksService, usersService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { feedbackSchema } from '../validators/schemas';
 import { getFullImageUrl } from '../utils';
@@ -74,7 +74,7 @@ export const FeedbacksPage: React.FC = () => {
     setLoadingUsers(true);
     setUsersError(null);
     try {
-      const data = await api.getUsers(token, page, search);
+      const data = await usersService.getUsers(token, page, search);
       // Filter out current user from the list
       const filteredUsers = data.data.filter(u => u.id !== currentUser?.id);
       setUsers(filteredUsers);
@@ -96,7 +96,7 @@ export const FeedbacksPage: React.FC = () => {
     setLoadingFeedbacks(true);
     setFeedbacksError(null);
     try {
-      const data = await api.getFeedbacks(token, page);
+      const data = await feedbacksService.getFeedbacks(token, page);
       setFeedbacks(data.data);
       setFeedbacksPage(data.meta.current_page);
       setFeedbacksTotalPages(data.meta.last_page);
@@ -116,7 +116,7 @@ export const FeedbacksPage: React.FC = () => {
     setLoadingAllFeedbacks(true);
     setAllFeedbacksError(null);
     try {
-      const data = await api.getAllTenantFeedbacks(token, page, search);
+      const data = await feedbacksService.getAllTenantFeedbacks(token, page, search);
       setAllFeedbacks(data.data);
       setAllFeedbacksPage(data.meta.current_page);
       setAllFeedbacksTotalPages(data.meta.last_page);
@@ -172,7 +172,7 @@ export const FeedbacksPage: React.FC = () => {
 
     setSending(true);
     try {
-      await api.sendFeedback(token, {
+      await feedbacksService.sendFeedback(token, {
         recipient_id: selectedUser.id,
         content: feedbackContent,
         is_anonymous: isAnonymous

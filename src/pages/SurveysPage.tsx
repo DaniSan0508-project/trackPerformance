@@ -3,7 +3,7 @@ import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, FileText, Calend
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Survey, SurveyStatus, User as UserType, SurveyResults, SurveyResultTextOption, SurveyResultChoiceOption, Role } from '../types';
-import { api } from '../services/api';
+import { surveysService, usersService, rolesService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 
@@ -140,7 +140,7 @@ export const SurveysPage: React.FC = () => {
     try {
       const publishedParam = publishedFilter !== 'all' ? publishedFilter : undefined;
 
-      const data = await api.getSurveys(token, page, search, undefined, publishedParam);
+      const data = await surveysService.getSurveys(token, page, search, undefined, publishedParam);
       setSurveys(data.data);
       setCurrentPage(data.meta?.current_page || data.current_page);
       setTotalPages(data.meta?.last_page || data.last_page);
@@ -167,7 +167,7 @@ export const SurveysPage: React.FC = () => {
   const fetchUsers = useCallback(async (page = 1, search = '', filterType: 'name' | 'email' = 'name') => {
     if (!token) return;
     try {
-      const response = await api.getUsers(token, page, search, filterType);
+      const response = await usersService.getUsers(token, page, search, filterType);
       setUsers(response.data || []);
       setUsersTotalPages(response.meta?.last_page || response.last_page || 1);
       setUsersPage(response.meta?.current_page || response.current_page || 1);
@@ -199,7 +199,7 @@ export const SurveysPage: React.FC = () => {
     const fetchRoles = async () => {
       if (isModalOpen && token) {
         try {
-          const response = await api.getAllRoles(token);
+          const response = await rolesService.getRoles(token);
           setRoles(response.data || []);
         } catch (error) {
           console.error('Error fetching roles:', error);
@@ -237,11 +237,11 @@ export const SurveysPage: React.FC = () => {
       setIsModalOpen(true);
       try {
         // Busca detalhes completos com questões
-        const responseData = await api.getSurvey(token!, survey.id);
+        const responseData = await surveysService.getSurvey(token!, survey.id);
         const detail = responseData.data || responseData;
 
         // Busca usuários separadamente da nova rota
-        const usersResponse = await api.getSurveyUsers(token!, survey.id);
+        const usersResponse = await surveysService.getSurveyUsers(token!, survey.id);
         const surveyUsers = usersResponse.data || [];
 
         setFormData({
@@ -316,7 +316,7 @@ export const SurveysPage: React.FC = () => {
     setSelectAllUsersProgress(null);
     try {
       // Busca a primeira página para saber o total
-      const firstData = await api.getUsers(token!, 1, userSearch, userFilterType);
+      const firstData = await usersService.getUsers(token!, 1, userSearch, userFilterType);
       const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
       let allUsers: UserType[] = [...(firstData.data || [])];
 
@@ -325,7 +325,7 @@ export const SurveysPage: React.FC = () => {
       }
 
       for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
-        const data = await api.getUsers(token!, currentPage, userSearch, userFilterType);
+        const data = await usersService.getUsers(token!, currentPage, userSearch, userFilterType);
         allUsers.push(...(data.data || []));
         setSelectAllUsersProgress({ current: currentPage, total: totalPages });
       }
@@ -357,12 +357,12 @@ export const SurveysPage: React.FC = () => {
     setSelectByRoleLoading(role);
     try {
       // Busca a primeira página para saber o total
-      const firstData = await api.getUsers(token!, 1);
+      const firstData = await usersService.getUsers(token!, 1);
       const totalPages = firstData.meta?.last_page || firstData.last_page || 1;
       let allUsers: UserType[] = [...(firstData.data || [])];
 
       for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
-        const data = await api.getUsers(token!, currentPage);
+        const data = await usersService.getUsers(token!, currentPage);
         allUsers.push(...(data.data || []));
       }
 
@@ -593,10 +593,10 @@ export const SurveysPage: React.FC = () => {
       };
 
       if (editingSurvey) {
-        await api.updateSurvey(token, editingSurvey.id, dataToSave);
+        await surveysService.updateSurvey(token, editingSurvey.id, dataToSave);
         addToast('success', 'Pesquisa atualizada com sucesso!');
       } else {
-        await api.createSurvey(token, dataToSave);
+        await surveysService.createSurvey(token, dataToSave);
         addToast('success', 'Pesquisa criada com sucesso!');
       }
 
@@ -619,7 +619,7 @@ export const SurveysPage: React.FC = () => {
         if (!token) return;
         setConfirmModal(prev => ({ ...prev, isLoading: true }));
         try {
-          await api.deleteSurvey(token, survey.id);
+          await surveysService.deleteSurvey(token, survey.id);
           addToast('success', 'Pesquisa excluída com sucesso!');
           fetchSurveys(currentPage, debouncedSearchTerm);
           setConfirmModal(prev => ({ ...prev, isOpen: false }));
@@ -639,7 +639,7 @@ export const SurveysPage: React.FC = () => {
     if (!token) return;
     setResultsModal({ isOpen: true, survey, results: null, loading: true });
     try {
-      const data = await api.getSurveyResults(token, survey.id);
+      const data = await surveysService.getSurveyResults(token, survey.id);
       setResultsModal(prev => ({ ...prev, results: data, loading: false }));
     } catch (error: any) {
       console.error('Error fetching survey results:', error);
