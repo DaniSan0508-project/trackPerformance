@@ -12,6 +12,30 @@ export const loginSchema = z.object({
     .min(6, 'A senha deve ter no mínimo 6 caracteres'),
 });
 
+export const resetEmailSchema = z.object({
+  email: z
+    .string()
+    .min(1, 'E-mail é obrigatório')
+    .email('E-mail inválido'),
+});
+
+export const resetPasswordSchema = z.object({
+  code: z
+    .string()
+    .length(6, 'O código deve ter 6 dígitos')
+    .regex(/^\d{6}$/, 'O código deve conter apenas números'),
+  password: z
+    .string()
+    .min(1, 'Senha é obrigatória')
+    .min(6, 'A senha deve ter no mínimo 6 caracteres'),
+  passwordConfirmation: z
+    .string()
+    .min(1, 'Confirmação de senha é obrigatória'),
+}).refine((data) => data.password === data.passwordConfirmation, {
+  message: 'As senhas não coincidem',
+  path: ['passwordConfirmation'],
+});
+
 // Schema para Usuário (criação)
 export const userSchema = z.object({
   name: z
@@ -270,6 +294,8 @@ export const roleSchema = z.object({
 
 // Tipos inferidos dos schemas
 export type LoginFormData = z.infer<typeof loginSchema>;
+export type ResetEmailFormData = z.infer<typeof resetEmailSchema>;
+export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 export type UserFormData = z.infer<typeof userSchema>;
 export type StoreFormData = z.infer<typeof storeSchema>;
 export type StoreGroupFormData = z.infer<typeof storeGroupSchema>;
