@@ -179,6 +179,11 @@ export const rewardSchema = z.object({
     .string()
     .min(1, 'Estoque é obrigatório')
     .regex(/^\d+$/, 'Deve ser um número válido'),
+  fulfillment_type: z
+    .enum(['physical', 'voucher'])
+    .default('physical'),
+  valid_until: z.string().optional(),
+  voucher_instructions: z.string().optional(),
   is_active: z.string(),
   images: z.array(z.instanceof(File)).optional(),
   primary_image_index: z.string().optional(),
@@ -202,6 +207,11 @@ export const rewardUpdateSchema = z.object({
     .string()
     .min(1, 'Estoque é obrigatório')
     .regex(/^\d+$/, 'Deve ser um número válido'),
+  fulfillment_type: z
+    .enum(['physical', 'voucher'])
+    .default('physical'),
+  valid_until: z.string().optional(),
+  voucher_instructions: z.string().optional(),
   is_active: z.string(),
   images: z.array(z.instanceof(File)).optional(),
   primary_image_index: z.string().optional(),

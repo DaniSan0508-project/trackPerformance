@@ -112,6 +112,10 @@ export const RewardsPage: React.FC = () => {
     description: '',
     price_coins: '',
     stock: '',
+    reward_type: 'standard' as 'standard' | 'campaign',
+    fulfillment_type: 'physical' as 'physical' | 'voucher',
+    valid_until: '',
+    voucher_instructions: '',
     is_active: '1',
     images: [] as File[],
     primary_image_index: '0',
@@ -126,7 +130,14 @@ export const RewardsPage: React.FC = () => {
     setError(null);
     try {
       const data = await rewardsService.getRewards(token, page, search);
-      setRewards(data.data);
+      
+      // Usuários não-admin não veem rewards de campanha
+      let allRewards = data.data || [];
+      if (!isAdmin) {
+        allRewards = allRewards.filter((r: Reward) => r.reward_type !== 'campaign');
+      }
+      
+      setRewards(allRewards);
       setCurrentPage(data.meta.current_page);
       setTotalPages(data.meta.last_page);
       setTotalItems(data.meta.total);
@@ -138,7 +149,7 @@ export const RewardsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, isAdmin]);
 
   const fetchRedemptions = useCallback(async (page = 1) => {
     if (!token) return;
@@ -239,6 +250,10 @@ export const RewardsPage: React.FC = () => {
         description: reward.description,
         price_coins: String(reward.price_coins),
         stock: String(reward.stock),
+        reward_type: reward.reward_type || 'standard',
+        fulfillment_type: reward.fulfillment_type || 'physical',
+        valid_until: reward.valid_until ? reward.valid_until.split('T')[0] : '',
+        voucher_instructions: reward.voucher_instructions || '',
         is_active: reward.is_active ? '1' : '0',
         images: [],
         primary_image_index: '0',
@@ -251,6 +266,10 @@ export const RewardsPage: React.FC = () => {
         description: '',
         price_coins: '',
         stock: '',
+        reward_type: 'standard',
+        fulfillment_type: 'physical',
+        valid_until: '',
+        voucher_instructions: '',
         is_active: '1',
         images: [],
         primary_image_index: '0',
@@ -311,6 +330,14 @@ export const RewardsPage: React.FC = () => {
       data.append('description', formData.description);
       data.append('price_coins', formData.price_coins);
       data.append('stock', formData.stock);
+      data.append('reward_type', formData.reward_type);
+      data.append('fulfillment_type', formData.fulfillment_type);
+      if (formData.valid_until) {
+        data.append('valid_until', formData.valid_until);
+      }
+      if (formData.voucher_instructions) {
+        data.append('voucher_instructions', formData.voucher_instructions);
+      }
       data.append('is_active', formData.is_active);
 
       if (editingReward) {
@@ -676,7 +703,11 @@ export const RewardsPage: React.FC = () => {
                     onClick={() => handleOpenReward(reward)}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden group cursor-pointer relative"
+                    className={`bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden group cursor-pointer relative ${
+                      reward.reward_type === 'campaign'
+                        ? 'border-purple-200 dark:border-purple-800 bg-purple-50/30 dark:bg-purple-900/10'
+                        : 'border-zinc-100 dark:border-zinc-800'
+                    }`}
                   >
                     {/* Image */}
                     <div className="aspect-square bg-zinc-100 dark:bg-zinc-800 relative overflow-hidden">
@@ -695,6 +726,39 @@ export const RewardsPage: React.FC = () => {
                       {!reward.is_active && (
                         <div className="absolute top-2 right-2 bg-zinc-800/80 text-white text-xs font-bold px-2 py-1 rounded-lg backdrop-blur-sm z-10">
                           Indisponível
+                        </div>
+                      )}
+
+                      {/* Badge de Tipo de Uso (Campaign/Standard) */}
+                      {reward.reward_type === 'campaign' && (
+                        <div className={`absolute z-10 flex flex-col gap-1 ${
+                          reward.fulfillment_type === 'voucher' ? 'top-2 left-2' : 'top-2 left-2'
+                        }`}>
+                          <span className="bg-purple-600/90 text-white text-xs font-bold px-2 py-1 rounded-lg backdrop-blur-sm flex items-center gap-1">
+                            🏆 Campanha
+                          </span>
+                        </div>
+                      )}
+
+                      {reward.fulfillment_type === 'voucher' && (
+                        <div className={`absolute bg-blue-500/90 text-white text-xs font-bold px-2 py-1 rounded-lg backdrop-blur-sm z-10 flex items-center gap-1 ${
+                          reward.reward_type === 'campaign' ? 'top-9 left-2' : 'top-2 left-2'
+                        }`}>
+                          🎫 Voucher
+                        </div>
+                      )}
+
+                      {reward.fulfillment_type === 'physical' && (
+                        <div className={`absolute bg-green-500/90 text-white text-xs font-bold px-2 py-1 rounded-lg backdrop-blur-sm z-10 flex items-center gap-1 ${
+                          reward.reward_type === 'campaign' ? 'top-9 left-2' : 'top-2 left-2'
+                        }`}>
+                          📦 Físico
+                        </div>
+                      )}
+
+                      {reward.is_expired && (
+                        <div className="absolute bottom-2 left-2 bg-red-500/90 text-white text-xs font-bold px-2 py-1 rounded-lg backdrop-blur-sm z-10 flex items-center gap-1">
+                          ⚠️ Expirado
                         </div>
                       )}
 
@@ -1171,12 +1235,62 @@ export const RewardsPage: React.FC = () => {
                     </div>
 
                     <div className="space-y-4">
+                      {/* Tipo de Uso (Campaign/Standard) */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {selectedReward.reward_type === 'campaign' && (
+                          <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-sm font-bold rounded-lg">
+                            🏆 Prêmio de Campanha
+                          </span>
+                        )}
+                        {selectedReward.fulfillment_type === 'voucher' ? (
+                          <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-sm font-bold rounded-lg">
+                            🎫 Voucher Digital
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-bold rounded-lg">
+                            📦 Produto Físico
+                          </span>
+                        )}
+                        {selectedReward.is_expired && (
+                          <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm font-bold rounded-lg">
+                            ⚠️ Expirado
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Data de Validade */}
+                      {selectedReward.valid_until && (
+                        <div className={`p-3 rounded-lg border ${
+                          selectedReward.is_expired
+                            ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                            : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                        }`}>
+                          <p className={`text-sm font-medium ${
+                            selectedReward.is_expired
+                              ? 'text-red-700 dark:text-red-400'
+                              : 'text-amber-700 dark:text-amber-400'
+                          }`}>
+                            {selectedReward.is_expired ? '⚠️ Expirado em' : '📅 Válido até'} {new Date(selectedReward.valid_until).toLocaleDateString('pt-BR')}
+                          </p>
+                        </div>
+                      )}
+
                       <div>
                         <h3 className="text-sm font-medium text-zinc-900 dark:text-white mb-2">Descrição</h3>
                         <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap">
                           {selectedReward.description}
                         </p>
                       </div>
+
+                      {/* Instruções do Voucher */}
+                      {selectedReward.fulfillment_type === 'voucher' && selectedReward.voucher_instructions && (
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                          <h3 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-1">📋 Instruções de Uso</h3>
+                          <p className="text-sm text-blue-700 dark:text-blue-400 whitespace-pre-wrap">
+                            {selectedReward.voucher_instructions}
+                          </p>
+                        </div>
+                      )}
 
                       <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
                         <div className="flex items-center justify-between text-sm">
@@ -1361,6 +1475,71 @@ export const RewardsPage: React.FC = () => {
                       {formErrors.stock && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.stock}</p>}
                     </div>
                   </div>
+
+                  {/* Tipo de Reward (Standard ou Campaign) */}
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                      Tipo de Uso *
+                    </label>
+                    <select
+                      value={formData.reward_type}
+                      onChange={(e) => setFormData({ ...formData, reward_type: e.target.value as 'standard' | 'campaign' })}
+                      className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                    >
+                      <option value="standard">🛒 Catálogo Normal (Standard)</option>
+                      <option value="campaign">🏆 Prêmio de Campanha (Campaign)</option>
+                    </select>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                      {formData.reward_type === 'standard'
+                        ? 'Reward aparece no catálogo para todos os usuários resgatarem'
+                        : 'Reward vinculado a uma campanha, visível apenas para admins'}
+                    </p>
+                  </div>
+
+                  {/* Tipo de Recompensa */}
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tipo de Recompensa *</label>
+                    <select
+                      value={formData.fulfillment_type}
+                      onChange={(e) => setFormData({ ...formData, fulfillment_type: e.target.value as 'physical' | 'voucher' })}
+                      className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                    >
+                      <option value="physical">📦 Produto Físico</option>
+                      <option value="voucher">🎫 Voucher Digital</option>
+                    </select>
+                  </div>
+
+                  {/* Data de Validade */}
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                      Data de Validade (opcional)
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.valid_until}
+                      onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
+                      className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                    />
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                      Deixe vazio se não houver data de expiração
+                    </p>
+                  </div>
+
+                  {/* Instruções do Voucher (apenas se voucher) */}
+                  {formData.fulfillment_type === 'voucher' && (
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Instruções de Uso do Voucher
+                      </label>
+                      <textarea
+                        value={formData.voucher_instructions}
+                        onChange={(e) => setFormData({ ...formData, voucher_instructions: e.target.value })}
+                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 resize-none"
+                        placeholder="Ex: Use o código gerado no checkout da Amazon. Válido até a data de expiração."
+                        rows={3}
+                      />
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Status</label>

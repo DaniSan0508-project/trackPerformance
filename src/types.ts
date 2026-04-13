@@ -166,6 +166,12 @@ export interface Reward {
   price_coins: string | number;
   stock: number;
   is_active: boolean;
+  reward_type: 'standard' | 'campaign';
+  fulfillment_type: 'physical' | 'voucher';
+  valid_until?: string;
+  voucher_instructions?: string;
+  is_expired?: boolean;
+  is_available?: boolean;
   created_at: string;
   updated_at: string;
   images: RewardImage[];

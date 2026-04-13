@@ -66,4 +66,19 @@ export const rewardsService = {
     });
     return handleResponse(response);
   },
+
+  getCampaignRewards: async (token: string, page = 1, search = '') => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    queryParams.append('include', 'images');
+    queryParams.append('filter[reward_type]', 'campaign');
+    if (search) {
+      queryParams.append('filter[name]', search);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/rewards?${queryParams.toString()}`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
 };

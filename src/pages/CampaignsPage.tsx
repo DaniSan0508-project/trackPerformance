@@ -293,7 +293,7 @@ export const CampaignsPage: React.FC = () => {
     if (!token) return;
     setLoadingRewards(true);
     try {
-      const response = await rewardsService.getRewards(token, page, search);
+      const response = await rewardsService.getCampaignRewards(token, page, search);
       setRewards(response.data || []);
       setRewardsTotalPages(response.meta?.last_page || response.last_page || 1);
       setRewardsPage(response.meta?.current_page || response.current_page || 1);
@@ -2584,12 +2584,43 @@ export const CampaignsPage: React.FC = () => {
                               : 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-800 hover:border-primary-300'
                           }`}
                         >
+                          {/* Badge de Tipo */}
+                          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+                            {reward.fulfillment_type === 'voucher' && (
+                              <span className="bg-blue-500/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm">
+                                🎫 Voucher
+                              </span>
+                            )}
+                            {reward.fulfillment_type === 'physical' && (
+                              <span className="bg-green-500/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm">
+                                📦 Físico
+                              </span>
+                            )}
+                            {reward.is_expired && (
+                              <span className="bg-red-500/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm">
+                                ⚠️ Expirado
+                              </span>
+                            )}
+                          </div>
+
                           <div className="aspect-square rounded-xl bg-zinc-100 dark:bg-zinc-900 mb-2 overflow-hidden border border-zinc-200 dark:border-zinc-700">
                             {reward.images?.[0]?.image_full_url ? (
                               <img src={reward.images[0].image_full_url} alt={reward.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                             ) : <div className="w-full h-full flex items-center justify-center text-zinc-400"><ShoppingBag size={24} /></div>}
                           </div>
-                          <p className="text-xs font-bold text-zinc-900 dark:text-white line-clamp-2 text-center">{reward.name}</p>
+                          <p className="text-xs font-bold text-zinc-900 dark:text-white line-clamp-2 text-center mb-1">{reward.name}</p>
+                          
+                          {/* Validade */}
+                          {reward.valid_until && (
+                            <p className={`text-[10px] text-center mb-1 ${reward.is_expired ? 'text-red-500 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                              {reward.is_expired ? '⚠️ Expirado' : '📅'} {new Date(reward.valid_until).toLocaleDateString('pt-BR')}
+                            </p>
+                          )}
+
+                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 text-center">
+                            {reward.stock > 0 ? `${reward.stock} disp.` : 'Esgotado'}
+                          </p>
+
                           {formData.reward_id === reward.id && (
                             <div className="absolute top-2 right-2 bg-primary-500 text-white p-1 rounded-full shadow-lg"><Check size={12} /></div>
                           )}
