@@ -1,7 +1,29 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, FileText, Calendar, Eye, Users, CheckCircle, XCircle, Clock, EyeOff, Plus, Edit2, Trash2, X, Save, Check, User as UserIcon, Shield, User, BarChart3, PlusCircle, GripVertical, Copy, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip as ChartTooltip,
+  Legend,
+  ArcElement,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
 import { useAuth } from '../context/AuthContext';
+
+// Registrar componentes do Chart.js
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  ChartTooltip,
+  Legend,
+  ArcElement
+);
 import { Survey, SurveyStatus, User as UserType, SurveyResults, SurveyResultTextOption, SurveyResultChoiceOption, Role } from '../types';
 import { surveysService, usersService, rolesService } from '../services';
 import { useToast } from '../context/ToastContext';
@@ -62,7 +84,6 @@ export const SurveysPage: React.FC = () => {
     ends_at: '',
     is_anonymous: false,
     is_published: false,
-    survey_type: '' as 'choice' | 'text' | '',
     status: '' as SurveyStatus | '',
   });
 
@@ -72,12 +93,11 @@ export const SurveysPage: React.FC = () => {
   // Valida se Dados Básicos estão completos
   const isBasicDataComplete = () => {
     const hasTitle = formData.title.trim();
-    const hasType = formData.survey_type;
     const hasStartDate = formData.starts_at;
     const hasEndDate = formData.ends_at;
     const hasStatus = formData.status;
     
-    return hasTitle && hasType && hasStartDate && hasEndDate && hasStatus;
+    return hasTitle && hasStartDate && hasEndDate && hasStatus;
   };
 
   // Usuários
@@ -250,7 +270,6 @@ export const SurveysPage: React.FC = () => {
           ends_at: detail.ends_at.split('T')[0],
           is_anonymous: detail.is_anonymous,
           is_published: detail.is_published,
-          survey_type: detail.questions?.[0]?.type || 'text',
           status: detail.status,
         });
 
@@ -284,7 +303,6 @@ export const SurveysPage: React.FC = () => {
         ends_at: '',
         is_anonymous: false,
         is_published: false,
-        survey_type: '',
         status: '',
       });
       setSelectedUsers([]);
@@ -297,7 +315,6 @@ export const SurveysPage: React.FC = () => {
     setIsModalOpen(false);
     setEditingSurvey(null);
     setActiveTab('basic');
-    setFormData(prev => ({ ...prev, survey_type: '' }));
   };
 
   const handleSelectAllUsers = async () => {
@@ -441,13 +458,11 @@ export const SurveysPage: React.FC = () => {
 
   const addQuestion = () => {
     const newOrder = questions.length + 1;
-    // Usa o tipo definido no survey_type
-    const questionType = formData.survey_type || 'text';
     setQuestions([...questions, { 
       question: '', 
-      type: questionType, 
+      type: 'choice', 
       order: newOrder,
-      options: questionType === 'choice' ? [{ option_text: '' }, { option_text: '' }] : []
+      options: [{ option_text: '' }, { option_text: '' }]
     }]);
 
     focusLastQuestion();
@@ -461,6 +476,25 @@ export const SurveysPage: React.FC = () => {
 
   const updateQuestion = (index: number, field: keyof Question, value: any) => {
     const newQuestions = [...questions];
+    
+    if (field === 'type') {
+      const oldType = newQuestions[index].type;
+      const newType = value as 'choice' | 'text';
+      
+      if (oldType !== newType) {
+        if (newType === 'choice') {
+          // Se não tiver opções, inicializa com 2
+          if (!newQuestions[index].options || newQuestions[index].options.length < 2) {
+            newQuestions[index].options = [{ option_text: '' }, { option_text: '' }];
+          }
+        } else {
+          // Se mudar para texto, podemos manter as opções no estado mas elas serão ignoradas no envio
+          // ou limpá-las para economizar memória e evitar confusão
+          // newQuestions[index].options = [];
+        }
+      }
+    }
+    
     newQuestions[index][field] = value;
     setQuestions(newQuestions);
   };
@@ -513,11 +547,6 @@ export const SurveysPage: React.FC = () => {
       setActiveTab('basic');
       return;
     }
-    if (!formData.survey_type) {
-      addToast('error', 'Selecione o tipo de pesquisa (múltipla escolha ou texto aberto).');
-      setActiveTab('basic');
-      return;
-    }
     if (!formData.starts_at || !formData.ends_at) {
       addToast('error', 'Data de início e término são obrigatórias.');
       setActiveTab('basic');
@@ -547,20 +576,15 @@ export const SurveysPage: React.FC = () => {
         setActiveTab('questions');
         return;
       }
-      // Valida baseado no survey_type
-      if (formData.survey_type === 'choice') {
-        if (!q.options || q.options.length === 0) {
+      // Valida baseado no tipo da questão
+      if (q.type === 'choice') {
+        if (!q.options || q.options.length < 2) {
           addToast('error', `Questão ${i + 1} precisa de pelo menos 2 opções.`);
           setActiveTab('questions');
           return;
         }
-        if (q.options.length < 2) {
-          addToast('error', `Questão ${i + 1} precisa de pelo menos 2 opções.`);
-          setActiveTab('questions');
-          return;
-        }
-        for (let j = 0; j < q.options!.length; j++) {
-          if (!q.options![j].option_text.trim()) {
+        for (let j = 0; j < q.options.length; j++) {
+          if (!q.options[j].option_text.trim()) {
             addToast('error', `Opção ${j + 1} da questão ${i + 1} está vazia.`);
             setActiveTab('questions');
             return;
@@ -573,12 +597,15 @@ export const SurveysPage: React.FC = () => {
     try {
       // Prepara as questões: remove 'options' para texto e remove campos desnecessários
       const questionsToSave = questions.map(q => {
-        const { required, ...rest } = q; // Remove campo required
-        if (formData.survey_type === 'text') {
-          const { options, ...restWithoutOptions } = rest;
-          return restWithoutOptions;
+        const { id, order, question, type, options } = q;
+        const baseQuestion: any = { question, type, order };
+        if (id) baseQuestion.id = id;
+        
+        if (type === 'choice') {
+          baseQuestion.options = options;
         }
-        return rest;
+        
+        return baseQuestion;
       });
 
       const dataToSave = {
@@ -1002,83 +1029,6 @@ export const SurveysPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Tipo de Pesquisa */}
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                        Tipo de Pesquisa *
-                      </label>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
-                        Escolha o formato das questões. Todas as questões seguirão este padrão.
-                      </p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          disabled={isReadOnly}
-                          onClick={() => {
-                            if (isReadOnly) return;
-                            setFormData({ ...formData, survey_type: 'choice' });
-                            // Limpa questões existentes se mudar o tipo
-                            setQuestions([]);
-                          }}
-                          className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-3 ${
-                            formData.survey_type === 'choice'
-                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md'
-                              : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
-                          } ${isReadOnly ? 'cursor-not-allowed' : ''} ${isReadOnly && formData.survey_type !== 'choice' ? 'opacity-40' : ''}`}
-                        >
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                            formData.survey_type === 'choice'
-                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
-                          }`}>
-                            <BarChart3 size={24} />
-                          </div>
-                          <div className="text-center">
-                            <p className="font-semibold text-sm text-zinc-900 dark:text-white">Múltipla Escolha</p>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Opções de resposta</p>
-                          </div>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isReadOnly}
-                          onClick={() => {
-                            if (isReadOnly) return;
-                            setFormData({ ...formData, survey_type: 'text' });
-                            // Limpa questões existentes se mudar o tipo
-                            setQuestions([]);
-                          }}
-                          className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-3 ${
-                            formData.survey_type === 'text'
-                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-md'
-                              : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
-                          } ${isReadOnly ? 'cursor-not-allowed' : ''} ${isReadOnly && formData.survey_type !== 'text' ? 'opacity-40' : ''}`}
-                        >
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                            formData.survey_type === 'text'
-                              ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
-                              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
-                          }`}>
-                            <FileText size={24} />
-                          </div>
-                          <div className="text-center">
-                            <p className="font-semibold text-sm text-zinc-900 dark:text-white">Texto Aberto</p>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Respostas livres</p>
-                          </div>
-                        </button>
-                      </div>
-                      {formData.survey_type ? (
-                        <p className="text-xs text-primary-600 dark:text-primary-400 mt-2 flex items-center gap-1">
-                          <CheckCircle size={12} />
-                          Tipo selecionado: {formData.survey_type === 'choice' ? 'Múltipla Escolha' : 'Texto Aberto'}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
-                          <Shield size={12} />
-                          Selecione um tipo para continuar
-                        </p>
-                      )}
-                    </div>
-
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
@@ -1371,27 +1321,17 @@ export const SurveysPage: React.FC = () => {
                 {activeTab === 'questions' && (
                   <div className="space-y-4">
                     {/* Header com instruções */}
-                    <div className={`rounded-xl p-4 border ${
-                      formData.survey_type === 'choice'
-                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800'
-                        : 'bg-gradient-to-r from-primary-50 to-teal-50 dark:from-primary-900/20 dark:to-primary-900/20 border-primary-200 dark:border-primary-800'
-                    }`}>
+                    <div className="rounded-xl p-4 border bg-gradient-to-r from-zinc-50 to-primary-50 dark:from-zinc-800/50 dark:to-primary-900/10 border-zinc-200 dark:border-zinc-800">
                       <div className="flex items-start gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          formData.survey_type === 'choice'
-                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                            : 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
-                        }`}>
-                          {formData.survey_type === 'choice' ? <BarChart3 size={20} /> : <FileText size={20} />}
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400">
+                          <FileText size={20} />
                         </div>
                         <div className="flex-1">
                           <h3 className="font-semibold text-zinc-900 dark:text-white">
-                            {formData.survey_type === 'choice' ? 'Questões de Múltipla Escolha' : 'Questões de Texto Aberto'}
+                            Configuração de Questões
                           </h3>
                           <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                            {formData.survey_type === 'choice'
-                              ? 'Adicione questões com opções de resposta. Os participantes selecionarão uma alternativa.'
-                              : 'Adicione questões com respostas livres. Os participantes digitarão suas respostas.'}
+                            Adicione questões à sua pesquisa. Você pode alternar entre múltipla escolha e texto aberto para cada questão.
                           </p>
                         </div>
                       </div>
@@ -1431,48 +1371,60 @@ export const SurveysPage: React.FC = () => {
                             }`}
                           >
                             {/* Header da questão */}
-                            <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
                               <div className="flex items-center gap-3">
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                  formData.survey_type === 'choice'
+                                  question.type === 'choice'
                                     ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
                                     : 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
                                 }`}>
-                                  {formData.survey_type === 'choice' ? <BarChart3 size={16} /> : <FileText size={16} />}
+                                  {question.type === 'choice' ? <BarChart3 size={16} /> : <FileText size={16} />}
                                 </div>
                                 <span className="font-semibold text-zinc-700 dark:text-zinc-300">
                                   Questão {question.order}
                                 </span>
                               </div>
-                              {!isReadOnly && (
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    onClick={() => {
-                                      // Deep clone para evitar que mudanças na cópia afetem a original (especialmente options)
-                                      // Remove o id para que o backend trate como uma nova questão
-                                      const { id, ...rest } = question;
-                                      const newQuestion: Question = { 
-                                        ...JSON.parse(JSON.stringify(rest)), 
-                                        order: questions.length + 1 
-                                      };
-                                      setQuestions([...questions, newQuestion]);
-                                      addToast('success', 'Questão duplicada!');
-                                      focusLastQuestion();
-                                    }}
-                                    className="p-2 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-                                    title="Duplicar questão"
-                                  >
-                                    <Copy size={16} />
-                                  </button>
-                                  <button
-                                    onClick={() => removeQuestion(qIndex)}
-                                    className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                                    title="Excluir questão"
-                                  >
-                                    <Trash2 size={18} />
-                                  </button>
-                                </div>
-                              )}
+
+                              <div className="flex items-center gap-2">
+                                {/* Seletor de Tipo */}
+                                <select
+                                  disabled={isReadOnly}
+                                  value={question.type}
+                                  onChange={(e) => updateQuestion(qIndex, 'type', e.target.value)}
+                                  className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60"
+                                >
+                                  <option value="choice">Múltipla Escolha</option>
+                                  <option value="text">Texto Aberto</option>
+                                </select>
+
+                                {!isReadOnly && (
+                                  <div className="flex items-center gap-1 border-l border-zinc-200 dark:border-zinc-700 pl-2 ml-1">
+                                    <button
+                                      onClick={() => {
+                                        const { id, ...rest } = question;
+                                        const newQuestion: Question = { 
+                                          ...JSON.parse(JSON.stringify(rest)), 
+                                          order: questions.length + 1 
+                                        };
+                                        setQuestions([...questions, newQuestion]);
+                                        addToast('success', 'Questão duplicada!');
+                                        focusLastQuestion();
+                                      }}
+                                      className="p-2 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                                      title="Duplicar questão"
+                                    >
+                                      <Copy size={16} />
+                                    </button>
+                                    <button
+                                      onClick={() => removeQuestion(qIndex)}
+                                      className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                      title="Excluir questão"
+                                    >
+                                      <Trash2 size={18} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
                             <div className="space-y-4">
@@ -1492,7 +1444,7 @@ export const SurveysPage: React.FC = () => {
                               </div>
 
                               {/* Opções para múltipla escolha */}
-                              {formData.survey_type === 'choice' && (
+                              {question.type === 'choice' && (
                                 <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4 space-y-3">
                                   <div className="flex items-center justify-between">
                                     <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -1541,7 +1493,7 @@ export const SurveysPage: React.FC = () => {
                               )}
 
                               {/* Info para texto aberto */}
-                              {formData.survey_type === 'text' && (
+                              {question.type === 'text' && (
                                 <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl p-3">
                                   <p className="text-sm text-primary-700 dark:text-primary-400 flex items-center gap-2">
                                     <CheckCircle size={16} />
@@ -1579,7 +1531,7 @@ export const SurveysPage: React.FC = () => {
                               {questions.length} {questions.length === 1 ? 'questão adicionada' : 'questões adicionadas'}
                             </p>
                             <p className="text-sm text-blue-700 dark:text-blue-400">
-                              Tipo: {formData.survey_type === 'choice' ? 'Múltipla Escolha' : 'Texto Aberto'}
+                              A pesquisa contém questões mistas (Múltipla Escolha e Texto Aberto)
                             </p>
                           </div>
                         </div>
@@ -1766,43 +1718,96 @@ export const SurveysPage: React.FC = () => {
                           </div>
 
                           {/* Múltipla Escolha */}
-                          {question.type === 'choice' && (
-                            <div className="space-y-4">
-                              {(question.results as SurveyResultChoiceOption[]).map((result) => {
-                                const percentage = resultsModal.results!.total_responses > 0
-                                  ? Math.round((result.count / resultsModal.results!.total_responses) * 100)
-                                  : 0;
-                                const hasUsers = result.users && result.users.length > 0;
-                                
-                                // Filtra usuários pela busca
-                                const filteredUsers = result.users?.filter(u => 
-                                  u.name.toLowerCase().includes(choiceResponseFilter.toLowerCase())
-                                ) || [];
-                                const totalPages = Math.ceil(filteredUsers.length / CHOICE_USERS_PER_PAGE);
-                                const currentPage = Math.min(choiceResponsePage, totalPages || 1);
-                                const startIndex = (currentPage - 1) * CHOICE_USERS_PER_PAGE;
-                                const displayedUsers = filteredUsers.slice(startIndex, startIndex + CHOICE_USERS_PER_PAGE);
+                          {question.type === 'choice' && Array.isArray(question.results) && question.results.length > 0 && (
+                            <div className="space-y-6">
+                              {/* Gráfico de Barras */}
+                              <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-100 dark:border-zinc-700 h-[300px]">
+                                <Bar
+                                  data={{
+                                    labels: (question.results as SurveyResultChoiceOption[]).map(r => r.option_text),
+                                    datasets: [
+                                      {
+                                        label: 'Quantidade de Respostas',
+                                        data: (question.results as SurveyResultChoiceOption[]).map(r => r.count),
+                                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                                        borderColor: 'rgb(59, 130, 246)',
+                                        borderWidth: 1,
+                                        borderRadius: 8,
+                                      },
+                                    ],
+                                  }}
+                                  options={{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                      legend: {
+                                        display: false,
+                                      },
+                                      tooltip: {
+                                        callbacks: {
+                                          label: (context) => {
+                                            const val = context.raw as number;
+                                            const total = resultsModal.results!.total_responses;
+                                            const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+                                            return `${val} (${pct}%)`;
+                                          }
+                                        }
+                                      }
+                                    },
+                                    scales: {
+                                      y: {
+                                        beginAtZero: true,
+                                        ticks: {
+                                          precision: 0,
+                                          color: 'rgba(156, 163, 175, 1)',
+                                        },
+                                        grid: {
+                                          display: true,
+                                          color: 'rgba(156, 163, 175, 0.1)',
+                                        }
+                                      },
+                                      x: {
+                                        ticks: {
+                                          color: 'rgba(156, 163, 175, 1)',
+                                        },
+                                        grid: {
+                                          display: false,
+                                        }
+                                      }
+                                    }
+                                  }}
+                                />
+                              </div>
 
-                                return (
-                                  <div key={result.option_id} className="space-y-2">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                        {result.option_text}
-                                      </span>
-                                      <span className="text-sm font-semibold text-zinc-900 dark:text-white">
-                                        {result.count} ({percentage}%)
-                                      </span>
-                                    </div>
-                                    <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-3 overflow-hidden">
-                                      <div
-                                        className={`h-3 rounded-full transition-all duration-500 ${
-                                          percentage > 0 ? 'bg-primary-600' : 'bg-zinc-400 dark:bg-zinc-600'
-                                        }`}
-                                        style={{ width: `${percentage}%` }}
-                                      />
-                                    </div>
-                                    {hasUsers && !resultsModal.results?.is_anonymous && (
-                                      <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-700">
+                              <div className="space-y-4">
+                                {(question.results as SurveyResultChoiceOption[]).map((result) => {
+                                  const percentage = resultsModal.results!.total_responses > 0
+                                    ? Math.round((result.count / resultsModal.results!.total_responses) * 100)
+                                    : 0;
+                                  const hasUsers = result.users && result.users.length > 0;
+                                  
+                                  // Filtra usuários pela busca
+                                  const filteredUsers = result.users?.filter(u => 
+                                    u.name.toLowerCase().includes(choiceResponseFilter.toLowerCase())
+                                  ) || [];
+                                  const totalPages = Math.ceil(filteredUsers.length / CHOICE_USERS_PER_PAGE);
+                                  const currentPage = Math.min(choiceResponsePage, totalPages || 1);
+                                  const startIndex = (currentPage - 1) * CHOICE_USERS_PER_PAGE;
+                                  const displayedUsers = filteredUsers.slice(startIndex, startIndex + CHOICE_USERS_PER_PAGE);
+
+                                  return (
+                                    <div key={result.option_id} className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl p-4 shadow-sm">
+                                      <div className="flex justify-between items-center mb-1">
+                                        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
+                                          {result.option_text}
+                                        </span>
+                                        <span className="text-sm font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-2 py-0.5 rounded-lg">
+                                          {result.count} ({percentage}%)
+                                        </span>
+                                      </div>
+                                      
+                                      {hasUsers && !resultsModal.results?.is_anonymous && (
+                                        <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-700">
                                         <div className="flex items-center justify-between mb-2">
                                           <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
                                             <User size={12} />
@@ -1909,7 +1914,8 @@ export const SurveysPage: React.FC = () => {
                                 );
                               })}
                             </div>
-                          )}
+                          </div>
+                        )}
 
                           {/* Texto Aberto */}
                           {question.type === 'text' && (
