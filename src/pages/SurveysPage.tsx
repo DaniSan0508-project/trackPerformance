@@ -1694,10 +1694,6 @@ export const SurveysPage: React.FC = () => {
                           ? (question.results as SurveyResultChoiceOption[]).reduce((sum, r) => sum + r.count, 0)
                           : (question.results as SurveyResultTextOption[]).length;
 
-                        const participationRate = resultsModal.results!.total_responses > 0
-                          ? Math.round((totalQuestionResponses / resultsModal.results!.total_responses) * 100)
-                          : 0;
-
                         return (
                           <div key={question.question_id} className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-4">
                             <div className="flex items-start gap-3 mb-4">
@@ -1723,7 +1719,7 @@ export const SurveysPage: React.FC = () => {
                                     )}
                                   </span>
                                   <span className="text-xs font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-2 py-0.5 rounded-lg">
-                                    {totalQuestionResponses} respostas ({participationRate}% de participação)
+                                    {totalQuestionResponses} {totalQuestionResponses === 1 ? 'resposta' : 'respostas'}
                                   </span>
                                 </div>
                               </div>
@@ -1817,8 +1813,8 @@ export const SurveysPage: React.FC = () => {
 
                               <div className="space-y-4">
                                 {(question.results as SurveyResultChoiceOption[]).map((result) => {
-                                  const percentage = resultsModal.results!.total_responses > 0
-                                    ? Math.round((result.count / resultsModal.results!.total_responses) * 100)
+                                  const percentage = totalQuestionResponses > 0
+                                    ? Math.round((result.count / totalQuestionResponses) * 100)
                                     : 0;
                                   const hasUsers = result.users && result.users.length > 0;
                                   
