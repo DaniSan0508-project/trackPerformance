@@ -11,7 +11,7 @@ import {
   Legend,
   ArcElement,
 } from 'chart.js';
-import { Bar } from 'react-chartjs-2';
+import { Bar, Pie } from 'react-chartjs-2';
 import { useAuth } from '../context/AuthContext';
 
 // Registrar componentes do Chart.js
@@ -1689,50 +1689,79 @@ export const SurveysPage: React.FC = () => {
                         Nenhuma questão nesta pesquisa.
                       </p>
                     ) : (
-                      resultsModal.results.questions.map((question, index) => (
-                        <div key={question.question_id} className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-4">
-                          <div className="flex items-start gap-3 mb-4">
-                            <span className="flex-shrink-0 w-8 h-8 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-lg flex items-center justify-center font-bold text-sm">
-                              {index + 1}
-                            </span>
-                            <div className="flex-1">
-                              <p className="font-medium text-zinc-900 dark:text-white">
-                                {question.question}
-                              </p>
-                              <div className="flex items-center gap-3 mt-1">
-                                <span className="text-xs text-zinc-500 dark:text-zinc-400 capitalize flex items-center gap-1">
-                                  {question.type === 'choice' ? (
-                                    <>
-                                      <BarChart3 size={12} />
-                                      Múltipla escolha
-                                    </>
-                                  ) : (
-                                    <>
-                                      <FileText size={12} />
-                                      Texto aberto
-                                    </>
-                                  )}
-                                </span>
+                      resultsModal.results.questions.map((question, index) => {
+                        const totalQuestionResponses = question.type === 'choice'
+                          ? (question.results as SurveyResultChoiceOption[]).reduce((sum, r) => sum + r.count, 0)
+                          : (question.results as SurveyResultTextOption[]).length;
+
+                        const participationRate = resultsModal.results!.total_responses > 0
+                          ? Math.round((totalQuestionResponses / resultsModal.results!.total_responses) * 100)
+                          : 0;
+
+                        return (
+                          <div key={question.question_id} className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-4">
+                            <div className="flex items-start gap-3 mb-4">
+                              <span className="flex-shrink-0 w-8 h-8 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-lg flex items-center justify-center font-bold text-sm">
+                                {index + 1}
+                              </span>
+                              <div className="flex-1">
+                                <p className="font-medium text-zinc-900 dark:text-white">
+                                  {question.question}
+                                </p>
+                                <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                  <span className="text-xs text-zinc-500 dark:text-zinc-400 capitalize flex items-center gap-1">
+                                    {question.type === 'choice' ? (
+                                      <>
+                                        <BarChart3 size={12} />
+                                        Múltipla escolha
+                                      </>
+                                    ) : (
+                                      <>
+                                        <FileText size={12} />
+                                        Texto aberto
+                                      </>
+                                    )}
+                                  </span>
+                                  <span className="text-xs font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-2 py-0.5 rounded-lg">
+                                    {totalQuestionResponses} respostas ({participationRate}% de participação)
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                          </div>
 
                           {/* Múltipla Escolha */}
                           {question.type === 'choice' && Array.isArray(question.results) && question.results.length > 0 && (
                             <div className="space-y-6">
-                              {/* Gráfico de Barras */}
-                              <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-100 dark:border-zinc-700 h-[300px]">
-                                <Bar
+                              {/* Gráfico de Pizza */}
+                              <div className="bg-zinc-50 dark:bg-zinc-800/50 p-6 rounded-xl border border-zinc-100 dark:border-zinc-700 h-[350px] flex items-center justify-center">
+                                <Pie
                                   data={{
                                     labels: (question.results as SurveyResultChoiceOption[]).map(r => r.option_text),
                                     datasets: [
                                       {
                                         label: 'Quantidade de Respostas',
                                         data: (question.results as SurveyResultChoiceOption[]).map(r => r.count),
-                                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
-                                        borderColor: 'rgb(59, 130, 246)',
+                                        backgroundColor: [
+                                          'rgba(59, 130, 246, 0.7)', // Azul
+                                          'rgba(16, 185, 129, 0.7)', // Verde
+                                          'rgba(139, 92, 246, 0.7)', // Roxo
+                                          'rgba(245, 158, 11, 0.7)', // Âmbar
+                                          'rgba(239, 68, 68, 0.7)',  // Vermelho
+                                          'rgba(20, 184, 166, 0.7)', // Teal
+                                          'rgba(236, 72, 153, 0.7)', // Rosa
+                                          'rgba(107, 114, 128, 0.7)',// Cinza
+                                        ],
+                                        borderColor: [
+                                          'rgb(59, 130, 246)',
+                                          'rgb(16, 185, 129)',
+                                          'rgb(139, 92, 246)',
+                                          'rgb(245, 158, 11)',
+                                          'rgb(239, 68, 68)',
+                                          'rgb(20, 184, 166)',
+                                          'rgb(236, 72, 153)',
+                                          'rgb(107, 114, 128)',
+                                        ],
                                         borderWidth: 1,
-                                        borderRadius: 8,
                                       },
                                     ],
                                   }}
@@ -1741,37 +1770,37 @@ export const SurveysPage: React.FC = () => {
                                     maintainAspectRatio: false,
                                     plugins: {
                                       legend: {
-                                        display: false,
+                                        display: true,
+                                        position: 'right',
+                                        labels: {
+                                          color: 'rgba(156, 163, 175, 1)',
+                                          font: {
+                                            size: 11,
+                                            weight: 'bold'
+                                          },
+                                          padding: 20,
+                                          usePointStyle: true,
+                                          pointStyle: 'circle'
+                                        }
                                       },
                                       tooltip: {
                                         callbacks: {
                                           label: (context) => {
                                             const val = context.raw as number;
-                                            const total = resultsModal.results!.total_responses;
-                                            const pct = total > 0 ? Math.round((val / total) * 100) : 0;
-                                            return `${val} (${pct}%)`;
+                                            const pct = totalQuestionResponses > 0 ? Math.round((val / totalQuestionResponses) * 100) : 0;
+                                            let label = ` ${context.label}: ${val} (${pct}%)`;
+
+                                            if (!resultsModal.results!.is_anonymous) {
+                                              const resultIndex = context.dataIndex;
+                                              const result = (question.results as SurveyResultChoiceOption[])[resultIndex];
+                                              if (result.users && result.users.length > 0) {
+                                                const names = result.users.slice(0, 3).map(u => u.name).join(', ');
+                                                const more = result.users.length > 3 ? '...' : '';
+                                                label += ` - [${names}${more}]`;
+                                              }
+                                            }
+                                            return label;
                                           }
-                                        }
-                                      }
-                                    },
-                                    scales: {
-                                      y: {
-                                        beginAtZero: true,
-                                        ticks: {
-                                          precision: 0,
-                                          color: 'rgba(156, 163, 175, 1)',
-                                        },
-                                        grid: {
-                                          display: true,
-                                          color: 'rgba(156, 163, 175, 0.1)',
-                                        }
-                                      },
-                                      x: {
-                                        ticks: {
-                                          color: 'rgba(156, 163, 175, 1)',
-                                        },
-                                        grid: {
-                                          display: false,
                                         }
                                       }
                                     }
@@ -1857,17 +1886,19 @@ export const SurveysPage: React.FC = () => {
                                           <>
                                             <div className="flex flex-wrap gap-2">
                                               {displayedUsers.map((user) => {
-                                                const hasProfileImage = user.profile_image_path && user.profile_image_path.trim() !== '';
+                                                const profileImg = user.profile_image_path || user.profile_image_url;
+                                                const hasProfileImage = profileImg && profileImg.trim() !== '';
+                                                const responseTime = user.answered_at ? new Date(user.answered_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
                                                 
                                                 return (
                                                   <div
                                                     key={user.id}
                                                     className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-primary-300 dark:hover:border-primary-600 transition-colors"
-                                                    title={user.name}
+                                                    title={`${user.name}${responseTime ? ` às ${responseTime}` : ''}`}
                                                   >
                                                     {hasProfileImage ? (
                                                       <img
-                                                        src={user.profile_image_path}
+                                                        src={profileImg}
                                                         alt={user.name}
                                                         className="w-5 h-5 rounded-full object-cover border border-primary-200 dark:border-primary-800"
                                                       />
@@ -1877,7 +1908,7 @@ export const SurveysPage: React.FC = () => {
                                                       </div>
                                                     )}
                                                     <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 max-w-[120px] truncate">
-                                                      {user.name}
+                                                      {user.name} {responseTime && <span className="text-[10px] text-zinc-400 font-normal">({responseTime})</span>}
                                                     </span>
                                                   </div>
                                                 );
@@ -1976,7 +2007,9 @@ export const SurveysPage: React.FC = () => {
                                         <>
                                           <div className="space-y-3">
                                             {displayedResponses.map((answer, idx) => {
-                                              const hasProfileImage = answer.user?.profile_image_path && answer.user.profile_image_path.trim() !== '';
+                                              const profileImg = answer.user?.profile_image_path || answer.user?.profile_image_url;
+                                              const hasProfileImage = profileImg && profileImg.trim() !== '';
+                                              const responseTime = (answer.answered_at || answer.user?.answered_at) ? new Date(answer.answered_at || answer.user?.answered_at!).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
                                               
                                               return (
                                                 <div
@@ -1988,8 +2021,8 @@ export const SurveysPage: React.FC = () => {
                                                       {!resultsModal.results?.is_anonymous ? (
                                                         hasProfileImage ? (
                                                           <img
-                                                            src={answer.user.profile_image_path}
-                                                            alt={answer.user.name}
+                                                            src={profileImg}
+                                                            alt={answer.user?.name}
                                                             className="w-10 h-10 rounded-full object-cover border-2 border-primary-200 dark:border-primary-800"
                                                           />
                                                         ) : (
@@ -2004,11 +2037,23 @@ export const SurveysPage: React.FC = () => {
                                                       )}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                      {!resultsModal.results?.is_anonymous ? (
-                                                        <p className="text-sm font-semibold text-zinc-900 dark:text-white mb-1">
-                                                          {answer.user?.name || 'Usuário'}
-                                                        </p>
-                                                      ) : null}
+                                                      <div className="flex items-center justify-between mb-1">
+                                                        {!resultsModal.results?.is_anonymous ? (
+                                                          <p className="text-sm font-semibold text-zinc-900 dark:text-white">
+                                                            {answer.user?.name || 'Usuário'}
+                                                          </p>
+                                                        ) : (
+                                                          <p className="text-sm font-semibold text-zinc-400 dark:text-zinc-500">
+                                                            Anônimo
+                                                          </p>
+                                                        )}
+                                                        {responseTime && (
+                                                          <span className="text-[10px] text-zinc-400 dark:text-zinc-500 flex items-center gap-1">
+                                                            <Clock size={10} />
+                                                            {responseTime}
+                                                          </span>
+                                                        )}
+                                                      </div>
                                                       <p className="text-sm text-zinc-700 dark:text-zinc-300 italic leading-relaxed break-words">
                                                         "{answer.text_answer}"
                                                       </p>
@@ -2060,8 +2105,9 @@ export const SurveysPage: React.FC = () => {
                             </p>
                           )}
                         </div>
-                      ))
-                    )}
+                      );
+                    })
+                  )}
                   </div>
                 )}
               </div>

@@ -324,11 +324,14 @@ export interface Survey {
 
 export interface SurveyResultTextOption {
   text_answer: string;
+  answered_at?: string;
   user_id: number;
   user: {
     id: number;
     name: string;
-    profile_image_path: string | null;
+    profile_image_path?: string | null;
+    profile_image_url?: string | null;
+    answered_at?: string;
   };
 }
 
@@ -339,7 +342,9 @@ export interface SurveyResultChoiceOption {
   users: Array<{
     id: number;
     name: string;
-    profile_image_path: string | null;
+    profile_image_path?: string | null;
+    profile_image_url?: string | null;
+    answered_at?: string;
   }>;
 }
 
