@@ -31,29 +31,19 @@ export const productsService = {
   },
 
   getAllProductsComplete: async (token: string, search = '', filterType: 'name' | 'barcode' = 'name') => {
-    const allProducts: Product[] = [];
-    let currentPage = 1;
-    let lastPage = 1;
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', '1');
+    queryParams.append('per_page', '9999');
+    if (search) {
+      queryParams.append(`filter[${filterType}]`, search);
+    }
 
-    do {
-      const queryParams = new URLSearchParams();
-      queryParams.append('page', currentPage.toString());
-      queryParams.append('per_page', '100');
-      if (search) {
-        queryParams.append(`filter[${filterType}]`, search);
-      }
+    const response = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
+      headers: getHeaders(token),
+    });
+    const data = await handleResponse(response);
 
-      const response = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
-        headers: getHeaders(token),
-      });
-      const data = await handleResponse(response);
-      
-      allProducts.push(...(data.data || []));
-      lastPage = data.meta?.last_page || data.last_page || 1;
-      currentPage++;
-    } while (currentPage <= lastPage);
-
-    return allProducts;
+    return data.data || [];
   },
 
   createProduct: async (token: string, data: {
@@ -71,25 +61,15 @@ export const productsService = {
   },
 
   getAllProductGroups: async (token: string) => {
-    const allGroups: any[] = [];
-    let currentPage = 1;
-    let lastPage = 1;
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', '1');
+    queryParams.append('per_page', '9999');
 
-    do {
-      const queryParams = new URLSearchParams();
-      queryParams.append('page', currentPage.toString());
-      queryParams.append('per_page', '100');
+    const response = await fetch(`${API_BASE_URL}/product-groups?${queryParams.toString()}`, {
+      headers: getHeaders(token),
+    });
+    const data = await handleResponse(response);
 
-      const response = await fetch(`${API_BASE_URL}/product-groups?${queryParams.toString()}`, {
-        headers: getHeaders(token),
-      });
-      const data = await handleResponse(response);
-
-      allGroups.push(...(data.data || []));
-      lastPage = data.meta?.last_page || data.last_page || 1;
-      currentPage++;
-    } while (currentPage <= lastPage);
-
-    return allGroups;
+    return data.data || [];
   },
 };
