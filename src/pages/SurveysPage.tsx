@@ -1729,8 +1729,15 @@ export const SurveysPage: React.FC = () => {
                               </div>
                             </div>
 
-                          {/* Múltipla Escolha */}
-                          {question.type === 'choice' && Array.isArray(question.results) && question.results.length > 0 && (
+                          {/* Múltipla Escolha - Sem respostas */}
+                          {question.type === 'choice' && totalQuestionResponses === 0 && (
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400 italic text-center py-4">
+                              Nenhuma resposta ainda.
+                            </p>
+                          )}
+
+                          {/* Múltipla Escolha - Com respostas */}
+                          {question.type === 'choice' && Array.isArray(question.results) && question.results.length > 0 && totalQuestionResponses > 0 && (
                             <div className="space-y-6">
                               {/* Gráfico de Pizza */}
                               <div className="bg-zinc-50 dark:bg-zinc-800/50 p-6 rounded-xl border border-zinc-100 dark:border-zinc-700 h-[350px] flex items-center justify-center">
