@@ -445,13 +445,13 @@ export const DashboardPage = () => {
                     className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
                     <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-zinc-900 dark:text-white">
                         <ChartNoAxesColumn size={20} className="text-primary-600"/>
-                        Índice de Engajamento por Loja
+                        Índice de Engajamento por Unidade
                     </h3>
                     {loadingEngagementIndex ? (
                         <div className="text-zinc-400">Carregando...</div>
                     ) : (
                         (() => {
-                            if (!engagementIndex.length) return <div className="text-zinc-500">Nenhuma loja encontrada</div>;
+                            if (!engagementIndex.length) return <div className="text-zinc-500">Nenhuma unidade encontrada</div>;
                             const maxScore = Math.max(...engagementIndex.map(e => e.score));
                             const fmt = (n: number) => new Intl.NumberFormat('pt-BR').format(n);
                             return (

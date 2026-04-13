@@ -420,7 +420,7 @@ export const TeamPage: React.FC = () => {
           'The email has already been taken.': 'Este e-mail já está em uso.',
           'The password field is required.': 'O campo senha é obrigatório.',
           'The name field is required.': 'O campo nome é obrigatório.',
-          'The selected store id is invalid.': 'A loja selecionada é inválida.',
+          'The selected store id is invalid.': 'A unidade selecionada é inválida.',
           'The password must be at least 8 characters.': 'A senha deve ter pelo menos 8 caracteres.',
         };
 
@@ -858,14 +858,14 @@ export const TeamPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Loja</label>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Unidade</label>
                       <select
                         value={formData.store_id}
                         onChange={(e) => setFormData({ ...formData, store_id: e.target.value ? Number(e.target.value) : '' })}
                         disabled={!isAdmin}
                         className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:bg-zinc-100 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500"
                       >
-                        <option value="">Selecione uma loja</option>
+                        <option value="">Selecione uma unidade</option>
                         {stores.map(store => (
                           <option key={store.id} value={store.id}>{store.name}</option>
                         ))}
@@ -903,7 +903,7 @@ export const TeamPage: React.FC = () => {
                       <textarea
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        placeholder="Ex: Gerente da loja centro..."
+                        placeholder="Ex: Gerente da unidade centro..."
                         rows={3}
                         className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white resize-none"
                       />

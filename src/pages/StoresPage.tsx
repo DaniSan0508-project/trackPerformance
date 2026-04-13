@@ -146,7 +146,7 @@ export const StoresPage: React.FC = () => {
       setToItem(data.meta.to);
     } catch (err: any) {
       console.error('Error fetching stores:', err);
-      setError(err.message || 'Não foi possível carregar as lojas.');
+      setError(err.message || 'Não foi possível carregar as unidades.');
     } finally {
       setLoading(false);
     }
@@ -287,10 +287,10 @@ export const StoresPage: React.FC = () => {
 
       await fetchStores(currentPage, searchTerm);
       handleCloseModal();
-      addToast('success', editingStore ? 'Loja atualizada com sucesso!' : 'Loja criada com sucesso!');
+      addToast('success', editingStore ? 'Unidade atualizada com sucesso!' : 'Unidade criada com sucesso!');
     } catch (error) {
       console.error('Error saving store:', error);
-      addToast('error', 'Erro ao salvar loja. Verifique os dados e tente novamente.');
+      addToast('error', 'Erro ao salvar unidade. Verifique os dados e tente novamente.');
     } finally {
       setSaving(false);
     }
@@ -302,13 +302,13 @@ export const StoresPage: React.FC = () => {
     try {
       await storesService.deleteStore(token, id);
       await fetchStores(currentPage, searchTerm);
-      addToast('success', 'Loja excluída com sucesso!');
+      addToast('success', 'Unidade excluída com sucesso!');
     } catch (error: any) {
       console.error('Error deleting store:', error);
       if (error.message === 'STORE_HAS_LINKED_USERS') {
-        addToast('error', 'Não é possível deletar uma loja que tenha usuários vinculados.');
+        addToast('error', 'Não é possível deletar uma unidade que tenha usuários vinculados.');
       } else {
-        addToast('error', 'Erro ao excluir loja.');
+        addToast('error', 'Erro ao excluir unidade.');
       }
     } finally {
       setDeletingId(null);
@@ -318,8 +318,8 @@ export const StoresPage: React.FC = () => {
   const handleDelete = (id: number) => {
     setConfirmModal({
       isOpen: true,
-      title: 'Excluir Loja',
-      message: 'Tem certeza que deseja excluir esta loja? Esta ação não pode ser desfeita.',
+      title: 'Excluir Unidade',
+      message: 'Tem certeza que deseja excluir esta unidade? Esta ação não pode ser desfeita.',
       onConfirm: async () => await executeDeleteStore(id),
       isLoading: false,
     });
@@ -362,7 +362,7 @@ export const StoresPage: React.FC = () => {
       addToast('success', 'Grupo excluído com sucesso!');
     } catch (error) {
       console.error('Error deleting group:', error);
-      addToast('error', 'Erro ao excluir grupo. Verifique se não há lojas vinculadas.');
+      addToast('error', 'Erro ao excluir grupo. Verifique se não há unidades vinculadas.');
     }
   };
 
@@ -370,7 +370,7 @@ export const StoresPage: React.FC = () => {
     setConfirmModal({
       isOpen: true,
       title: 'Excluir Grupo',
-      message: 'Tem certeza que deseja excluir este grupo? Lojas vinculadas podem ficar sem grupo.',
+      message: 'Tem certeza que deseja excluir este grupo? Unidades vinculadas podem ficar sem grupo.',
       onConfirm: async () => await executeDeleteGroup(id),
       isLoading: false,
     });
@@ -400,8 +400,8 @@ export const StoresPage: React.FC = () => {
       <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Lojas</h1>
-            <p className="text-zinc-500 dark:text-zinc-400">Gerencie as lojas da sua rede.</p>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Unidades</h1>
+            <p className="text-zinc-500 dark:text-zinc-400">Gerencie as unidades da sua rede.</p>
           </div>
           <div className="flex gap-2">
             <button 
@@ -416,7 +416,7 @@ export const StoresPage: React.FC = () => {
               className="bg-primary-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-primary-700 shadow-sm transition-all flex items-center gap-2"
             >
               <Plus size={18} />
-              Nova Loja
+              Nova Unidade
             </button>
           </div>
         </div>
@@ -524,7 +524,7 @@ export const StoresPage: React.FC = () => {
               {stores.length === 0 && (
                 <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors duration-200">
                   <Store className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
-                  <h3 className="text-lg font-medium text-zinc-900 dark:text-white">Nenhuma loja encontrada</h3>
+                  <h3 className="text-lg font-medium text-zinc-900 dark:text-white">Nenhuma unidade encontrada</h3>
                   <p className="text-zinc-500 dark:text-zinc-400">Tente ajustar seus filtros de busca.</p>
                 </div>
               )}
@@ -578,7 +578,7 @@ export const StoresPage: React.FC = () => {
                       </button>
                     )}
                     <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
-                      {isManagingGroups ? 'Gerenciar Grupos' : (editingStore ? 'Editar Loja' : 'Nova Loja')}
+                      {isManagingGroups ? 'Gerenciar Grupos' : (editingStore ? 'Editar Unidade' : 'Nova Unidade')}
                     </h2>
                   </div>
                   <button onClick={handleCloseModal} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
@@ -623,7 +623,7 @@ export const StoresPage: React.FC = () => {
                 ) : (
                   <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Nome da Loja *</label>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Nome da Unidade *</label>
                       <input
                         type="text"
                         value={formData.name}
@@ -631,7 +631,7 @@ export const StoresPage: React.FC = () => {
                         className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                           formErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                         }`}
-                        placeholder="Ex: Loja Matriz"
+                        placeholder="Ex: Unidade Matriz"
                       />
                       {formErrors.name && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.name}</p>}
                     </div>
@@ -676,13 +676,13 @@ export const StoresPage: React.FC = () => {
                         className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                           formErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                         }`}
-                        placeholder="loja@empresa.com"
+                        placeholder="unidade@empresa.com"
                       />
                       {formErrors.email && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.email}</p>}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Grupo de Lojas</label>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Grupo de Unidades</label>
                       <div className="flex gap-2">
                         <select
                           value={formData.store_group_id || ''}
@@ -714,7 +714,7 @@ export const StoresPage: React.FC = () => {
                         className="w-4 h-4 text-primary-600 border-zinc-300 dark:border-zinc-600 rounded focus:ring-primary-500 bg-white dark:bg-zinc-800"
                       />
                       <label htmlFor="active" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
-                        Loja Ativa
+                        Unidade Ativa
                       </label>
                     </div>
 

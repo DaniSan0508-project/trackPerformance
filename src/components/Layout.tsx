@@ -69,7 +69,7 @@ export const Layout: React.FC = () => {
           <NavItem
             to="/stores"
             icon={<Building2 size={20} />}
-            label="Lojas"
+            label="Unidades"
             active={location.pathname === '/stores'}
           />
           <NavItem
