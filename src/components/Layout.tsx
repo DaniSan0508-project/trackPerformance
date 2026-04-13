@@ -22,7 +22,8 @@ import {
   Sun,
   Moon,
   Trophy,
-    LucidePackage
+    LucidePackage,
+    Mail
 } from 'lucide-react';
 
 export const Layout: React.FC = () => {
@@ -113,6 +114,18 @@ export const Layout: React.FC = () => {
             icon={<FileText size={20} />}
             label="Pesquisas"
             active={location.pathname === '/surveys'}
+          />
+          <NavItem
+            to="/communications"
+            icon={<Mail size={20} />}
+            label="Comunicados"
+            active={location.pathname === '/communications' || location.pathname === '/communications/feed'}
+          />
+          <NavItem
+            to="/communications/feed"
+            icon={<Mail size={20} />}
+            label="Meus Comunicados"
+            active={location.pathname === '/communications/feed'}
           />
           <NavItem
             to="/settings"

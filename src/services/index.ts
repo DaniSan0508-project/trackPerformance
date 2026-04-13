@@ -1,6 +1,7 @@
 export * from './auth/authService';
 export * from './campaigns/campaignsService';
 export * from './coins/coinsService';
+export * from './communications/communicationsService';
 export * from './dashboard/dashboardService';
 export * from './feedbacks/feedbacksService';
 export * from './manufacturers/manufacturersService';
