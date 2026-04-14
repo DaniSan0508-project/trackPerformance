@@ -378,6 +378,20 @@ export const RewardsPage: React.FC = () => {
       handleCloseModal();
     } catch (error: any) {
       console.error('Error saving reward:', error);
+
+      // Usa erros de campo se disponíveis (API 422)
+      if (error.fieldErrors) {
+        const apiErrors: { [key: string]: string } = {};
+        Object.entries(error.fieldErrors).forEach(([key, messages]) => {
+          if (Array.isArray(messages) && messages.length > 0) {
+            apiErrors[key] = messages[0];
+          } else if (typeof messages === 'string') {
+            apiErrors[key] = messages;
+          }
+        });
+        setFormErrors(apiErrors);
+      }
+
       addToast('error', error.message || 'Erro ao salvar recompensa.');
     } finally {
       setSaving(false);
@@ -526,10 +540,9 @@ export const RewardsPage: React.FC = () => {
 
   const handleUpdateExistingImage = async (imageId: number, file?: File, isPrimary?: number) => {
     if (!token || !editingReward) return;
-    
+
     try {
       const data = new FormData();
-      data.append('_method', 'PUT');
       if (file) data.append('image', file);
       if (isPrimary !== undefined) data.append('is_primary', String(isPrimary));
       
@@ -729,6 +742,34 @@ export const RewardsPage: React.FC = () => {
                         </div>
                       )}
 
+                      {/* Admin Actions - posicionados no canto direito */}
+                      {isAdmin && (
+                        <div className={`absolute right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 ${
+                          reward.is_active ? 'top-2' : 'top-10'
+                        }`}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenModal(reward);
+                            }}
+                            className="p-1.5 bg-white/90 dark:bg-zinc-800/90 text-primary-600 dark:text-primary-400 rounded-lg shadow-md hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                            title="Editar"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(reward);
+                            }}
+                            className="p-1.5 bg-white/90 dark:bg-zinc-800/90 text-red-600 dark:text-red-400 rounded-lg shadow-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            title="Excluir"
+                          >
+                            {deletingId === reward.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                          </button>
+                        </div>
+                      )}
+
                       {/* Badge de Tipo de Uso (Campaign/Standard) */}
                       {reward.reward_type === 'campaign' && (
                         <div className={`absolute z-10 flex flex-col gap-1 ${
@@ -787,32 +828,6 @@ export const RewardsPage: React.FC = () => {
                         </div>
                       </div>
                     </div>
-
-                    {/* Admin Actions */}
-                    {isAdmin && (
-                      <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenModal(reward);
-                          }}
-                          className="p-1.5 bg-white/90 dark:bg-zinc-800/90 text-primary-600 dark:text-primary-400 rounded-lg shadow-md hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                          title="Editar"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(reward);
-                          }}
-                          className="p-1.5 bg-white/90 dark:bg-zinc-800/90 text-red-600 dark:text-red-400 rounded-lg shadow-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                          title="Excluir"
-                        >
-                          {deletingId === reward.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                        </button>
-                      </div>
-                    )}
                   </motion.div>
                 );
               })}

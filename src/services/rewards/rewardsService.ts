@@ -51,7 +51,7 @@ export const rewardsService = {
 
   updateRewardImage: async (token: string, rewardId: number, imageId: number, formData: FormData) => {
     const response = await fetch(`${API_BASE_URL}/rewards/${rewardId}/images/${imageId}`, {
-      method: 'POST',
+      method: 'PUT',
       headers: getHeaders(token, true),
       body: formData,
     });

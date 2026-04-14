@@ -5,9 +5,18 @@ export const handleResponse = async (response: Response) => {
     window.dispatchEvent(new CustomEvent('auth-unauthorized'));
     throw new Error('Não autorizado');
   }
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+
+    // Erro de validação 422: propaga erros por campo
+    if (response.status === 422 && errorData.errors) {
+      const error = new Error(errorData.message || 'Erro de validação');
+      (error as any).response = { data: errorData, status: response.status };
+      (error as any).fieldErrors = errorData.errors;
+      throw error;
+    }
+
     const error = new Error(errorData.message || 'Falha na requisição');
     (error as any).response = { data: errorData, status: response.status };
     throw error;
