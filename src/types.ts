@@ -372,12 +372,21 @@ export interface SurveySatisfactionReport {
   }>;
 }
 
+export interface SurveyNPSSummary {
+  total_answers: number;
+  promoters: number;
+  detractors: number;
+  neutrals: number;
+  nps_score: number;
+}
+
 export interface SurveyResults {
   survey_id: number;
   title: string;
   is_anonymous: boolean;
   total_responses: number;
   questions: SurveyResultQuestion[];
+  nps_summary?: SurveyNPSSummary;
 }
 
 export interface CoinStatement {
