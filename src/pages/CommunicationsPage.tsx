@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Mail, Plus, Edit2, Trash2, X, Save, Eye, Clock, CheckCircle, Archive, BarChart3, Users, User } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Mail, Plus, Edit2, Trash2, X, Save, Eye, Clock, CheckCircle, Archive, BarChart3, Users, User, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Communication, CommunicationStatus, CommunicationView } from '../types/communication';
-import { communicationsService, usersService } from '../services';
+import { communicationsService, usersService, rolesService } from '../services';
+import { getFullImageUrl } from '../utils/formatters';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { RichTextEditor } from '../components/RichTextEditor';
+import type { Role } from '../types';
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -57,6 +59,14 @@ export const CommunicationsPage: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const debouncedUserSearch = useDebounce(userSearch, 500);
+
+  // Abas do modal
+  const [activeTab, setActiveTab] = useState<'basic' | 'recipients'>('basic');
+
+  // Cargos para seleção em massa
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [fullySelectedRoles, setFullySelectedRoles] = useState<Set<string>>(new Set());
+  const [selectByRoleLoading, setSelectByRoleLoading] = useState<string | null>(null);
 
   // Stats modal
   const [statsModal, setStatsModal] = useState<{
@@ -114,19 +124,32 @@ export const CommunicationsPage: React.FC = () => {
     setCurrentPage(1);
   }, [debouncedSearchTerm, statusFilter]);
 
-  // Buscar usuários
+  // Buscar usuários e cargos quando modal abrir
   useEffect(() => {
-    const fetchUsers = async () => {
-      if (isModalOpen && token && !formData.target_all) {
+    const fetchData = async () => {
+      if (isModalOpen && token) {
+        // Buscar usuários
+        if (!formData.target_all) {
+          try {
+            const response = await usersService.getUsers(token, 1, debouncedUserSearch, 'name');
+            setUsers(response.data || []);
+          } catch (error) {
+            console.error('Error fetching users:', error);
+          }
+        }
+        
+        // Buscar cargos
         try {
-          const response = await usersService.getUsers(token, 1, debouncedUserSearch, 'name');
-          setUsers(response.data || []);
+          const rolesData = await rolesService.getAllRoles(token);
+          if (rolesData?.data) {
+            setRoles(rolesData.data);
+          }
         } catch (error) {
-          console.error('Error fetching users:', error);
+          console.error('Error fetching roles:', error);
         }
       }
     };
-    fetchUsers();
+    fetchData();
   }, [isModalOpen, token, formData.target_all, debouncedUserSearch]);
 
   const handleRefresh = () => {
@@ -159,6 +182,57 @@ export const CommunicationsPage: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingCommunication(null);
+    setActiveTab('basic');
+    setFullySelectedRoles(new Set());
+  };
+
+  // Verifica se todos os usuários de um cargo estão selecionados
+  const areAllUsersSelectedByRole = (role: string): boolean => {
+    const roleUsers = users.filter(u => u.role === role);
+    if (roleUsers.length === 0) return false;
+    return roleUsers.every(u => selectedUsers.includes(u.id));
+  };
+
+  // Seleciona/desseleciona todos os usuários de um cargo
+  const handleSelectAllByRole = async (role: string) => {
+    setSelectByRoleLoading(role);
+    
+    try {
+      // Buscar todos os usuários se necessário
+      let allUsers = users;
+      if (users.length === 0) {
+        const response = await usersService.getUsers(token!, 1, '', 'name');
+        allUsers = response.data || [];
+        setUsers(allUsers);
+      }
+
+      // Filtra usuários do cargo selecionado
+      const roleUsers = allUsers.filter(u => u.role === role);
+      const validUserIds = roleUsers.map(u => u.id);
+
+      // Toggle: se já estão todos selecionados, desseleciona; senão, adiciona
+      const allRoleSelected = validUserIds.length > 0 && validUserIds.every(id => selectedUsers.includes(id));
+      
+      if (allRoleSelected) {
+        setSelectedUsers(prev => prev.filter(id => !validUserIds.includes(id)));
+        setFullySelectedRoles(prev => {
+          const next = new Set(prev);
+          next.delete(role);
+          return next;
+        });
+      } else {
+        setSelectedUsers(prev => {
+          const newIds = validUserIds.filter(id => !prev.includes(id));
+          return [...prev, ...newIds];
+        });
+        setFullySelectedRoles(prev => new Set(prev).add(role));
+      }
+    } catch (error) {
+      console.error('Error selecting users by role:', error);
+      addToast('error', 'Erro ao selecionar usuários por cargo.');
+    } finally {
+      setSelectByRoleLoading(null);
+    }
   };
 
   const handleSubmit = async () => {
@@ -576,142 +650,259 @@ export const CommunicationsPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Conteúdo */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {/* Título */}
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    Título *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    placeholder="Ex: Comunicado Importante"
-                    className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                  />
-                </div>
+              {/* Tabs */}
+              <div className="flex border-b border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/30">
+                <button
+                  onClick={() => setActiveTab('basic')}
+                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                    activeTab === 'basic'
+                      ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 border-b-2 border-primary-500'
+                      : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  Dados Básicos
+                </button>
+                <button
+                  onClick={() => setActiveTab('recipients')}
+                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                    activeTab === 'recipients'
+                      ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 border-b-2 border-primary-500'
+                      : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  Destinatários {!formData.target_all && selectedUsers.length > 0 && `(${selectedUsers.length})`}
+                </button>
+              </div>
 
-                {/* Conteúdo */}
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    Conteúdo *
-                  </label>
-                  <RichTextEditor
-                    value={formData.content}
-                    onChange={(value) => setFormData({ ...formData, content: value })}
-                    placeholder="Digite o conteúdo do comunicado..."
-                  />
-                </div>
-
-                {/* Destinatários */}
-                <div className="space-y-3">
-                  <label className="flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={formData.target_all}
-                      onChange={(e) => setFormData({ ...formData, target_all: e.target.checked })}
-                      className="w-5 h-5 text-primary-600 rounded focus:ring-primary-500"
-                    />
+              {/* Tab Content */}
+              <div className="flex-1 overflow-y-auto p-6 min-h-0">
+                {/* Aba Dados Básicos */}
+                {activeTab === 'basic' && (
+                  <div className="space-y-4">
+                    {/* Título */}
                     <div>
-                      <p className="font-medium text-zinc-900 dark:text-white">Enviar para todos os usuários</p>
-                      <p className="text-sm text-zinc-500 dark:text-zinc-400">O comunicado será enviado para todos os usuários do sistema</p>
-                    </div>
-                  </label>
-
-                  {!formData.target_all && (
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                        Buscar usuários
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Título *
                       </label>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
-                        <input
-                          type="text"
-                          placeholder="Buscar por nome..."
-                          value={userSearch}
-                          onChange={(e) => setUserSearch(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                        />
-                      </div>
+                      <input
+                        type="text"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        placeholder="Ex: Comunicado Importante"
+                        className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                      />
+                    </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto">
-                        {users.map(user => (
-                          <label
-                            key={user.id}
-                            className="flex items-center gap-2 p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedUsers.includes(user.id)}
-                              onChange={() => {
+                    {/* Conteúdo */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Conteúdo *
+                      </label>
+                      <RichTextEditor
+                        value={formData.content}
+                        onChange={(value) => setFormData({ ...formData, content: value })}
+                        placeholder="Digite o conteúdo do comunicado..."
+                      />
+                    </div>
+
+                    {/* Agendamento */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Agendar publicação (opcional)
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={formData.scheduled_at}
+                        onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Aba Destinatários */}
+                {activeTab === 'recipients' && (
+                  <div className="space-y-4">
+                    {/* Opção enviar para todos */}
+                    <label className="flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formData.target_all}
+                        onChange={(e) => setFormData({ ...formData, target_all: e.target.checked })}
+                        className="w-5 h-5 text-primary-600 rounded focus:ring-primary-500"
+                      />
+                      <div>
+                        <p className="font-medium text-zinc-900 dark:text-white">Enviar para todos os usuários</p>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">O comunicado será enviado para todos os usuários do sistema</p>
+                      </div>
+                    </label>
+
+                    {!formData.target_all && (
+                      <>
+                        {/* Filtrar por Cargo */}
+                        {roles.length > 0 && (
+                          <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                            <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 mb-3 uppercase">
+                              Filtrar por Cargo
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {roles.map((roleObj) => {
+                                const role = roleObj.description;
+                                const hasUsersFromRole = users.some(u => u.role === role);
+                                const isSelected = fullySelectedRoles.has(role);
+                                
+                                return (
+                                  <button
+                                    key={role}
+                                    onClick={() => handleSelectAllByRole(role)}
+                                    disabled={selectByRoleLoading !== null}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                                      isSelected
+                                        ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border-primary-200 dark:border-primary-800'
+                                        : 'bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-primary-300 dark:hover:border-primary-700'
+                                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                  >
+                                    {selectByRoleLoading === role ? (
+                                      <Loader2 size={12} className="animate-spin" />
+                                    ) : isSelected ? (
+                                      <Check size={12} />
+                                    ) : (
+                                      <Plus size={12} />
+                                    )}
+                                    {role}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Busca de usuários */}
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
+                          <input
+                            type="text"
+                            placeholder="Buscar por nome..."
+                            value={userSearch}
+                            onChange={(e) => setUserSearch(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                          />
+                        </div>
+
+                        {/* Lista de usuários */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto">
+                          {users.map(user => (
+                            <motion.button
+                              key={user.id}
+                              onClick={() => {
                                 setSelectedUsers(prev =>
                                   prev.includes(user.id) ? prev.filter(id => id !== user.id) : [...prev, user.id]
                                 );
                               }}
-                              className="w-4 h-4 text-primary-600 rounded"
-                            />
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              {user.profile_image_url ? (
-                                <img src={user.profile_image_url} alt={user.name} className="w-6 h-6 rounded-full object-cover" />
-                              ) : (
-                                <div className="w-6 h-6 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
-                                  <User size={12} className="text-primary-600 dark:text-primary-400" />
-                                </div>
-                              )}
-                              <span className="text-sm text-zinc-900 dark:text-white truncate">{user.name}</span>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
+                              className={`flex items-start gap-3 p-3 border rounded-xl text-left transition-all ${
+                                selectedUsers.includes(user.id)
+                                  ? 'border-primary-300 dark:border-primary-700 bg-primary-50/50 dark:bg-primary-900/20'
+                                  : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
+                              }`}
+                            >
+                              {/* Avatar */}
+                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-100 to-teal-100 border-2 border-primary-200 flex items-center justify-center text-primary-600 overflow-hidden flex-shrink-0">
+                                {user.profile_image_url ? (
+                                  <img
+                                    src={getFullImageUrl(user.profile_image_url) || ''}
+                                    alt={user.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-lg font-bold">
+                                    {user.name.charAt(0).toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
 
-                      {selectedUsers.length > 0 && (
-                        <p className="text-sm text-primary-600 dark:text-primary-400 font-medium">
-                          {selectedUsers.length} usuário(s) selecionado(s)
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
+                              {/* Informações */}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-sm text-zinc-900 dark:text-white truncate">{user.name}</p>
+                                {user.role && (
+                                  <p className="text-[10px] font-semibold text-primary-600 dark:text-primary-400 uppercase tracking-wider">
+                                    {user.role}
+                                  </p>
+                                )}
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{user.email}</p>
+                                {user.store && (
+                                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate mt-1">
+                                    {user.store.name}
+                                  </p>
+                                )}
+                              </div>
 
-                {/* Agendamento */}
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    Agendar publicação (opcional)
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={formData.scheduled_at}
-                    onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                  />
-                </div>
+                              {/* Checkbox indicator */}
+                              <div className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${
+                                selectedUsers.includes(user.id)
+                                  ? 'bg-primary-600 border-primary-600'
+                                  : 'border-zinc-300 dark:border-zinc-600'
+                              }`}>
+                                {selectedUsers.includes(user.id) && (
+                                  <Check size={12} className="text-white" />
+                                )}
+                              </div>
+                            </motion.button>
+                          ))}
+                        </div>
+
+                        {selectedUsers.length > 0 && (
+                          <p className="text-sm text-primary-600 dark:text-primary-400 font-medium">
+                            {selectedUsers.length} usuário(s) selecionado(s)
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Footer */}
-              <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex justify-end gap-3">
+              <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex justify-between items-center gap-3">
                 <button
                   onClick={handleCloseModal}
                   className="px-6 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all font-bold"
                 >
                   Cancelar
                 </button>
-                <button
-                  onClick={handleSaveDraft}
-                  disabled={saving || !formData.title.trim()}
-                  className="px-6 py-2.5 border border-amber-500 text-amber-600 dark:text-amber-400 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                  {' '}Salvar Rascunho
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={saving || !formData.title.trim() || !formData.content.trim()}
-                  className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold flex items-center gap-2 shadow-lg shadow-primary-500/20"
-                >
-                  {saving ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
-                  {' '}{editingCommunication ? 'Atualizar' : 'Publicar'}
-                </button>
+                
+                <div className="flex items-center gap-3">
+                  {activeTab === 'recipients' && (
+                    <button
+                      onClick={handleSaveDraft}
+                      disabled={saving || !formData.title.trim()}
+                      className="px-6 py-2.5 border border-amber-500 text-amber-600 dark:text-amber-400 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                      {' '}Salvar Rascunho
+                    </button>
+                  )}
+                  
+                  {activeTab === 'basic' && (
+                    <button
+                      onClick={() => setActiveTab('recipients')}
+                      className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all font-bold flex items-center gap-2 shadow-lg shadow-primary-500/20"
+                    >
+                      Próximo
+                      <ChevronRight size={16} />
+                    </button>
+                  )}
+                  
+                  {activeTab === 'recipients' && (
+                    <button
+                      onClick={handleSubmit}
+                      disabled={saving || !formData.title.trim() || !formData.content.trim() || (!formData.target_all && selectedUsers.length === 0)}
+                      className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold flex items-center gap-2 shadow-lg shadow-primary-500/20"
+                    >
+                      {saving ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                      {' '}{editingCommunication ? 'Atualizar' : 'Publicar'}
+                    </button>
+                  )}
+                </div>
               </div>
             </motion.div>
           </div>
