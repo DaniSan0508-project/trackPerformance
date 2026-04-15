@@ -1776,11 +1776,11 @@ export const SurveysPage: React.FC = () => {
                                 setSelectedStoreId(val);
                                 fetchSatisfactionReport(resultsModal.survey!.id, val, selectedRoleId);
                               }}
-                              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                             >
-                              <option value="">Todas as Unidades</option>
+                              <option value="" className="text-zinc-900 dark:text-white">Todas as Unidades</option>
                               {stores.map(store => (
-                                <option key={store.id} value={store.id}>{store.name}</option>
+                                <option key={store.id} value={store.id} className="text-zinc-900 dark:text-white">{store.name}</option>
                               ))}
                             </select>
                           </div>
@@ -1795,11 +1795,11 @@ export const SurveysPage: React.FC = () => {
                                 setSelectedRoleId(val);
                                 fetchSatisfactionReport(resultsModal.survey!.id, selectedStoreId, val);
                               }}
-                              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                             >
-                              <option value="">Todos os Cargos</option>
+                              <option value="" className="text-zinc-900 dark:text-white">Todos os Cargos</option>
                               {roles.map(role => (
-                                <option key={role.id} value={role.id}>{role.description}</option>
+                                <option key={role.id} value={role.id} className="text-zinc-900 dark:text-white">{role.description}</option>
                               ))}
                             </select>
                           </div>
