@@ -1572,7 +1572,7 @@ export const SurveysPage: React.FC = () => {
                                 <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
                                   <p className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
                                     <CheckCircle size={16} />
-                                    Esta questão terá uma escala de 1 a 10. As notas de 5 a 10 são Promotores e de 1 a 4 são Detratores.
+                                    Esta questão terá uma escala de 1 a 10. As notas 5 ou maiores serão consideradas positivas.
                                   </p>
                                 </div>
                               )}
@@ -1605,9 +1605,6 @@ export const SurveysPage: React.FC = () => {
                           <div>
                             <p className="font-semibold text-blue-900 dark:text-blue-300">
                               {questions.length} {questions.length === 1 ? 'questão adicionada' : 'questões adicionadas'}
-                            </p>
-                            <p className="text-sm text-blue-700 dark:text-blue-400">
-                              A pesquisa contém questões mistas (Múltipla Escolha e Texto Aberto e NPS)
                             </p>
                           </div>
                         </div>
