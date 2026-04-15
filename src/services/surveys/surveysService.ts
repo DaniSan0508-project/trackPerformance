@@ -61,4 +61,15 @@ export const surveysService = {
     });
     return handleResponse(response);
   },
+
+  getSatisfactionReport: async (token: string, surveyId: number, storeId?: number, roleId?: number) => {
+    const queryParams = new URLSearchParams();
+    if (storeId) queryParams.append('filter[store_id]', storeId.toString());
+    if (roleId) queryParams.append('filter[role_id]', roleId.toString());
+
+    const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/satisfaction-report?${queryParams.toString()}`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
 };

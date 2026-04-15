@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, FileText, Calendar, Eye, Users, CheckCircle, XCircle, Clock, EyeOff, Plus, Edit2, Trash2, X, Save, Check, User as UserIcon, Shield, User, BarChart3, PlusCircle, GripVertical, Copy, DollarSign } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, FileText, Calendar, Eye, Users, CheckCircle, XCircle, Clock, EyeOff, Plus, Edit2, Trash2, X, Save, Check, User as UserIcon, Shield, User, BarChart3, PlusCircle, GripVertical, Copy, DollarSign, PieChart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Chart as ChartJS,
@@ -24,10 +24,11 @@ ChartJS.register(
   Legend,
   ArcElement
 );
-import { Survey, SurveyStatus, User as UserType, SurveyResults, SurveyResultTextOption, SurveyResultChoiceOption, Role } from '../types';
-import { surveysService, usersService, rolesService } from '../services';
+import { Survey, SurveyStatus, User as UserType, SurveyResults, SurveyResultTextOption, SurveyResultChoiceOption, Role, SurveySatisfactionReport, Store } from '../types';
+import { surveysService, usersService, rolesService, storesService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { hexToRgb } from '../utils/colorUtils';
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -45,15 +46,19 @@ function useDebounce<T>(value: T, delay: number): T {
 interface Question {
   id?: number;
   question: string;
-  type: 'choice' | 'text';
+  type: 'choice' | 'text' | 'nps' | 'satisfaction' | 'satisfaction_10';
   order: number;
   options?: Array<{ id?: number; option_text: string }>;
   required?: boolean;
 }
 
 export const SurveysPage: React.FC = () => {
-  const { token, user: currentUser, coinName } = useAuth();
+  const { token, user: currentUser, coinName, primaryColor } = useAuth();
   const { addToast } = useToast();
+
+  const rgb = hexToRgb(primaryColor);
+  const promoterColor = rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.7)` : 'rgba(16, 185, 129, 0.7)';
+  const promoterBorderColor = primaryColor;
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,13 +142,20 @@ export const SurveysPage: React.FC = () => {
     isOpen: boolean;
     survey: Survey | null;
     results: SurveyResults | null;
+    satisfactionReport: SurveySatisfactionReport | null;
     loading: boolean;
   }>({
     isOpen: false,
     survey: null,
     results: null,
+    satisfactionReport: null,
     loading: false,
   });
+
+  // Filtros para relatório de satisfação
+  const [selectedStoreId, setSelectedStoreId] = useState<number | undefined>(undefined);
+  const [selectedRoleId, setSelectedRoleId] = useState<number | undefined>(undefined);
+  const [stores, setStores] = useState<Store[]>([]);
 
   // Filtros e paginação para respostas
   const [textResponseFilter, setTextResponseFilter] = useState('');
@@ -217,7 +229,7 @@ export const SurveysPage: React.FC = () => {
   // Buscar cargos quando o modal abrir
   useEffect(() => {
     const fetchRoles = async () => {
-      if (isModalOpen && token) {
+      if ((isModalOpen || resultsModal.isOpen) && token) {
         try {
           const response = await rolesService.getRoles(token);
           setRoles(response.data || []);
@@ -227,7 +239,24 @@ export const SurveysPage: React.FC = () => {
       }
     };
     fetchRoles();
-  }, [isModalOpen, token]);
+  }, [isModalOpen, resultsModal.isOpen, token]);
+
+  // Buscar lojas quando o modal de resultados abrir
+  useEffect(() => {
+    const fetchStores = async () => {
+      if (resultsModal.isOpen && token) {
+        try {
+          const response = await storesService.getStores(token, 1);
+          // O getStores pode estar paginado, se precisar de todas pode ser necessário um loop
+          // mas por enquanto pegamos a primeira página ou aumentamos o per_page se possível
+          setStores(response.data || []);
+        } catch (error) {
+          console.error('Error fetching stores:', error);
+        }
+      }
+    };
+    fetchStores();
+  }, [resultsModal.isOpen, token]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
@@ -479,7 +508,7 @@ export const SurveysPage: React.FC = () => {
     
     if (field === 'type') {
       const oldType = newQuestions[index].type;
-      const newType = value as 'choice' | 'text';
+      const newType = value as 'choice' | 'text' | 'nps';
       
       if (oldType !== newType) {
         if (newType === 'choice') {
@@ -487,10 +516,9 @@ export const SurveysPage: React.FC = () => {
           if (!newQuestions[index].options || newQuestions[index].options.length < 2) {
             newQuestions[index].options = [{ option_text: '' }, { option_text: '' }];
           }
-        } else {
-          // Se mudar para texto, podemos manter as opções no estado mas elas serão ignoradas no envio
-          // ou limpá-las para economizar memória e evitar confusão
-          // newQuestions[index].options = [];
+        } else if (newType === 'nps') {
+          // No tipo NPS, as opções de 1-10 são geradas pelo backend
+          newQuestions[index].options = [];
         }
       }
     }
@@ -514,7 +542,11 @@ export const SurveysPage: React.FC = () => {
       return;
     }
     
-    question.options.push({ option_text: '' });
+    const newOptionValue = question.options.length > 0 
+      ? Math.max(...question.options.map(o => o.value || 0)) + 1 
+      : 1;
+
+    question.options.push({ option_text: '', value: newOptionValue });
     setQuestions(newQuestions);
   };
 
@@ -595,7 +627,7 @@ export const SurveysPage: React.FC = () => {
 
     setSaving(true);
     try {
-      // Prepara as questões: remove 'options' para texto e remove campos desnecessários
+      // Prepara as questões: remove 'options' para texto e nps
       const questionsToSave = questions.map(q => {
         const { id, order, question, type, options } = q;
         const baseQuestion: any = { question, type, order };
@@ -664,10 +696,27 @@ export const SurveysPage: React.FC = () => {
 
   const handleViewResults = async (survey: Survey) => {
     if (!token) return;
-    setResultsModal({ isOpen: true, survey, results: null, loading: true });
+    setResultsModal({ isOpen: true, survey, results: null, satisfactionReport: null, loading: true });
+    setSelectedStoreId(undefined);
+    setSelectedRoleId(undefined);
     try {
-      const data = await surveysService.getSurveyResults(token, survey.id);
-      setResultsModal(prev => ({ ...prev, results: data, loading: false }));
+      const resultsData = await surveysService.getSurveyResults(token, survey.id);
+      
+      let satisfactionData = null;
+      // Busca relatório de satisfação se houver alguma questão do tipo satisfaction_5
+      // Ou sempre busca se for o padrão para relatórios consolidados
+      try {
+        satisfactionData = await surveysService.getSatisfactionReport(token, survey.id);
+      } catch (err) {
+        console.error('Error fetching satisfaction report:', err);
+      }
+
+      setResultsModal(prev => ({ 
+        ...prev, 
+        results: resultsData, 
+        satisfactionReport: satisfactionData,
+        loading: false 
+      }));
     } catch (error: any) {
       console.error('Error fetching survey results:', error);
       addToast('error', error.message || 'Erro ao carregar resultados.');
@@ -675,13 +724,28 @@ export const SurveysPage: React.FC = () => {
     }
   };
 
+  const fetchSatisfactionReport = async (surveyId: number, storeId?: number, roleId?: number) => {
+    if (!token) return;
+    setResultsModal(prev => ({ ...prev, loading: true }));
+    try {
+      const data = await surveysService.getSatisfactionReport(token, surveyId, storeId, roleId);
+      setResultsModal(prev => ({ ...prev, satisfactionReport: data, loading: false }));
+    } catch (error: any) {
+      console.error('Error updating satisfaction report:', error);
+      addToast('error', 'Erro ao atualizar relatório com filtros.');
+      setResultsModal(prev => ({ ...prev, loading: false }));
+    }
+  };
+
   const handleCloseResults = () => {
-    setResultsModal({ isOpen: false, survey: null, results: null, loading: false });
+    setResultsModal({ isOpen: false, survey: null, results: null, satisfactionReport: null, loading: false });
     // Resetar filtros e paginação
     setTextResponseFilter('');
     setTextResponsePage(1);
     setChoiceResponseFilter('');
     setChoiceResponsePage(1);
+    setSelectedStoreId(undefined);
+    setSelectedRoleId(undefined);
   };
 
   return (
@@ -1395,6 +1459,7 @@ export const SurveysPage: React.FC = () => {
                                 >
                                   <option value="choice">Múltipla Escolha</option>
                                   <option value="text">Texto Aberto</option>
+                                  <option value="nps">NPS (1 a 10)</option>
                                 </select>
 
                                 {!isReadOnly && (
@@ -1501,6 +1566,17 @@ export const SurveysPage: React.FC = () => {
                                   </p>
                                 </div>
                               )}
+
+                              {/* Info para NPS / Satisfação */}
+                              {(question.type === 'nps' || question.type === 'satisfaction') && (
+                                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
+                                  <p className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                                    <CheckCircle size={16} />
+                                    Esta questão terá uma escala de 1 a 10. As notas de 5 a 10 são Promotores e de 1 a 4 são Detratores.
+                                  </p>
+                                </div>
+                              )}
+
                             </div>
                           </motion.div>
                         ))}
@@ -1684,12 +1760,172 @@ export const SurveysPage: React.FC = () => {
 
                 {resultsModal.results && !resultsModal.loading && (
                   <div className="space-y-6">
+                    {/* Relatório de Satisfação / NPS */}
+                    {resultsModal.satisfactionReport && (
+                      <div className="space-y-6 mb-8">
+                        {/* Filtros */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-100 dark:border-zinc-700">
+                          <div>
+                            <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase mb-2">
+                              Filtrar por Unidade
+                            </label>
+                            <select
+                              value={selectedStoreId || ''}
+                              onChange={(e) => {
+                                const val = e.target.value ? Number(e.target.value) : undefined;
+                                setSelectedStoreId(val);
+                                fetchSatisfactionReport(resultsModal.survey!.id, val, selectedRoleId);
+                              }}
+                              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            >
+                              <option value="">Todas as Unidades</option>
+                              {stores.map(store => (
+                                <option key={store.id} value={store.id}>{store.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase mb-2">
+                              Filtrar por Cargo
+                            </label>
+                            <select
+                              value={selectedRoleId || ''}
+                              onChange={(e) => {
+                                const val = e.target.value ? Number(e.target.value) : undefined;
+                                setSelectedRoleId(val);
+                                fetchSatisfactionReport(resultsModal.survey!.id, selectedStoreId, val);
+                              }}
+                              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            >
+                              <option value="">Todos os Cargos</option>
+                              {roles.map(role => (
+                                <option key={role.id} value={role.id}>{role.description}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Cards de Resumo NPS */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="bg-white dark:bg-zinc-800 p-4 rounded-xl border border-zinc-100 dark:border-zinc-700 shadow-sm flex flex-col items-center justify-center text-center">
+                            <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase mb-1">NPS Score</span>
+                            <span className={`text-3xl font-bold ${
+                              resultsModal.satisfactionReport.nps_score >= 75 ? 'text-emerald-500' :
+                              resultsModal.satisfactionReport.nps_score >= 50 ? 'text-blue-500' :
+                              resultsModal.satisfactionReport.nps_score >= 0 ? 'text-amber-500' : 'text-red-500'
+                            }`}>
+                              {resultsModal.satisfactionReport.nps_score.toFixed(1)}
+                            </span>
+                          </div>
+                          <div className="bg-white dark:bg-zinc-800 p-4 rounded-xl border border-zinc-100 dark:border-zinc-700 shadow-sm flex flex-col items-center justify-center text-center">
+                            <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase mb-1">Satisfação Média</span>
+                            <span className="text-3xl font-bold text-zinc-900 dark:text-white">
+                              {(resultsModal.satisfactionReport.distribution.reduce((acc, d) => acc + (Number(d.option_text) * d.total), 0) / 
+                                (resultsModal.satisfactionReport.total_answers || 1)).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Gráficos NPS */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Composição Promotores/Detratores */}
+                          <div className="bg-white dark:bg-zinc-800 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-700 shadow-sm">
+                            <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
+                              <PieChart size={16} className="text-primary-500" /> Composição de Clima
+                            </h3>
+                            <div className="h-[250px] flex items-center justify-center">
+                              {resultsModal.satisfactionReport.total_answers > 0 ? (
+                                <Pie
+                                  data={{
+                                    labels: ['Promotores (5-10)', 'Detratores (1-4)'],
+                                    datasets: [{
+                                      data: [
+                                        resultsModal.satisfactionReport.promoters,
+                                        resultsModal.satisfactionReport.detractors
+                                      ],
+                                      backgroundColor: [
+                                        promoterColor, // Cor do layout (Promotores)
+                                        'rgba(239, 68, 68, 0.7)',  // Vermelho (Detratores)
+                                      ],
+                                      borderColor: [
+                                        promoterBorderColor,
+                                        'rgb(239, 68, 68)',
+                                      ],
+
+                                      borderWidth: 1,
+                                    }]
+                                  }}
+                                  options={{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                      legend: { position: 'bottom' }
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <div className="text-center text-zinc-400">
+                                  <PieChart size={32} className="mx-auto mb-2 opacity-20" />
+                                  <p className="text-xs">Aguardando respostas</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Distribuição de Notas */}
+                          <div className="bg-white dark:bg-zinc-800 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-700 shadow-sm">
+                            <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
+                              <BarChart3 size={16} className="text-primary-500" /> Distribuição de Notas (1-10)
+                            </h3>
+                            <div className="h-[250px] flex items-center justify-center">
+                              {resultsModal.satisfactionReport.total_answers > 0 ? (
+                                <Bar
+                                  data={{
+                                    labels: resultsModal.satisfactionReport.distribution.map(d => d.option_text),
+                                    datasets: [{
+                                      label: 'Quantidade',
+                                      data: resultsModal.satisfactionReport.distribution.map(d => d.total),
+                                      backgroundColor: resultsModal.satisfactionReport.distribution.map(d => {
+                                        const nota = Number(d.option_text);
+                                        if (nota >= 5) return promoterColor;
+                                        return 'rgba(239, 68, 68, 0.7)';
+                                      }),
+
+                                      borderRadius: 8,
+                                    }]
+                                  }}
+                                  options={{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                      legend: { display: false }
+                                    },
+                                    scales: {
+                                      y: { beginAtZero: true, ticks: { precision: 0 } }
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <div className="text-center text-zinc-400">
+                                  <BarChart3 size={32} className="mx-auto mb-2 opacity-20" />
+                                  <p className="text-xs">Nenhuma nota registrada</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="border-b border-zinc-200 dark:border-zinc-700 pb-2">
+                           <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Detalhamento por Questão</h3>
+                        </div>
+                      </div>
+                    )}
+
                     {resultsModal.results.questions.length === 0 ? (
                       <p className="text-center text-zinc-500 dark:text-zinc-400 py-8">
                         Nenhuma questão nesta pesquisa.
                       </p>
                     ) : (
-                      resultsModal.results.questions.map((question, index) => {
+                      resultsModal.results.questions.filter(q => q.type === 'choice' || q.type === 'text').map((question, index) => {
                         const totalQuestionResponses = question.type === 'choice'
                           ? (question.results as SurveyResultChoiceOption[]).reduce((sum, r) => sum + r.count, 0)
                           : (question.results as SurveyResultTextOption[]).length;

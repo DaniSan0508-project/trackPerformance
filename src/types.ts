@@ -357,8 +357,19 @@ export interface SurveyResultChoiceOption {
 export interface SurveyResultQuestion {
   question_id: number;
   question: string;
-  type: 'choice' | 'text';
+  type: 'choice' | 'text' | 'nps' | 'satisfaction' | 'satisfaction_10';
   results: SurveyResultTextOption[] | SurveyResultChoiceOption[];
+}
+
+export interface SurveySatisfactionReport {
+  total_answers: number;
+  promoters: number; // Notas >= 5
+  detractors: number; // Notas <= 4
+  nps_score: number;
+  distribution: Array<{
+    option_text: string;
+    total: number;
+  }>;
 }
 
 export interface SurveyResults {

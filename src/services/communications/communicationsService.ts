@@ -97,7 +97,7 @@ export const communicationsService = {
     queryParams.append('page', page.toString());
     if (search) queryParams.append('filter[title]', search);
 
-    const response = await fetch(`${API_BASE_URL}/communications/feed?${queryParams.toString()}`, {
+    const response = await fetch(`${API_BASE_URL}/app/communications/feed?${queryParams.toString()}`, {
       headers: getHeaders(token),
     });
     return handleResponse(response);
