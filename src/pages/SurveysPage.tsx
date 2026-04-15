@@ -1459,7 +1459,7 @@ export const SurveysPage: React.FC = () => {
                                 >
                                   <option value="choice">Múltipla Escolha</option>
                                   <option value="text">Texto Aberto</option>
-                                  <option value="nps">NPS (1 a 10)</option>
+                                  <option value="nps">NPS</option>
                                 </select>
 
                                 {!isReadOnly && (
@@ -1607,7 +1607,7 @@ export const SurveysPage: React.FC = () => {
                               {questions.length} {questions.length === 1 ? 'questão adicionada' : 'questões adicionadas'}
                             </p>
                             <p className="text-sm text-blue-700 dark:text-blue-400">
-                              A pesquisa contém questões mistas (Múltipla Escolha e Texto Aberto)
+                              A pesquisa contém questões mistas (Múltipla Escolha e Texto Aberto e NPS)
                             </p>
                           </div>
                         </div>
