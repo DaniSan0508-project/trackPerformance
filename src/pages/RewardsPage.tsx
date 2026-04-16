@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, ShoppingBag, Package, Coins, Images as ImagesIcon, X, Plus, Camera, Trash2, Edit2, Save, Gift, ClipboardList, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, ShoppingBag, Package, Coins, Images as ImagesIcon, X, Plus, Camera, Trash2, Edit2, Save, Gift, ClipboardList, CheckCircle, XCircle, Clock, AlertCircle, Ticket } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Reward, RewardImage, Redemption, RedemptionStatus } from '../types';
@@ -7,6 +7,7 @@ import { rewardsService, redemptionsService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { rewardSchema } from '../validators/schemas';
+import { VouchersTab } from '../components/Rewards/VouchersTab';
 
 const MAX_IMAGES = 3;
 
@@ -96,7 +97,7 @@ export const RewardsPage: React.FC = () => {
   });
 
   // Redemptions states
-  const [activeTab, setActiveTab] = useState<'rewards' | 'redemptions'>('rewards');
+  const [activeTab, setActiveTab] = useState<'rewards' | 'redemptions' | 'vouchers'>('rewards');
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [redemptionsLoading, setRedemptionsLoading] = useState(false);
   const [redemptionsPage, setRedemptionsPage] = useState(1);
@@ -673,6 +674,21 @@ export const RewardsPage: React.FC = () => {
               Resgates
             </div>
           </button>
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab('vouchers')}
+              className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors ${
+                activeTab === 'vouchers'
+                  ? 'bg-primary-600 text-white'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Ticket size={18} />
+                Histórico (Vouchers)
+              </div>
+            </button>
+          )}
         </div>
 
         {/* Filters */}
@@ -981,7 +997,7 @@ export const RewardsPage: React.FC = () => {
                             {/* Items */}
                             <div className="space-y-2">
                               <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                {totalItems} {totalItems === 1 ? 'item' : 'itens'} resgatado{totalItems === 1 ? 'o' : 's'}:
+                                {totalItems} {totalItems === 1 ? 'item resgatado' : 'itens resgatados'}:
                               </div>
                               <div className="flex flex-wrap gap-2">
                                 {items.map((item) => (
@@ -989,17 +1005,29 @@ export const RewardsPage: React.FC = () => {
                                     key={item.id}
                                     className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
                                   >
-                                    {item.reward?.primary_image?.image_full_url ? (
-                                      <img
-                                        src={item.reward.primary_image.image_full_url}
-                                        alt={item.reward.name}
-                                        className="w-8 h-8 object-cover rounded"
-                                      />
-                                    ) : (
-                                      <div className="w-8 h-8 bg-zinc-200 dark:bg-zinc-700 rounded flex items-center justify-center">
-                                        <Package size={16} className="text-zinc-400" />
-                                      </div>
-                                    )}
+                                    {(() => {
+                                      // Get image URL supporting both object and direct string from API
+                                      const primaryImage = item.reward?.primary_image;
+                                      let imageUrl = '';
+                                      
+                                      if (typeof primaryImage === 'string') {
+                                        imageUrl = primaryImage;
+                                      } else if (primaryImage && typeof primaryImage === 'object' && 'image_full_url' in primaryImage) {
+                                        imageUrl = (primaryImage as any).image_full_url;
+                                      }
+
+                                      return imageUrl ? (
+                                        <img
+                                          src={imageUrl}
+                                          alt={item.reward?.name}
+                                          className="w-8 h-8 object-cover rounded shadow-sm border border-zinc-200 dark:border-zinc-700"
+                                        />
+                                      ) : (
+                                        <div className="w-8 h-8 bg-zinc-200 dark:bg-zinc-700 rounded flex items-center justify-center">
+                                          <Package size={16} className="text-zinc-400" />
+                                        </div>
+                                      );
+                                    })()}
                                     <div>
                                       <div className="text-sm font-medium text-zinc-900 dark:text-white">
                                         {item.reward?.name || 'Recompensa removida'}
@@ -1156,6 +1184,11 @@ export const RewardsPage: React.FC = () => {
               </div>
             )}
           </div>
+        )}
+
+        {/* Vouchers Tab */}
+        {activeTab === 'vouchers' && isAdmin && (
+          <VouchersTab />
         )}
 
         {/* Reward Detail Modal */}

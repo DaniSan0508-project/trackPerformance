@@ -300,6 +300,32 @@ export interface Redemption {
   items?: RedemptionItem[];
 }
 
+export type VoucherStatus = 'generated' | 'available' | 'redeemed' | 'validated' | 'activated' | 'used' | 'expired';
+
+export interface Voucher {
+  id: number;
+  code: string;
+  status: VoucherStatus;
+  expires_at: string | null;
+  used_at: string | null;
+  used_location: {
+    latitude: number;
+    longitude: number;
+  } | null;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  reward: {
+    id: number;
+    name: string;
+    description: string;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
 export interface RedemptionItem {
   id: number;
   redemption_id: number;
