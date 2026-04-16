@@ -50,7 +50,13 @@ export const CommunicationsFeedPage: React.FC = () => {
     setError(null);
     try {
       const data = await communicationsService.getCommunicationFeed(token, page, search);
-      setCommunications(data.data);
+      
+      // Filtra comunicados destinados ao usuário
+      const filteredComms = (data.data || []).filter((c: CommunicationFeed) => {
+        return c.target_all || c.target_users?.some(u => u.id === currentUser?.id);
+      });
+
+      setCommunications(filteredComms);
       setCurrentPage(data.meta?.current_page || data.current_page);
       setTotalPages(data.meta?.last_page || data.last_page);
       setTotalItems(data.meta?.total || data.total);

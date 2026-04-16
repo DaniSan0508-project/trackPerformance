@@ -21,20 +21,12 @@ export interface Communication {
     unread_count: number;
     view_rate: number;
   };
+  is_viewed?: boolean;
   created_at: string;
   updated_at: string;
 }
 
-export interface CommunicationFeed {
-  id: number;
-  title: string;
-  content: string;
-  published_at: string;
-  creator: {
-    name: string;
-  };
-  is_viewed: boolean;
-}
+export type CommunicationFeed = Communication;
 
 export interface CommunicationView {
   id: number;

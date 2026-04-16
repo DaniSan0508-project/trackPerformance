@@ -10,7 +10,7 @@ interface CommunicationsPollerProps {
 }
 
 export const CommunicationsPoller: React.FC<CommunicationsPollerProps> = ({ onUnreadCountChange }) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { addToast } = useToast();
   const [pendingCommunications, setPendingCommunications] = useState<CommunicationFeed[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,8 +26,11 @@ export const CommunicationsPoller: React.FC<CommunicationsPollerProps> = ({ onUn
       const data = await communicationsService.getCommunicationFeed(token, 1, '');
       const communications: CommunicationFeed[] = data.data || [];
       
-      // Filtra APENAS comunicados não lidos
-      const unreadCommunications = communications.filter(c => !c.is_viewed);
+      // Filtra APENAS comunicados não lidos e destinados ao usuário
+      const unreadCommunications = communications.filter(c => {
+        const isTargeted = c.target_all || c.target_users?.some(u => u.id === user?.id);
+        return !c.is_viewed && isTargeted;
+      });
 
       // Atualiza contador
       onUnreadCountChange(unreadCommunications.length);
@@ -44,7 +47,7 @@ export const CommunicationsPoller: React.FC<CommunicationsPollerProps> = ({ onUn
       // Silenciar erros de polling para não poluir o console
       console.debug('Polling error:', error);
     }
-  }, [token, onUnreadCountChange, hasShownInitialModal]);
+  }, [token, user, onUnreadCountChange, hasShownInitialModal]);
 
   // Polling a cada 30 segundos
   useEffect(() => {
