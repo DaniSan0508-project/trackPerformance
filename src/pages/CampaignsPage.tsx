@@ -209,6 +209,13 @@ export const CampaignsPage: React.FC = () => {
       return;
     }
 
+    // Validação de caracteres inválidos (Permite apenas # seguido de letras, números e _)
+    const hashtagRegex = /^#[A-Za-z0-9_]+$/;
+    if (!hashtagRegex.test(hashtag)) {
+      addToast('error', 'A hashtag deve conter apenas letras, números e sublinhados (_), começando com #.');
+      return;
+    }
+
     setCheckingHashtag(true);
     try {
       console.log('Chamando API: /campaigns/hashtags');
@@ -1672,7 +1679,7 @@ export const CampaignsPage: React.FC = () => {
                           : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                       }`}
                     >
-                      Ações ({selectedActions.length})
+                      Ações
                     </button>
                   ) : null}
                   {/* Aba de hashtags: apenas para engajamento (criação e update) */}
@@ -1685,7 +1692,7 @@ export const CampaignsPage: React.FC = () => {
                           : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                       }`}
                     >
-                      Hashtags ({selectedHashtags.length})
+                      Hashtags
                     </button>
                   ) : null}
                   {/* Aba de produtos: apenas para vendas (criação e update) */}
@@ -2226,14 +2233,7 @@ export const CampaignsPage: React.FC = () => {
                         />
                       </div>
 
-                      {/* Contador de selecionados */}
-                      <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
-                        <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-                          ⚡ {selectedActions.length} ação(ões) selecionada(s)
-                        </p>
-                      </div>
-
-                      <div className="grid gap-3 max-h-80 overflow-y-auto">
+                      <div className="grid gap-3 max-h-80 overflow-y-auto mt-4">
                         {loadingEngagementActions ? (
                           <div className="flex flex-col items-center justify-center py-8">
                             <Loader2 className="w-6 h-6 text-primary-600 animate-spin mb-2" />
@@ -2362,11 +2362,11 @@ export const CampaignsPage: React.FC = () => {
                             onChange={(e) => {
                               let val = e.target.value;
                               if (val && !val.startsWith('#')) val = '#' + val;
-                              setNewHashtag(val.replace(/\s/g, ''));
+                              // Remove espaços e caracteres especiais (permite apenas #, letras, números e _)
+                              setNewHashtag(val.replace(/\s/g, '').replace(/[^\w#]/g, ''));
                             }}
                             className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                          />
-                        </div>
+                          />                        </div>
                         <div className="w-full sm:w-32 relative">
                           <Coins className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500" size={18} />
                           <input
