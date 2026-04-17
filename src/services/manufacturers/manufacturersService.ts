@@ -35,4 +35,21 @@ export const manufacturersService = {
 
     return data.data || [];
   },
+
+  updateManufacturer: async (token: string, id: number, data: { name: string }) => {
+    const response = await fetch(`${API_BASE_URL}/manufacturers/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(token),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  deleteManufacturer: async (token: string, id: number) => {
+    const response = await fetch(`${API_BASE_URL}/manufacturers/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
 };
