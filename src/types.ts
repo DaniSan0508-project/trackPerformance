@@ -294,6 +294,11 @@ export interface CampaignRanking {
 
 export type RedemptionStatus = 'pending' | 'approved' | 'rejected' | 'completed';
 
+export interface RedemptionStatusHistory {
+  status: RedemptionStatus;
+  occurred_at: string;
+}
+
 export interface Redemption {
   id: number;
   tenant_id: number;
@@ -305,6 +310,7 @@ export interface Redemption {
   updated_at: string;
   user?: User;
   items?: RedemptionItem[];
+  status_histories?: RedemptionStatusHistory[];
 }
 
 export type VoucherStatus = 'generated' | 'available' | 'redeemed' | 'validated' | 'activated' | 'used' | 'expired';

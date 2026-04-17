@@ -336,7 +336,7 @@ export const SettingsPage: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Configurações do Sistema</h1>
-            <p className="text-zinc-500 dark:text-zinc-400">Gerencie as variáveis e parâmetros do seu ambiente.</p>
+            <p className="text-zinc-500 dark:text-zinc-400">Administre as configurações e os parâmetros do ambiente.</p>
           </div>
           <div className="flex gap-2">
             <button 
