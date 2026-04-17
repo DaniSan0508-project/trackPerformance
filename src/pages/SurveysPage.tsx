@@ -749,7 +749,7 @@ export const SurveysPage: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Pesquisas</h1>
-            <p className="text-zinc-500 dark:text-zinc-400">Gerencie as pesquisas e acompanhe as respostas.</p>
+            <p className="text-zinc-500 dark:text-zinc-400">Crie pesquisas para o seu time e acompanhe os resultados das suas ações.</p>
           </div>
           <div className="flex gap-2">
             <button

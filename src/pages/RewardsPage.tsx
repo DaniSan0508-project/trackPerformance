@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, ShoppingBag, Package, Coins, Images as ImagesIcon, X, Plus, Camera, Trash2, Edit2, Save, Gift, ClipboardList, CheckCircle, XCircle, Clock, AlertCircle, Ticket } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Reward, RewardImage, Redemption, RedemptionStatus } from '../types';
+import { Reward, RewardImage, Redemption, RedemptionStatus, RedemptionStatusHistory } from '../types';
 import { rewardsService, redemptionsService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -623,8 +623,8 @@ export const RewardsPage: React.FC = () => {
       <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Loja de Recompensas</h1>
-            <p className="text-zinc-500 dark:text-zinc-400">Troque suas {coinName} por recompensas incríveis.</p>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Recompensas</h1>
+            <p className="text-zinc-500 dark:text-zinc-400">Gerencie recompensas, acompanhe resgates e visualize o histórico de vouchers.</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -1046,6 +1046,46 @@ export const RewardsPage: React.FC = () => {
                               <Coins size={18} className="fill-current" />
                               <span>{redemption.total_coins_spent.toLocaleString('pt-BR')} {coinName} gastos</span>
                             </div>
+
+                            {/* Status History Timeline */}
+                            {redemption.status_histories && redemption.status_histories.length > 0 && (
+                              <div className="mt-4">
+                                <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2">
+                                  Histórico
+                                </div>
+                                <div className="flex flex-col">
+                                  {redemption.status_histories.map((history: RedemptionStatusHistory, index: number) => {
+                                    const isLast = index === redemption.status_histories!.length - 1;
+                                    const statusConfig: Record<string, { label: string; color: string; dot: string }> = {
+                                      pending:   { label: 'Pendente',  color: 'text-amber-600 dark:text-amber-400',      dot: 'bg-amber-400' },
+                                      approved:  { label: 'Aprovado',  color: 'text-primary-600 dark:text-primary-400',  dot: 'bg-primary-500' },
+                                      completed: { label: 'Concluído', color: 'text-blue-600 dark:text-blue-400',         dot: 'bg-blue-500' },
+                                      rejected:  { label: 'Cancelado', color: 'text-red-600 dark:text-red-400',           dot: 'bg-red-500' },
+                                    };
+                                    const meta = statusConfig[history.status] ?? { label: history.status, color: 'text-zinc-500', dot: 'bg-zinc-400' };
+                                    const dateUTC3 = new Date(new Date(history.occurred_at).getTime() - 3 * 60 * 60 * 1000);
+                                    const formatted = dateUTC3.toLocaleString('pt-BR', {
+                                      day: '2-digit', month: '2-digit', year: 'numeric',
+                                      hour: '2-digit', minute: '2-digit',
+                                    });
+                                    return (
+                                      <div key={index} className="flex items-start gap-3">
+                                        <div className="flex flex-col items-center">
+                                          <span className={`mt-1 w-2.5 h-2.5 rounded-full flex-shrink-0 ring-2 ring-white dark:ring-zinc-900 ${meta.dot}`} />
+                                          {!isLast && (
+                                            <span className="w-px flex-1 min-h-[18px] bg-zinc-200 dark:bg-zinc-700 my-0.5" />
+                                          )}
+                                        </div>
+                                        <div className="pb-2.5">
+                                          <span className={`text-xs font-semibold ${meta.color}`}>{meta.label}</span>
+                                          <span className="text-xs text-zinc-400 dark:text-zinc-500 ml-2">{formatted}</span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
 
                             {/* Notes */}
                             {redemption.notes && (

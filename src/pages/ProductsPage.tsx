@@ -308,7 +308,7 @@ export const ProductsPage: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Produtos</h1>
             <p className="text-zinc-500 dark:text-zinc-400">
-              Gerencie os produtos utilizados nas campanhas.
+              Gerencie os produtos utilizados nas campanhas de vendas.
             </p>
           </div>
           <div className="flex gap-2">

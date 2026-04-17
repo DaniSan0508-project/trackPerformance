@@ -17,7 +17,7 @@ export const redemptionsService = {
     if (filters.status) queryParams.append('filter[status]', filters.status);
     if (filters.user_id) queryParams.append('filter[user_id]', filters.user_id.toString());
     if (filters.per_page) queryParams.append('per_page', filters.per_page.toString());
-    queryParams.append('include', 'user,items,items.reward');
+    queryParams.append('include', 'user,items,items.reward,reward.hist');
 
     const response = await fetch(`${API_BASE_URL}/redemptions?${queryParams.toString()}`, {
       headers: getHeaders(token),
