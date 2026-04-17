@@ -126,6 +126,10 @@ export interface Post {
   image_url: string | null;
   video_url: string | null;
   earns_coins: boolean;
+  is_sponsored?: boolean;
+  boost_like_coins?: number;
+  boost_comment_coins?: number;
+  boost_share_coins?: number;
   created_at: string;
   updated_at: string;
   image_full_url: string | null;

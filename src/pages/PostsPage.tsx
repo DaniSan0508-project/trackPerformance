@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -71,6 +71,11 @@ export const PostsPage: React.FC = () => {
   const [newPostVideoUrl, setNewPostVideoUrl] = useState('');
   const [mediaType, setMediaType] = useState<'none' | 'image' | 'video'>('none');
   const [isCreating, setIsCreating] = useState(false);
+  const [newPostIsSponsored, setNewPostIsSponsored] = useState(false);
+  const [newPostEarnsCoins, setNewPostEarnsCoins] = useState(false);
+  const [newPostBoostLikeCoins, setNewPostBoostLikeCoins] = useState<string>('10');
+  const [newPostBoostCommentCoins, setNewPostBoostCommentCoins] = useState<string>('5');
+  const [newPostBoostShareCoins, setNewPostBoostShareCoins] = useState<string>('8');
 
   // Edit/Delete state
   const [activeMenuPostId, setActiveMenuPostId] = useState<number | null>(null);
@@ -82,6 +87,11 @@ export const PostsPage: React.FC = () => {
   const [editVideoUrl, setEditVideoUrl] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [editIsSponsored, setEditIsSponsored] = useState(false);
+  const [editEarnsCoins, setEditEarnsCoins] = useState(false);
+  const [editBoostLikeCoins, setEditBoostLikeCoins] = useState<string>('10');
+  const [editBoostCommentCoins, setEditBoostCommentCoins] = useState<string>('5');
+  const [editBoostShareCoins, setEditBoostShareCoins] = useState<string>('8');
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -99,7 +109,31 @@ export const PostsPage: React.FC = () => {
   
   // Users cache
   const [usersCache, setUsersCache] = useState<Record<number, UserType>>({});
+  const [allMentionUsers, setAllMentionUsers] = useState<UserType[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+
+  const fetchAllMentionUsers = useCallback(async () => {
+    if (!token) return;
+    try {
+      // Passa search='', page=1, perPage=9999
+      const response = await usersService.getMentions(token, '', 1, 9999);
+      const users = response.data || [];
+      setAllMentionUsers(users);
+      
+      // Também alimenta o cache geral para evitar buscas repetidas
+      const newCache: Record<number, UserType> = {};
+      users.forEach((u: UserType) => {
+        newCache[u.id] = u;
+      });
+      setUsersCache(prev => ({ ...prev, ...newCache }));
+    } catch (error) {
+      console.error('Error fetching all mention users:', error);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchAllMentionUsers();
+  }, [fetchAllMentionUsers]);
 
   const fetchPosts = useCallback(async (page = 1, filters: { userName?: string; createdAt?: string } = {}) => {
     if (!token) return;
@@ -203,6 +237,16 @@ export const PostsPage: React.FC = () => {
       }
       formData.append('survey_id', '1');
 
+      if (currentUser?.user_type_id === 1) {
+        formData.append('is_sponsored', newPostIsSponsored ? '1' : '0');
+        formData.append('earns_coins', newPostEarnsCoins ? '1' : '0');
+        if (newPostEarnsCoins) {
+          formData.append('boost_like_coins', newPostBoostLikeCoins.toString());
+          formData.append('boost_comment_coins', newPostBoostCommentCoins.toString());
+          formData.append('boost_share_coins', newPostBoostShareCoins.toString());
+        }
+      }
+
       await postsService.createPost(token, formData);
 
       // Reset and close
@@ -212,6 +256,17 @@ export const PostsPage: React.FC = () => {
       setNewPostImage(null);
       setNewPostVideoUrl('');
       setMediaType('none');
+      setNewPostIsSponsored(false);
+      setNewPostEarnsCoins(false);
+      setNewPostBoostLikeCoins('10');
+      setNewPostBoostCommentCoins('5');
+      setNewPostBoostShareCoins('8');
+
+      // Limpar o DOM do editor de criação
+      const editor = document.querySelector('[data-field="create"]') as HTMLDivElement;
+      if (editor) {
+        editor.innerText = '';
+      }
 
       // Refresh posts
       const dateFilter = filterStartDate && filterEndDate 
@@ -310,6 +365,16 @@ export const PostsPage: React.FC = () => {
     postId: null,
   });
 
+  // Mention state
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionUsers, setMentionUsers] = useState<any[]>([]);
+  const [showMentionDropdown, setShowMentionDropdown] = useState(false);
+  const [mentionLoading, setMentionLoading] = useState(false);
+  const [mentionTargetField, setMentionTargetField] = useState<'create' | 'edit'>('create');
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+  const editorRef = useRef<HTMLDivElement>(null);
+  const debouncedMentionQuery = useDebounce(mentionQuery, 300);
+
   const handleDeleteCommentConfirm = async () => {
     if (confirmCommentModal.commentId && confirmCommentModal.postId) {
       await handleDeleteComment(confirmCommentModal.commentId, confirmCommentModal.postId);
@@ -363,6 +428,16 @@ export const PostsPage: React.FC = () => {
         console.log('Limpando toda mídia');
       }
 
+      if (currentUser?.user_type_id === 1) {
+        formData.append('is_sponsored', editIsSponsored ? '1' : '0');
+        formData.append('earns_coins', editEarnsCoins ? '1' : '0');
+        if (editEarnsCoins) {
+          formData.append('boost_like_coins', editBoostLikeCoins.toString());
+          formData.append('boost_comment_coins', editBoostCommentCoins.toString());
+          formData.append('boost_share_coins', editBoostShareCoins.toString());
+        }
+      }
+
       console.log('FormData enviado para atualização:');
       for (let pair of formData.entries()) {
         console.log(pair[0] + ': ' + (pair[1] instanceof File ? `[File: ${pair[1].name}]` : pair[1]));
@@ -397,6 +472,20 @@ export const PostsPage: React.FC = () => {
     setEditPostModal(post);
     setEditTitle(post.title || '');
     setEditContent(post.content);
+
+    // Sincronizar o DOM do editor de edição
+    setTimeout(() => {
+      const editor = document.querySelector('[data-field="edit"]') as HTMLDivElement;
+      if (editor) {
+        editor.innerText = post.content;
+      }
+    }, 0);
+    
+    setEditIsSponsored(post.is_sponsored || false);
+    setEditEarnsCoins(post.earns_coins || false);
+    setEditBoostLikeCoins(String(post.boost_like_coins || 10));
+    setEditBoostCommentCoins(String(post.boost_comment_coins || 5));
+    setEditBoostShareCoins(String(post.boost_share_coins || 8));
     
     // Inicializar mídia atual do post
     if (post.video_url) {
@@ -430,19 +519,191 @@ export const PostsPage: React.FC = () => {
   }, [commentsModalPost]);
 
   useEffect(() => {
-    const dateFilter = filterStartDate && filterEndDate 
-      ? `${filterStartDate},${filterEndDate}` 
-      : filterStartDate || filterEndDate || '';
+    if (showMentionDropdown && token) {
+      const fetchMentions = async () => {
+        setMentionLoading(true);
+        try {
+          const response = await usersService.getMentions(token, debouncedMentionQuery);
+          setMentionUsers(response.data || []);
+        } catch (error) {
+          console.error('Error fetching mentions:', error);
+        } finally {
+          setMentionLoading(false);
+        }
+      };
+      fetchMentions();
+    }
+  }, [debouncedMentionQuery, showMentionDropdown, token]);
+
+  const getCaretCharacterOffsetWithin = (element: HTMLElement) => {
+    let caretOffset = 0;
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const preCaretRange = range.cloneRange();
+      preCaretRange.selectNodeContents(element);
+      preCaretRange.setEnd(range.endContainer, range.endOffset);
+      caretOffset = preCaretRange.toString().length;
+    }
+    return caretOffset;
+  };
+
+  const handleMentionChange = (text: string, element: HTMLDivElement, field: 'create' | 'edit') => {
+    const cursorPosition = getCaretCharacterOffsetWithin(element);
+    const textBeforeCursor = text.slice(0, cursorPosition);
+    const words = textBeforeCursor.split(/\s/);
+    const lastWord = words[words.length - 1];
+
+    if (lastWord.startsWith('@')) {
+      const query = lastWord.slice(1);
+      setMentionQuery(query);
+      setShowMentionDropdown(true);
+      setMentionTargetField(field);
+
+      // Get cursor coordinates for dropdown positioning
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0).cloneRange();
+        const rect = range.getBoundingClientRect();
+        if (rect) {
+          setDropdownPos({
+            top: rect.bottom + window.scrollY,
+            left: rect.left + window.scrollX
+          });
+        }
+      }
+    } else {
+      setShowMentionDropdown(false);
+    }
+
+    if (field === 'create') {
+      setNewPostContent(text);
+    } else {
+      setEditContent(text);
+    }
+  };
+
+  const handleSelectMention = (userName: string) => {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return;
+
+    const range = selection.getRangeAt(0);
+    // Expand selection to include the '@' and current query
+    const textNode = range.startContainer;
+    const offset = range.startOffset;
+    const content = textNode.textContent || '';
     
+    // Find the '@' before the cursor
+    const lastAtIndex = content.lastIndexOf('@', offset - 1);
+    if (lastAtIndex !== -1) {
+      range.setStart(textNode, lastAtIndex);
+      range.setEnd(textNode, offset);
+      range.deleteContents();
+
+      // Criar a menção como um 'pill' (span inline-block)
+      const mentionSpan = document.createElement('span');
+      mentionSpan.className = 'inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5';
+      mentionSpan.contentEditable = 'false';
+      mentionSpan.textContent = `@${userName}`;
+      
+      range.insertNode(mentionSpan);
+      
+      // Adicionar um espaço após a menção para facilitar a digitação contínua
+      const space = document.createTextNode(' ');
+      mentionSpan.after(space);
+      
+      // Mover o cursor após o espaço
+      const newRange = document.createRange();
+      newRange.setStartAfter(space);
+      newRange.setEndAfter(space);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+
+      // Trigger update to React state
+      const editorElement = document.querySelector(`[data-field="${mentionTargetField}"]`) as HTMLDivElement;
+      if (editorElement) {
+        if (mentionTargetField === 'create') {
+          setNewPostContent(editorElement.innerText);
+        } else {
+          setEditContent(editorElement.innerText);
+        }
+      }
+    }
+
+    setShowMentionDropdown(false);
+    setMentionQuery('');
+  };
+
+  const renderPostContent = (text: string, isCompact = false) => {
+    if (!text) return null;
+
+    // Regex robusta para capturar menções
+    const parts = text.split(/(@[A-Za-zÀ-ÖØ-öø-ÿ0-9_.-]+(?:\s[A-Za-zÀ-ÖØ-öø-ÿ0-9_.-]+)*)/g);
+
+    return parts.map((part, index) => {
+      if (part && part.startsWith('@')) {
+        const username = part.substring(1).trim().toLowerCase(); // Remove o '@' e limpa espaços
+        
+        // Tenta encontrar o usuário na lista completa de menções ou no cache geral
+        const mentionedUser = allMentionUsers.find(
+          u => (u.username?.toLowerCase() === username || (u.name && u.name.toLowerCase() === username))
+        ) || Object.values(usersCache).find(
+          u => (u.username?.toLowerCase() === username || (u.name && u.name.toLowerCase() === username))
+        );
+
+        return (
+          <span 
+            key={index} 
+            contentEditable={false} 
+            className="inline-flex items-center px-1.5 py-0 rounded-md bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5 hover:underline cursor-pointer transition-colors relative group/mention"
+          >
+            {part}
+            {mentionedUser?.profile_image_url && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 z-[100] mb-2 opacity-0 invisible group-hover/mention:opacity-100 group-hover/mention:visible transition-all duration-300 pointer-events-none drop-shadow-lg">
+                <div className={`bg-white dark:bg-zinc-800 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700 ${isCompact ? 'w-10 h-10' : 'w-24 h-24'} overflow-hidden`}>
+                  <img 
+                    src={getFullImageUrl(mentionedUser.profile_image_url) || ''} 
+                    alt={mentionedUser.name} 
+                    className="w-full h-full rounded-lg object-cover bg-zinc-100 dark:bg-zinc-900"
+                  />
+                </div>
+                {/* Seta do tooltip */}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-8 border-transparent border-t-white dark:border-t-zinc-800"></div>
+              </div>
+            )}
+          </span>
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
+
+  useEffect(() => {
+    const dateFilter = filterStartDate && filterEndDate
+      ? `${filterStartDate},${filterEndDate}`
+      : filterStartDate || filterEndDate || '';
+
     fetchPosts(currentPage, { userName: debouncedUserName, createdAt: dateFilter });
   }, [fetchPosts, currentPage, debouncedUserName, filterStartDate, filterEndDate]);
-
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedUserName, filterStartDate, filterEndDate]);
 
   return (
     <>
+      <style>
+        {`
+          [contenteditable]:empty:before {
+            content: "O que você está pensando?";
+            color: #a1a1aa;
+            pointer-events: none;
+            display: block;
+          }
+          .dark [contenteditable]:empty:before {
+            color: #71717a;
+          }
+        `}
+      </style>
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
@@ -561,7 +822,7 @@ export const PostsPage: React.FC = () => {
                   key={post.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col"
+                  className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col relative"
                 >
                   {/* Header */}
                   <div className="p-3 flex items-center justify-between">
@@ -670,7 +931,7 @@ export const PostsPage: React.FC = () => {
                   )}
 
                   {/* Actions & Content */}
-                  <div className="p-3 pb-3 flex-1 flex flex-col">
+                  <div className="p-6 flex-1 flex flex-col">
                     
                     {/* Content */}
                     <div className="space-y-1 mb-3">
@@ -684,10 +945,9 @@ export const PostsPage: React.FC = () => {
                             {post.title}
                           </h4>
                         )}
-                        <div className="text-sm text-zinc-900 dark:text-zinc-300 line-clamp-3 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors">
-                          {post.content}
-                        </div>
-                        {post.content.length > 150 && (
+                        <div className="text-sm text-zinc-900 dark:text-zinc-300 line-clamp-6 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors">
+                          {renderPostContent(post.content, true)}
+                        </div>                        {post.content.length > 300 && (
                           <span className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 block group-hover:underline">Ver mais...</span>
                         )}
                       </button>
@@ -766,7 +1026,7 @@ export const PostsPage: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]"
+                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh]"
               >
                 <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
                   <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Curtidas</h2>
@@ -808,7 +1068,7 @@ export const PostsPage: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]"
+                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh]"
               >
                 <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
                   <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Comentários</h2>
@@ -850,7 +1110,9 @@ export const PostsPage: React.FC = () => {
                                     </button>
                                   )}
                                 </div>
-                                <p className="text-sm text-zinc-700 dark:text-zinc-300">{comment.text}</p>
+                                <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                                  {renderPostContent(comment.text)}
+                                </p>
                               </div>
                               <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 ml-2">
                                 {formatRelativeDate(comment.created_at)}
@@ -917,9 +1179,9 @@ export const PostsPage: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh]"
+                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh] relative"
               >
-                <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
+                <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50 rounded-t-2xl">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-500 dark:text-zinc-400 overflow-hidden">
                        {contentModalPost.user?.profile_image_url ? (
@@ -934,15 +1196,15 @@ export const PostsPage: React.FC = () => {
                     <X size={24} />
                   </button>
                 </div>
-                <div className="p-6 overflow-y-auto">
+                <div className="p-6 pt-16 overflow-y-auto custom-scrollbar">
                   {contentModalPost.title && (
-                    <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-4">
+                    <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-4 break-words">
                       {contentModalPost.title}
                     </h3>
                   )}
-                  <p className="text-zinc-900 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed text-sm md:text-base">
-                    {contentModalPost.content}
-                  </p>
+                  <div className="text-zinc-900 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed text-sm md:text-base break-words">
+                    {renderPostContent(contentModalPost.content)}
+                  </div>
                   <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center text-xs text-zinc-400 dark:text-zinc-500">
                     <span>Postado em {new Date(contentModalPost.created_at).toLocaleDateString()} às {new Date(contentModalPost.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     {contentModalPost.earns_coins && (
@@ -1031,14 +1293,169 @@ export const PostsPage: React.FC = () => {
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                       Conteúdo
                     </label>
-                    <textarea
-                      required
-                      value={editContent}
-                      onChange={(e) => setEditContent(e.target.value)}
-                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[150px] resize-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
-                      placeholder="O que você está pensando?"
-                    />
+                    <div
+                      contentEditable
+                      data-field="edit"
+                      onInput={(e) => handleMentionChange(e.currentTarget.innerText, e.currentTarget, 'edit')}
+                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[150px] text-zinc-900 dark:text-zinc-100"
+                    >
+                    </div>
+
+                    {/* Floating Mentions Dropdown */}
+                    {showMentionDropdown && mentionTargetField === 'edit' && (
+                      <div 
+                        className="fixed z-[100] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg max-h-48 overflow-y-auto w-64"
+                        style={{ 
+                          top: dropdownPos.top + 5, 
+                          left: Math.min(dropdownPos.left, window.innerWidth - 280) 
+                        }}
+                      >
+                        {mentionLoading ? (
+                          <div className="p-3 flex items-center justify-center">
+                            <Loader2 className="animate-spin text-primary-500" size={18} />
+                          </div>
+                        ) : mentionUsers.length > 0 ? (
+                          mentionUsers.map((u) => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={() => handleSelectMention(u.username || u.name)}
+                              className="w-full flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors text-left"
+                            >
+                              <div className="w-6 h-6 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex-shrink-0">
+                                {u.profile_image_url ? (
+                                  <img src={getFullImageUrl(u.profile_image_url) || ''} alt={u.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <User size={12} className="text-zinc-400 m-auto" />
+                                )}
+                              </div>
+                              <div>
+                                <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100 leading-tight">{u.name}</p>
+                                {u.username && <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">@{u.username}</p>}
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="p-2 text-xs text-zinc-500 dark:text-zinc-400 text-center">
+                            Nenhum usuário encontrado.
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
+
+                  {currentUser?.user_type_id === 1 && (
+                    <div className="space-y-4 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                          Post Patrocinado
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setEditIsSponsored(!editIsSponsored)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                            editIsSponsored ? "bg-primary-600" : "bg-zinc-300 dark:bg-zinc-600"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              editIsSponsored ? "translate-x-6" : "translate-x-1"
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                          Post vale moedas
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setEditEarnsCoins(!editEarnsCoins)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                            editEarnsCoins ? "bg-primary-600" : "bg-zinc-300 dark:bg-zinc-600"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              editEarnsCoins ? "translate-x-6" : "translate-x-1"
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      {editEarnsCoins && (
+                        <div className="grid grid-cols-3 gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                          <div>
+                            <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                              Like
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={editBoostLikeCoins}
+                              onKeyDown={(e) => {
+                                if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === "" || /^\d+$/.test(val)) {
+                                  setEditBoostLikeCoins(val);
+                                }
+                              }}
+                              className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                              Coment.
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={editBoostCommentCoins}
+                              onKeyDown={(e) => {
+                                if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === "" || /^\d+$/.test(val)) {
+                                  setEditBoostCommentCoins(val);
+                                }
+                              }}
+                              className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                              Compart.
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={editBoostShareCoins}
+                              onKeyDown={(e) => {
+                                if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === "" || /^\d+$/.test(val)) {
+                                  setEditBoostShareCoins(val);
+                                }
+                              }}
+                              className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
@@ -1229,14 +1646,169 @@ export const PostsPage: React.FC = () => {
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                       Conteúdo
                     </label>
-                    <textarea
-                      required
-                      value={newPostContent}
-                      onChange={(e) => setNewPostContent(e.target.value)}
-                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[150px] resize-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
-                      placeholder="O que você está pensando?"
-                    />
+                    <div
+                      contentEditable
+                      data-field="create"
+                      onInput={(e) => handleMentionChange(e.currentTarget.innerText, e.currentTarget, 'create')}
+                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[150px] text-zinc-900 dark:text-zinc-100"
+                    >
+                    </div>
+                    
+                    {/* Floating Mentions Dropdown */}
+                    {showMentionDropdown && mentionTargetField === 'create' && (
+                      <div 
+                        className="fixed z-[100] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg max-h-48 overflow-y-auto w-64"
+                        style={{ 
+                          top: dropdownPos.top + 5, 
+                          left: Math.min(dropdownPos.left, window.innerWidth - 280) 
+                        }}
+                      >
+                        {mentionLoading ? (
+                          <div className="p-3 flex items-center justify-center">
+                            <Loader2 className="animate-spin text-primary-500" size={18} />
+                          </div>
+                        ) : mentionUsers.length > 0 ? (
+                          mentionUsers.map((u) => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={() => handleSelectMention(u.username || u.name)}
+                              className="w-full flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors text-left"
+                            >
+                              <div className="w-6 h-6 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex-shrink-0">
+                                {u.profile_image_url ? (
+                                  <img src={getFullImageUrl(u.profile_image_url) || ''} alt={u.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <User size={12} className="text-zinc-400 m-auto" />
+                                )}
+                              </div>
+                              <div>
+                                <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100 leading-tight">{u.name}</p>
+                                {u.username && <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">@{u.username}</p>}
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="p-2 text-xs text-zinc-500 dark:text-zinc-400 text-center">
+                            Nenhum usuário encontrado.
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
+
+                  {currentUser?.user_type_id === 1 && (
+                    <div className="space-y-4 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                          Post Patrocinado
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setNewPostIsSponsored(!newPostIsSponsored)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                            newPostIsSponsored ? "bg-primary-600" : "bg-zinc-300 dark:bg-zinc-600"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              newPostIsSponsored ? "translate-x-6" : "translate-x-1"
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                          Post vale moedas
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setNewPostEarnsCoins(!newPostEarnsCoins)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                            newPostEarnsCoins ? "bg-primary-600" : "bg-zinc-300 dark:bg-zinc-600"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              newPostEarnsCoins ? "translate-x-6" : "translate-x-1"
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      {newPostEarnsCoins && (
+                        <div className="grid grid-cols-3 gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                          <div>
+                            <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                              Like
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={newPostBoostLikeCoins}
+                              onKeyDown={(e) => {
+                                if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === "" || /^\d+$/.test(val)) {
+                                  setNewPostBoostLikeCoins(val);
+                                }
+                              }}
+                              className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                              Coment.
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={newPostBoostCommentCoins}
+                              onKeyDown={(e) => {
+                                if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === "" || /^\d+$/.test(val)) {
+                                  setNewPostBoostCommentCoins(val);
+                                }
+                              }}
+                              className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                              Compart.
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={newPostBoostShareCoins}
+                              onKeyDown={(e) => {
+                                if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === "" || /^\d+$/.test(val)) {
+                                  setNewPostBoostShareCoins(val);
+                                }
+                              }}
+                              className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">

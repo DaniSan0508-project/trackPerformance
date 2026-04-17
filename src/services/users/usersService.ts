@@ -78,4 +78,18 @@ export const usersService = {
 
     return data.data || [];
   },
+
+  getMentions: async (token: string, search: string = '', page = 1, perPage = 20) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    queryParams.append('per_page', perPage.toString());
+    if (search) {
+      queryParams.append('search', search);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/app/users/mentions?${queryParams.toString()}`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
 };
