@@ -198,9 +198,16 @@ export interface Campaign {
   users?: User[];
   products?: CampaignProduct[];
   actions?: CampaignAction[];
+  hashtags?: CampaignHashtag[];
   ranking?: CampaignRanking[];
   podium?: CampaignRanking[]; // Top 3 ranking retornado pela API
   reward_id?: number | string | null;
+}
+
+export interface CampaignHashtag {
+  hashtag: string;
+  coins: number;
+  campaign_name?: string;
 }
 
 export interface CampaignProduct {

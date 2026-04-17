@@ -247,7 +247,11 @@ export const campaignSchema = z.object({
     .refine((val) => val === 'ativa' || val === 'pausada' || val === 'finalizada', {
       message: 'Status inválido',
     }),
-  }).refine((data) => {
+  hashtags: z.array(z.object({
+    hashtag: z.string().startsWith('#', 'Hashtag deve começar com #'),
+    coins: z.number().positive('Valor de coins deve ser positivo')
+  })).optional(),
+}).refine((data) => {
   // Goal é obrigatório para sales e engagement
   if (data.type === 'sales' && (!data.goal || data.goal.trim() === '')) {
     return false;

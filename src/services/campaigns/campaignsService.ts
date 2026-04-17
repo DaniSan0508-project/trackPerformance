@@ -90,4 +90,11 @@ export const campaignsService = {
     });
     return handleResponse(response);
   },
+
+  getHashtags: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/hashtags?per_page=9999`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
 };

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift, Upload, FileSpreadsheet, Download } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift, Upload, FileSpreadsheet, Download, Hash, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus, Role, EngagementAction, Reward } from '../types';
+import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus, Role, EngagementAction, Reward, CampaignHashtag } from '../types';
 import { authService, dashboardService, usersService, campaignsService, productsService, manufacturersService, rolesService, rewardsService, feedbacksService, postsService, redemptionsService, tenantConfigsService, surveysService, storesService, coinsService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -169,6 +169,93 @@ export const CampaignsPage: React.FC = () => {
 
   // Estado para controlar os inputs de coins das ações (permite edição livre)
   const [actionCoinsInputs, setActionCoinsInputs] = useState<{ [key: number]: string }>({});
+
+  // Hashtags
+  const [selectedHashtags, setSelectedHashtags] = useState<CampaignHashtag[]>([]);
+  const [allExistingHashtags, setAllExistingHashtags] = useState<any[]>([]);
+  const [newHashtag, setNewHashtag] = useState('');
+  const [newHashtagCoins, setNewHashtagCoins] = useState('');
+  const [checkingHashtag, setCheckingHashtag] = useState(false);
+
+  const fetchAllExistingHashtags = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await campaignsService.getHashtags(token);
+      const data = Array.isArray(response) ? response : (response?.data || []);
+      setAllExistingHashtags(data);
+    } catch (error) {
+      console.error('Error fetching all hashtags:', error);
+    }
+  }, [token]);
+
+  const handleAddHashtag = async () => {
+    console.log('BOTÃO CLICADO - Iniciando handleAddHashtag');
+    
+    if (!token) {
+      console.error('ERRO: Token ausente');
+      addToast('error', 'Sessão expirada.');
+      return;
+    }
+
+    const hashtag = newHashtag.trim();
+    const coins = parseInt(newHashtagCoins);
+
+    console.log('Valores do Form:', { hashtag, coins });
+
+    if (!hashtag || isNaN(coins)) {
+      addToast('warning', 'Preencha a hashtag e o valor de coins.');
+      return;
+    }
+
+    setCheckingHashtag(true);
+    try {
+      console.log('Chamando API: /campaigns/hashtags');
+      const response = await campaignsService.getHashtags(token);
+      console.log('API RESPONSE RAW:', response);
+      
+      const existingHashtags = Array.isArray(response) ? response : (response?.data || []);
+      console.log('Hashtags para comparar:', existingHashtags);
+      
+      const duplicate = existingHashtags.find((h: any) => {
+        const isSameHashtag = h.hashtag && h.hashtag.toLowerCase() === hashtag.toLowerCase();
+        if (!isSameHashtag) return false;
+
+        // Se estiver editando, ignora se a hashtag pertencer à própria campanha
+        if (editingCampaign) {
+          const hashtagCampaignId = h.campaign?.id || h.campaign_id;
+          if (Number(hashtagCampaignId) === Number(editingCampaign.id)) {
+            return false;
+          }
+        }
+        return true;
+      });      
+      if (duplicate) {
+        const campaignName = duplicate.campaign?.name || duplicate.campaign_name || 'outra campanha';
+        console.warn('DUPLICATA DETECTADA:', campaignName);
+        addToast('error', `A hashtag "${hashtag}" já está sendo usada na campanha "${campaignName}".`);
+        return;
+      }
+
+      console.log('Nenhuma duplicata. Adicionando localmente...');
+      setSelectedHashtags(prev => [...prev, { hashtag, coins }]);
+      setNewHashtag('');
+      setNewHashtagCoins('');
+      addToast('success', 'Hashtag pronta para ser salva!');
+    } catch (error) {
+      console.error('ERRO NA API DE HASHTAGS:', error);
+      // Fallback: adiciona mesmo com erro na checagem
+      setSelectedHashtags(prev => [...prev, { hashtag, coins }]);
+      setNewHashtag('');
+      setNewHashtagCoins('');
+      addToast('warning', 'Hashtag adicionada (não foi possível validar duplicidade).');
+    } finally {
+      setCheckingHashtag(false);
+    }
+  };
+
+  const handleRemoveHashtag = (hashtagToRemove: string) => {
+    setSelectedHashtags(prev => prev.filter(h => h.hashtag !== hashtagToRemove));
+  };
 
   // Paginação e filtros para usuários
   const [usersPage, setUsersPage] = useState(1);
@@ -446,10 +533,18 @@ export const CampaignsPage: React.FC = () => {
           const campaignProductIds = (productsRes.data || []).map((p: any) => p.id);
           setSelectedProducts(campaignProductIds);
 
+          // Processar Hashtags (com fallback para diferentes nomes de propriedade)
+          const hashtags = campaign.hashtags || (campaign as any).campaign_hashtags || [];
+          console.log('Campaign Hashtags Loaded:', hashtags);
+          setSelectedHashtags(hashtags);
+
           // Carregar prêmios
           fetchRewardsPaginated(1);
 
           if (campaign.type === 'engagement') {
+            // Garante carregamento das ações globais se for engajamento
+            loadEngagementActions();
+            
             const campaignActions = (actionsRes.data || []).map((a: any) => ({
               id: a.id,
               coins: parseInt(a.coins) || 0
@@ -506,6 +601,7 @@ export const CampaignsPage: React.FC = () => {
       setSelectedUsers([]);
       setSelectedProducts([]);
       setSelectedActions([]);
+      setSelectedHashtags([]);
       fetchAuxiliaryData();
       fetchRewardsPaginated(1);
     }
@@ -537,7 +633,12 @@ export const CampaignsPage: React.FC = () => {
         engagementActions.length === 0) {
       loadEngagementActions();
     }
-  }, [activeTab, formData.type, editingCampaign?.type, loadEngagementActions, engagementActions.length, loadingEngagementActions]);
+    
+    // Buscar todas as hashtags quando entrar na aba de ações
+    if (activeTab === 'actions' && (formData.type === 'engagement' || editingCampaign?.type === 'engagement')) {
+      fetchAllExistingHashtags();
+    }
+  }, [activeTab, formData.type, editingCampaign?.type, loadEngagementActions, engagementActions.length, loadingEngagementActions, fetchAllExistingHashtags]);
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
@@ -556,6 +657,7 @@ export const CampaignsPage: React.FC = () => {
     setSelectedUsers([]);
     setSelectedProducts([]);
     setSelectedActions([]);
+    setSelectedHashtags([]);
     setManuallyUnselectedActions([]);
     setActionCoinsInputs({});
     setFullySelectedRoles(new Set());
@@ -758,6 +860,8 @@ export const CampaignsPage: React.FC = () => {
           if (selectedActions.length > 0) {
             dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
           }
+          // Envia hashtags
+          dataToSave.hashtags = selectedHashtags;
         }
       } else {
         // Na criação, envia todos os campos obrigatórios
@@ -785,6 +889,7 @@ export const CampaignsPage: React.FC = () => {
           dataToSave.start_date = formData.start_date;
           dataToSave.end_date = formData.end_date;
           dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
+          dataToSave.hashtags = selectedHashtags;
         }
       }
 
@@ -2129,8 +2234,9 @@ export const CampaignsPage: React.FC = () => {
                               return actionLabel.toLowerCase().includes(actionSearch.toLowerCase());
                             })
                             .map((action) => {
-                              const isDisabled = !action.is_enabled && !manuallyUnselectedActions.includes(action.id);
-                              const campaignName = action.campaign?.name;
+                              const isUsed = !action.is_enabled || !!action.campaign || !!(action as any).campaign_id;
+                              const isDisabled = isUsed && !manuallyUnselectedActions.includes(action.id);
+                              const campaignName = action.campaign?.name || (action as any).campaign_name;
                               const isSelected = selectedActions.find(a => a.id === action.id);
                               const actionLabel = actionLabels[action.name] || action.name;
                               
@@ -2214,6 +2320,109 @@ export const CampaignsPage: React.FC = () => {
                                 </div>
                               );
                             })
+                        )}
+                      </div>
+
+                      {/* Hashtags Section */}
+                      <div className="mt-8 pt-6 border-t border-zinc-200 dark:border-zinc-700">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Hash className="text-primary-600 dark:text-primary-400" size={20} />
+                          <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Hashtags da Campanha</h3>
+                        </div>
+                        
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+                          Adicione hashtags para que os usuários ganhem {coinName} ao usá-las em seus posts:
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                          <div className="flex-1 relative">
+                            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                            <input
+                              type="text"
+                              placeholder="Ex: #vendas"
+                              value={newHashtag}
+                              onChange={(e) => {
+                                let val = e.target.value;
+                                if (val && !val.startsWith('#')) val = '#' + val;
+                                setNewHashtag(val.replace(/\s/g, ''));
+                              }}
+                              className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                            />
+                          </div>
+                          <div className="w-full sm:w-32 relative">
+                            <Coins className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500" size={18} />
+                            <input
+                              type="number"
+                              placeholder="Coins"
+                              value={newHashtagCoins}
+                              onChange={(e) => setNewHashtagCoins(e.target.value)}
+                              className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                              min="1"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleAddHashtag}
+                            className="px-6 py-2.5 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 transition-all flex items-center justify-center gap-2 whitespace-nowrap shadow-lg shadow-primary-500/20"
+                          >
+                            {checkingHashtag ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+                            Adicionar
+                          </button>
+                        </div>
+
+                        {/* Listagem de Hashtags em uso (Informacional) */}
+                        {allExistingHashtags.length > 0 && (
+                          <div className="mb-6 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-700">
+                            <h4 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                              <AlertCircle size={14} className="text-amber-500" />
+                              Hashtags já cadastradas:
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {allExistingHashtags.map((h, i) => (
+                                <div key={i} className="px-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs">
+                                  <span className="font-bold text-zinc-400 dark:text-zinc-500 mr-2">{h.hashtag}</span>
+                                  <span className="text-zinc-400 dark:text-zinc-600 text-[10px] italic">
+                                    {h.campaign?.name || 'Campanha Ativa'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {selectedHashtags.length > 0 ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {selectedHashtags.map((h, index) => (
+                              <motion.div
+                                key={index}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="flex items-center justify-between p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl group"
+                              >
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-primary-700 dark:text-primary-300">{h.hashtag}</span>
+                                  <span className="text-xs text-amber-600 dark:text-amber-500 flex items-center gap-1">
+                                    <Coins size={12} />
+                                    {h.coins} {coinName}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveHashtag(h.hashtag)}
+                                  className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </motion.div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-2xl bg-zinc-50/50 dark:bg-zinc-800/30">
+                            <AlertCircle className="text-zinc-300 dark:text-zinc-600 mb-2" size={32} />
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
+                              Nenhuma hashtag adicionada para esta campanha.
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
