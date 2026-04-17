@@ -173,6 +173,7 @@ export const CampaignsPage: React.FC = () => {
   // Hashtags
   const [selectedHashtags, setSelectedHashtags] = useState<CampaignHashtag[]>([]);
   const [allExistingHashtags, setAllExistingHashtags] = useState<any[]>([]);
+  const [hasFetchedHashtags, setHasFetchedHashtags] = useState(false);
   const [newHashtag, setNewHashtag] = useState('');
   const [newHashtagCoins, setNewHashtagCoins] = useState('');
   const [checkingHashtag, setCheckingHashtag] = useState(false);
@@ -183,6 +184,7 @@ export const CampaignsPage: React.FC = () => {
       const response = await campaignsService.getHashtags(token);
       const data = Array.isArray(response) ? response : (response?.data || []);
       setAllExistingHashtags(data);
+      setHasFetchedHashtags(true);
     } catch (error) {
       console.error('Error fetching all hashtags:', error);
     }
@@ -493,7 +495,7 @@ export const CampaignsPage: React.FC = () => {
       
       // Mapeia status
       let currentStatus: CampaignStatus = 'inativa';
-      if (campaign.status === 'ativa' || (campaign.status as any) === 'active' || campaign.is_active === 1) {
+      if (campaign.status === 'ativa' || (campaign.status as any) === 'active' || campaign.is_active === 1 || campaign.is_active === true) {
         currentStatus = 'ativa';
       }
 
@@ -634,11 +636,11 @@ export const CampaignsPage: React.FC = () => {
       loadEngagementActions();
     }
     
-    // Buscar todas as hashtags quando entrar na aba de ações
-    if (activeTab === 'actions' && (formData.type === 'engagement' || editingCampaign?.type === 'engagement')) {
+    // Buscar todas as hashtags quando entrar na aba de hashtags
+    if (activeTab === 'hashtags' && (formData.type === 'engagement' || editingCampaign?.type === 'engagement') && !hasFetchedHashtags) {
       fetchAllExistingHashtags();
     }
-  }, [activeTab, formData.type, editingCampaign?.type, loadEngagementActions, engagementActions.length, loadingEngagementActions, fetchAllExistingHashtags]);
+  }, [activeTab, formData.type, editingCampaign?.type, loadEngagementActions, engagementActions.length, loadingEngagementActions, fetchAllExistingHashtags, hasFetchedHashtags]);
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
@@ -664,6 +666,7 @@ export const CampaignsPage: React.FC = () => {
     setFullySelectedManufacturers(new Set());
     setFormErrors({});
     setActionSearch('');
+    setHasFetchedHashtags(false);
   };
 
   const handleCloseImportModal = () => {
@@ -1389,7 +1392,7 @@ export const CampaignsPage: React.FC = () => {
                 const typeLabel = campaignTypeLabels[campaign.type] || campaign.type;
                 const typeColor = campaignTypeColors[campaign.type] || 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300';
                 // Fallback para campanhas antigas que usam is_active
-                const isAtiva = campaign.status === 'ativa' || (campaign.status as any) === 'active' || campaign.is_active === 1;
+                const isAtiva = campaign.status === 'ativa' || (campaign.status as any) === 'active' || campaign.is_active === 1 || campaign.is_active === true;
                 const statusLabel = isAtiva ? 'Ativa' : 'Inativa';
                 const statusColor = isAtiva 
                   ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400' 
@@ -1670,6 +1673,19 @@ export const CampaignsPage: React.FC = () => {
                       }`}
                     >
                       Ações ({selectedActions.length})
+                    </button>
+                  ) : null}
+                  {/* Aba de hashtags: apenas para engajamento (criação e update) */}
+                  {formData.type === 'engagement' || editingCampaign?.type === 'engagement' ? (
+                    <button
+                      onClick={() => setActiveTab('hashtags')}
+                      className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                        activeTab === 'hashtags'
+                          ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 border-b-2 border-primary-500'
+                          : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+                      }`}
+                    >
+                      Hashtags ({selectedHashtags.length})
                     </button>
                   ) : null}
                   {/* Aba de produtos: apenas para vendas (criação e update) */}
@@ -2322,109 +2338,119 @@ export const CampaignsPage: React.FC = () => {
                             })
                         )}
                       </div>
+                    </div>
+                  )}
 
-                      {/* Hashtags Section */}
-                      <div className="mt-8 pt-6 border-t border-zinc-200 dark:border-zinc-700">
-                        <div className="flex items-center gap-2 mb-4">
-                          <Hash className="text-primary-600 dark:text-primary-400" size={20} />
-                          <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Hashtags da Campanha</h3>
-                        </div>
-                        
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-                          Adicione hashtags para que os usuários ganhem {coinName} ao usá-las em seus posts:
-                        </p>
-
-                        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                          <div className="flex-1 relative">
-                            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                            <input
-                              type="text"
-                              placeholder="Ex: #vendas"
-                              value={newHashtag}
-                              onChange={(e) => {
-                                let val = e.target.value;
-                                if (val && !val.startsWith('#')) val = '#' + val;
-                                setNewHashtag(val.replace(/\s/g, ''));
-                              }}
-                              className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                            />
-                          </div>
-                          <div className="w-full sm:w-32 relative">
-                            <Coins className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500" size={18} />
-                            <input
-                              type="number"
-                              placeholder="Coins"
-                              value={newHashtagCoins}
-                              onChange={(e) => setNewHashtagCoins(e.target.value)}
-                              className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                              min="1"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleAddHashtag}
-                            className="px-6 py-2.5 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 transition-all flex items-center justify-center gap-2 whitespace-nowrap shadow-lg shadow-primary-500/20"
-                          >
-                            {checkingHashtag ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
-                            Adicionar
-                          </button>
-                        </div>
-
-                        {/* Listagem de Hashtags em uso (Informacional) */}
-                        {allExistingHashtags.length > 0 && (
-                          <div className="mb-6 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-700">
-                            <h4 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                              <AlertCircle size={14} className="text-amber-500" />
-                              Hashtags já cadastradas:
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                              {allExistingHashtags.map((h, i) => (
-                                <div key={i} className="px-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs">
-                                  <span className="font-bold text-zinc-400 dark:text-zinc-500 mr-2">{h.hashtag}</span>
-                                  <span className="text-zinc-400 dark:text-zinc-600 text-[10px] italic">
-                                    {h.campaign?.name || 'Campanha Ativa'}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {selectedHashtags.length > 0 ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {selectedHashtags.map((h, index) => (
-                              <motion.div
-                                key={index}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="flex items-center justify-between p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl group"
-                              >
-                                <div className="flex flex-col">
-                                  <span className="font-bold text-primary-700 dark:text-primary-300">{h.hashtag}</span>
-                                  <span className="text-xs text-amber-600 dark:text-amber-500 flex items-center gap-1">
-                                    <Coins size={12} />
-                                    {h.coins} {coinName}
-                                  </span>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveHashtag(h.hashtag)}
-                                  className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </motion.div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-2xl bg-zinc-50/50 dark:bg-zinc-800/30">
-                            <AlertCircle className="text-zinc-300 dark:text-zinc-600 mb-2" size={32} />
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
-                              Nenhuma hashtag adicionada para esta campanha.
-                            </p>
-                          </div>
-                        )}
+                  {activeTab === 'hashtags' && (
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Hash className="text-primary-600 dark:text-primary-400" size={20} />
+                        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Hashtags da Campanha</h3>
                       </div>
+                      
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+                        Adicione hashtags para que os usuários ganhem {coinName} ao usá-las em seus posts:
+                      </p>
+
+                      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                        <div className="flex-1 relative">
+                          <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                          <input
+                            type="text"
+                            placeholder="Ex: #vendas"
+                            value={newHashtag}
+                            onChange={(e) => {
+                              let val = e.target.value;
+                              if (val && !val.startsWith('#')) val = '#' + val;
+                              setNewHashtag(val.replace(/\s/g, ''));
+                            }}
+                            className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                          />
+                        </div>
+                        <div className="w-full sm:w-32 relative">
+                          <Coins className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500" size={18} />
+                          <input
+                            type="number"
+                            placeholder="Coins"
+                            value={newHashtagCoins}
+                            onChange={(e) => setNewHashtagCoins(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                            min="1"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAddHashtag}
+                          className="px-6 py-2.5 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 transition-all flex items-center justify-center gap-2 whitespace-nowrap shadow-lg shadow-primary-500/20"
+                        >
+                          {checkingHashtag ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+                          Adicionar
+                        </button>
+                      </div>
+
+                      {/* Listagem de Hashtags em uso (Informacional) */}
+                      {allExistingHashtags.length > 0 && (
+                        <div className="mb-6 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-700">
+                          <h4 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <AlertCircle size={14} className="text-amber-500" />
+                            Hashtags já cadastradas:
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {allExistingHashtags.map((h, i) => {
+                              const hashtagCampaignId = h.campaign?.id || h.campaign_id;
+                              const isCurrentCampaign = editingCampaign && Number(hashtagCampaignId) === Number(editingCampaign.id);
+                              
+                              return (
+                                <div key={i} className={`px-3 py-1.5 rounded-lg text-xs border transition-all ${
+                                  isCurrentCampaign 
+                                  ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-800 text-primary-700 dark:text-primary-300'
+                                  : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500'
+                                }`}>
+                                  <span className="font-bold mr-2">{h.hashtag}</span>
+                                  <span className={`${isCurrentCampaign ? 'text-primary-500' : 'text-zinc-400 dark:text-zinc-600'} text-[10px] italic`}>
+                                    {isCurrentCampaign ? 'Utilizado nessa campanha' : (h.campaign?.name || 'Campanha Ativa')}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedHashtags.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {selectedHashtags.map((h, index) => (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="flex items-center justify-between p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl group"
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-bold text-primary-700 dark:text-primary-300">{h.hashtag}</span>
+                                <span className="text-xs text-amber-600 dark:text-amber-500 flex items-center gap-1">
+                                  <Coins size={12} />
+                                  {h.coins} {coinName}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveHashtag(h.hashtag)}
+                                className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-2xl bg-zinc-50/50 dark:bg-zinc-800/30">
+                          <AlertCircle className="text-zinc-300 dark:text-zinc-600 mb-2" size={32} />
+                          <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
+                            Nenhuma hashtag adicionada para esta campanha.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
 
