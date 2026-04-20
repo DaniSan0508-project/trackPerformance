@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar, Rocket } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Post, Like, Comment, User as UserType } from '../types';
@@ -45,9 +45,16 @@ export const PostsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterUserName, setFilterUserName] = useState('');
+  const [filterContent, setFilterContent] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterEarnsCoins, setFilterEarnsCoins] = useState<boolean | 'all'>('all');
+  const [filterIsSponsored, setFilterIsSponsored] = useState<boolean | 'all'>('all');
+  const [filterIsBoosted, setFilterIsBoosted] = useState<boolean | 'all'>('all');
+  const [sortOrder, setSortOrder] = useState('-created_at');
+
   const debouncedUserName = useDebounce(filterUserName, 500);
+  const debouncedContent = useDebounce(filterContent, 500);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -135,7 +142,15 @@ export const PostsPage: React.FC = () => {
     fetchAllMentionUsers();
   }, [fetchAllMentionUsers]);
 
-  const fetchPosts = useCallback(async (page = 1, filters: { userName?: string; createdAt?: string } = {}) => {
+  const fetchPosts = useCallback(async (page = 1, filters: { 
+    userName?: string; 
+    content?: string;
+    createdAt?: string;
+    earnsCoins?: boolean;
+    isSponsored?: boolean;
+    isBoosted?: boolean;
+    sort?: string;
+  } = {}) => {
     if (!token) return;
     setLoading(true);
     setError(null);
@@ -272,7 +287,15 @@ export const PostsPage: React.FC = () => {
       const dateFilter = filterStartDate && filterEndDate 
         ? `${filterStartDate},${filterEndDate}` 
         : filterStartDate || filterEndDate || '';
-      fetchPosts(1, { userName: filterUserName, createdAt: dateFilter });
+      fetchPosts(1, { 
+        userName: filterUserName, 
+        content: filterContent,
+        createdAt: dateFilter,
+        earnsCoins: filterEarnsCoins === 'all' ? undefined : filterEarnsCoins,
+        isSponsored: filterIsSponsored === 'all' ? undefined : filterIsSponsored,
+        isBoosted: filterIsBoosted === 'all' ? undefined : filterIsBoosted,
+        sort: sortOrder
+      });
       addToast('success', 'Post criado com sucesso!');
     } catch (err: any) {
       console.error('Error creating post:', err);
@@ -450,7 +473,15 @@ export const PostsPage: React.FC = () => {
       const dateFilter = filterStartDate && filterEndDate 
         ? `${filterStartDate},${filterEndDate}` 
         : filterStartDate || filterEndDate || '';
-      await fetchPosts(currentPage, { userName: filterUserName, createdAt: dateFilter });
+      await fetchPosts(currentPage, { 
+        userName: filterUserName, 
+        content: filterContent,
+        createdAt: dateFilter,
+        earnsCoins: filterEarnsCoins === 'all' ? undefined : filterEarnsCoins,
+        isSponsored: filterIsSponsored === 'all' ? undefined : filterIsSponsored,
+        isBoosted: filterIsBoosted === 'all' ? undefined : filterIsBoosted,
+        sort: sortOrder
+      });
 
       setEditPostModal(null);
       setEditTitle('');
@@ -637,14 +668,21 @@ export const PostsPage: React.FC = () => {
   const renderPostContent = (text: string, isCompact = false) => {
     if (!text) return null;
 
-    // Regex robusta para capturar menções
-    const parts = text.split(/(@[A-Za-zÀ-ÖØ-öø-ÿ0-9_.-]+(?:\s[A-Za-zÀ-ÖØ-öø-ÿ0-9_.-]+)*)/g);
+    // Primeiro, limpamos tags HTML que possam vir da API (como os <a> das hashtags/menções)
+    // para processarmos apenas o texto puro e aplicarmos nossa própria estilização.
+    const cleanText = text.replace(/<[^>]*>?/gm, '');
+
+    // Regex robusta para capturar menções (@usuario) e hashtags (#campanha)
+    const regex = /(@[A-Za-zÀ-ÖØ-öø-ÿ0-9_.-]+(?:\s[A-Za-zÀ-ÖØ-öø-ÿ0-9_.-]+)*|#[A-Za-zÀ-ÖØ-öø-ÿ0-9_.-]+)/g;
+    const parts = cleanText.split(regex);
 
     return parts.map((part, index) => {
-      if (part && part.startsWith('@')) {
-        const username = part.substring(1).trim().toLowerCase(); // Remove o '@' e limpa espaços
+      if (!part) return null;
+
+      // Trata Menções (@)
+      if (part.startsWith('@')) {
+        const username = part.substring(1).trim().toLowerCase();
         
-        // Tenta encontrar o usuário na lista completa de menções ou no cache geral
         const mentionedUser = allMentionUsers.find(
           u => (u.username?.toLowerCase() === username || (u.name && u.name.toLowerCase() === username))
         ) || Object.values(usersCache).find(
@@ -655,8 +693,15 @@ export const PostsPage: React.FC = () => {
           <span 
             key={index} 
             contentEditable={false} 
-            className="inline-flex items-center px-1.5 py-0 rounded-md bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5 hover:underline cursor-pointer transition-colors relative group/mention"
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5 hover:underline cursor-pointer transition-colors relative group/mention"
           >
+            {mentionedUser?.profile_image_url && (
+              <img 
+                src={getFullImageUrl(mentionedUser.profile_image_url) || ''} 
+                alt={mentionedUser.name} 
+                className="w-4 h-4 rounded-full object-cover border border-blue-200 dark:border-blue-800"
+              />
+            )}
             {part}
             {mentionedUser?.profile_image_url && (
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 z-[100] mb-2 opacity-0 invisible group-hover/mention:opacity-100 group-hover/mention:visible transition-all duration-300 pointer-events-none drop-shadow-lg">
@@ -667,13 +712,25 @@ export const PostsPage: React.FC = () => {
                     className="w-full h-full rounded-lg object-cover bg-zinc-100 dark:bg-zinc-900"
                   />
                 </div>
-                {/* Seta do tooltip */}
                 <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-8 border-transparent border-t-white dark:border-t-zinc-800"></div>
               </div>
             )}
           </span>
         );
       }
+
+      // Trata Hashtags (#)
+      if (part.startsWith('#')) {
+        return (
+          <span 
+            key={index}
+            className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-primary-100/50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-[13px] font-bold select-none mx-0.5 hover:underline cursor-pointer transition-colors"
+          >
+            {part}
+          </span>
+        );
+      }
+
       return <span key={index}>{part}</span>;
     });
   };
@@ -683,11 +740,20 @@ export const PostsPage: React.FC = () => {
       ? `${filterStartDate},${filterEndDate}`
       : filterStartDate || filterEndDate || '';
 
-    fetchPosts(currentPage, { userName: debouncedUserName, createdAt: dateFilter });
-  }, [fetchPosts, currentPage, debouncedUserName, filterStartDate, filterEndDate]);
+    fetchPosts(currentPage, { 
+      userName: debouncedUserName, 
+      content: debouncedContent,
+      createdAt: dateFilter,
+      earnsCoins: filterEarnsCoins === 'all' ? undefined : filterEarnsCoins,
+      isSponsored: filterIsSponsored === 'all' ? undefined : filterIsSponsored,
+      isBoosted: filterIsBoosted === 'all' ? undefined : filterIsBoosted,
+      sort: sortOrder
+    });
+  }, [fetchPosts, currentPage, debouncedUserName, debouncedContent, filterStartDate, filterEndDate, filterEarnsCoins, filterIsSponsored, filterIsBoosted, sortOrder]);
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedUserName, filterStartDate, filterEndDate]);
+  }, [debouncedUserName, debouncedContent, filterStartDate, filterEndDate, filterEarnsCoins, filterIsSponsored, filterIsBoosted, sortOrder]);
 
   return (
     <>
@@ -748,52 +814,149 @@ export const PostsPage: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white dark:bg-zinc-800 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-700 flex flex-col md:flex-row gap-4 items-center">
-          <div className="relative flex-1 w-full">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400 dark:text-zinc-500" size={20} />
-            <input 
-              type="text" 
-              placeholder="Buscar por nome do usuário..." 
-              className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
-              value={filterUserName}
-              onChange={(e) => setFilterUserName(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-            <div className="relative w-full md:w-40">
-              <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
-              <input
-                type="date"
-                className="w-full pl-9 pr-2 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                value={filterStartDate}
-                onChange={(e) => setFilterStartDate(e.target.value)}
-                title="Data início"
+        <div className="bg-white dark:bg-zinc-800 p-4 md:p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-700 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400 dark:text-zinc-500" size={18} />
+              <input 
+                type="text" 
+                placeholder="Nome do usuário..." 
+                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 text-sm"
+                value={filterUserName}
+                onChange={(e) => setFilterUserName(e.target.value)}
               />
             </div>
-            <div className="relative w-full md:w-40">
-              <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
-              <input
-                type="date"
-                className="w-full pl-9 pr-2 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                value={filterEndDate}
-                onChange={(e) => setFilterEndDate(e.target.value)}
-                title="Data fim"
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400 dark:text-zinc-500" size={18} />
+              <input 
+                type="text" 
+                placeholder="Conteúdo do post..." 
+                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 text-sm"
+                value={filterContent}
+                onChange={(e) => setFilterContent(e.target.value)}
               />
             </div>
-          </div>
-          {(filterUserName || filterStartDate || filterEndDate) && (
-            <button
-              onClick={() => {
-                setFilterUserName('');
-                setFilterStartDate('');
-                setFilterEndDate('');
-              }}
-              className="text-sm text-red-500 hover:text-red-600 font-medium px-2 py-1 transition-colors flex items-center gap-1"
+            <div className="grid grid-cols-2 gap-2">
+              <div className="relative">
+                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 pointer-events-none" />
+                <input
+                  type="date"
+                  className="w-full pl-9 pr-2 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 text-sm [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  value={filterStartDate}
+                  onChange={(e) => setFilterStartDate(e.target.value)}
+                  title="Início"
+                />
+              </div>
+              <div className="relative">
+                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 pointer-events-none" />
+                <input
+                  type="date"
+                  className="w-full pl-9 pr-2 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 text-sm [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  value={filterEndDate}
+                  onChange={(e) => setFilterEndDate(e.target.value)}
+                  title="Fim"
+                />
+              </div>
+            </div>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 text-sm"
             >
-              <X size={16} />
-              Limpar
-            </button>
-          )}
+              <option value="-created_at">Mais recentes</option>
+              <option value="created_at">Mais antigos</option>
+            </select>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-y-4 gap-x-6 pt-2 border-t border-zinc-50 dark:border-zinc-700/50">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Moedas:</span>
+              <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-lg w-fit">
+                {[
+                  { label: 'Todos', value: 'all' },
+                  { label: 'Sim', value: true },
+                  { label: 'Não', value: false }
+                ].map((opt) => (
+                  <button
+                    key={opt.label}
+                    onClick={() => setFilterEarnsCoins(opt.value as any)}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                      filterEarnsCoins === opt.value
+                        ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 shadow-sm'
+                        : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Patrocinado:</span>
+              <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-lg w-fit">
+                {[
+                  { label: 'Todos', value: 'all' },
+                  { label: 'Sim', value: true },
+                  { label: 'Não', value: false }
+                ].map((opt) => (
+                  <button
+                    key={opt.label}
+                    onClick={() => setFilterIsSponsored(opt.value as any)}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                      filterIsSponsored === opt.value
+                        ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 shadow-sm'
+                        : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Turbinado:</span>
+              <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-lg w-fit">
+                {[
+                  { label: 'Todos', value: 'all' },
+                  { label: 'Sim', value: true },
+                  { label: 'Não', value: false }
+                ].map((opt) => (
+                  <button
+                    key={opt.label}
+                    onClick={() => setFilterIsBoosted(opt.value as any)}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                      filterIsBoosted === opt.value
+                        ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 shadow-sm'
+                        : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {(filterUserName || filterContent || filterStartDate || filterEndDate || filterEarnsCoins !== 'all' || filterIsSponsored !== 'all' || filterIsBoosted !== 'all') && (
+              <button
+                onClick={() => {
+                  setFilterUserName('');
+                  setFilterContent('');
+                  setFilterStartDate('');
+                  setFilterEndDate('');
+                  setFilterEarnsCoins('all');
+                  setFilterIsSponsored('all');
+                  setFilterIsBoosted('all');
+                  setSortOrder('-created_at');
+                }}
+                className="ml-auto text-xs text-red-500 hover:text-red-600 font-bold uppercase tracking-wider flex items-center gap-1.5 px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-all"
+              >
+                <Trash2 size={14} />
+                Limpar Filtros
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Posts List */}
@@ -839,7 +1002,14 @@ export const PostsPage: React.FC = () => {
                         </div>
                       </div>
                       <div className="min-w-0">
-                        <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 leading-none truncate">{post.user?.name || 'Usuário'}</h3>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 leading-none truncate">{post.user?.name || 'Usuário'}</h3>
+                          {post.is_boosted && (
+                            <div className="flex-shrink-0 text-primary-600 dark:text-primary-400" title="Turbinado">
+                              <Rocket size={14} className="fill-primary-600/10" />
+                            </div>
+                          )}
+                        </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
                           {formatRelativeDate(post.created_at)}
                           {post.earns_coins && <span className="ml-2 text-amber-600 font-medium">• Ganha {coinName}</span>}
@@ -933,25 +1103,27 @@ export const PostsPage: React.FC = () => {
                   {/* Actions & Content */}
                   <div className="p-6 flex-1 flex flex-col">
                     
-                    {/* Content */}
-                    <div className="space-y-1 mb-3">
-                      <button 
-                        type="button"
-                        onClick={() => setContentModalPost(post)}
-                        className="text-left w-full group block"
-                      >
-                        {post.title && (
-                          <h4 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1 group-hover:text-primary-700 dark:group-hover:text-primary-500 transition-colors">
-                            {post.title}
-                          </h4>
-                        )}
-                        <div className="text-sm text-zinc-900 dark:text-zinc-300 line-clamp-6 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors">
+                    {/* Content Wrapper */}
+                    <button 
+                      type="button"
+                      onClick={() => setContentModalPost(post)}
+                      className="flex-1 flex flex-col w-full group mb-3"
+                    >
+                      {post.title && (
+                        <h4 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-2 group-hover:text-primary-700 dark:group-hover:text-primary-500 transition-colors text-left w-full">
+                          {post.title}
+                        </h4>
+                      )}
+                      
+                      <div className="flex-1 flex flex-col justify-center w-full">
+                        <div className="text-sm text-zinc-900 dark:text-zinc-300 line-clamp-6 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors text-left">
                           {renderPostContent(post.content, true)}
-                        </div>                        {post.content.length > 300 && (
-                          <span className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 block group-hover:underline">Ver mais...</span>
+                        </div>
+                        {post.content.length > 300 && (
+                          <span className="text-xs text-zinc-400 dark:text-zinc-500 mt-2 block group-hover:underline text-left">Ver mais...</span>
                         )}
-                      </button>
-                    </div>
+                      </div>
+                    </button>
 
                     {/* Actions (Likes & Comments) */}
                     <div className="flex items-center gap-4 mt-auto pt-2 border-t border-zinc-50 dark:border-zinc-800">
@@ -1618,343 +1790,348 @@ export const PostsPage: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
+                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col"
+                style={{ maxHeight: 'calc(100vh - 4rem)' }}
               >
-                <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
+                <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50 flex-shrink-0">
                   <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Criar Novo Post</h2>
                   <button onClick={() => setCreatePostModal(false)} className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
                     <X size={24} />
                   </button>
                 </div>
                 
-                <form onSubmit={handleCreatePost} className="p-6 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                      Título *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={newPostTitle}
-                      onChange={(e) => setNewPostTitle(e.target.value)}
-                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
-                      placeholder="Título do post"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                      Conteúdo
-                    </label>
-                    <div
-                      contentEditable
-                      data-field="create"
-                      onInput={(e) => handleMentionChange(e.currentTarget.innerText, e.currentTarget, 'create')}
-                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[150px] text-zinc-900 dark:text-zinc-100"
-                    >
+                <div className="overflow-y-auto flex-1 custom-scrollbar">
+                  <form onSubmit={handleCreatePost} className="p-6 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Título *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newPostTitle}
+                        onChange={(e) => setNewPostTitle(e.target.value)}
+                        className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+                        placeholder="Título do post"
+                      />
                     </div>
-                    
-                    {/* Floating Mentions Dropdown */}
-                    {showMentionDropdown && mentionTargetField === 'create' && (
-                      <div 
-                        className="fixed z-[100] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg max-h-48 overflow-y-auto w-64"
-                        style={{ 
-                          top: dropdownPos.top + 5, 
-                          left: Math.min(dropdownPos.left, window.innerWidth - 280) 
-                        }}
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Conteúdo
+                      </label>
+                      <div
+                        contentEditable
+                        data-field="create"
+                        onInput={(e) => handleMentionChange(e.currentTarget.innerText, e.currentTarget, 'create')}
+                        className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[150px] text-zinc-900 dark:text-zinc-100"
                       >
-                        {mentionLoading ? (
-                          <div className="p-3 flex items-center justify-center">
-                            <Loader2 className="animate-spin text-primary-500" size={18} />
-                          </div>
-                        ) : mentionUsers.length > 0 ? (
-                          mentionUsers.map((u) => (
-                            <button
-                              key={u.id}
-                              type="button"
-                              onClick={() => handleSelectMention(u.username || u.name)}
-                              className="w-full flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors text-left"
-                            >
-                              <div className="w-6 h-6 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex-shrink-0">
-                                {u.profile_image_url ? (
-                                  <img src={getFullImageUrl(u.profile_image_url) || ''} alt={u.name} className="w-full h-full object-cover" />
-                                ) : (
-                                  <User size={12} className="text-zinc-400 m-auto" />
-                                )}
-                              </div>
-                              <div>
-                                <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100 leading-tight">{u.name}</p>
-                                {u.username && <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">@{u.username}</p>}
-                              </div>
-                            </button>
-                          ))
-                        ) : (
-                          <div className="p-2 text-xs text-zinc-500 dark:text-zinc-400 text-center">
-                            Nenhum usuário encontrado.
-                          </div>
-                        )}
                       </div>
-                    )}
-                  </div>
-
-                  {currentUser?.user_type_id === 1 && (
-                    <div className="space-y-4 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                          Post Patrocinado
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setNewPostIsSponsored(!newPostIsSponsored)}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                            newPostIsSponsored ? "bg-primary-600" : "bg-zinc-300 dark:bg-zinc-600"
-                          }`}
+                      
+                      {/* Floating Mentions Dropdown */}
+                      {showMentionDropdown && mentionTargetField === 'create' && (
+                        <div 
+                          className="fixed z-[100] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg max-h-48 overflow-y-auto w-64"
+                          style={{ 
+                            top: dropdownPos.top + 5, 
+                            left: Math.min(dropdownPos.left, window.innerWidth - 280) 
+                          }}
                         >
-                          <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                              newPostIsSponsored ? "translate-x-6" : "translate-x-1"
-                            }`}
-                          />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                          Post vale moedas
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setNewPostEarnsCoins(!newPostEarnsCoins)}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                            newPostEarnsCoins ? "bg-primary-600" : "bg-zinc-300 dark:bg-zinc-600"
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                              newPostEarnsCoins ? "translate-x-6" : "translate-x-1"
-                            }`}
-                          />
-                        </button>
-                      </div>
-
-                      {newPostEarnsCoins && (
-                        <div className="grid grid-cols-3 gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-700">
-                          <div>
-                            <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                              Like
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={newPostBoostLikeCoins}
-                              onKeyDown={(e) => {
-                                if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
-                                  e.preventDefault();
-                                }
-                              }}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val === "" || /^\d+$/.test(val)) {
-                                  setNewPostBoostLikeCoins(val);
-                                }
-                              }}
-                              className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                              Coment.
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={newPostBoostCommentCoins}
-                              onKeyDown={(e) => {
-                                if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
-                                  e.preventDefault();
-                                }
-                              }}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val === "" || /^\d+$/.test(val)) {
-                                  setNewPostBoostCommentCoins(val);
-                                }
-                              }}
-                              className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                              Compart.
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={newPostBoostShareCoins}
-                              onKeyDown={(e) => {
-                                if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
-                                  e.preventDefault();
-                                }
-                              }}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val === "" || /^\d+$/.test(val)) {
-                                  setNewPostBoostShareCoins(val);
-                                }
-                              }}
-                              className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
-                            />
-                          </div>
+                          {mentionLoading ? (
+                            <div className="p-3 flex items-center justify-center">
+                              <Loader2 className="animate-spin text-primary-500" size={18} />
+                            </div>
+                          ) : mentionUsers.length > 0 ? (
+                            mentionUsers.map((u) => (
+                              <button
+                                key={u.id}
+                                type="button"
+                                onClick={() => handleSelectMention(u.username || u.name)}
+                                className="w-full flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors text-left"
+                              >
+                                <div className="w-6 h-6 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex-shrink-0">
+                                  {u.profile_image_url ? (
+                                    <img src={getFullImageUrl(u.profile_image_url) || ''} alt={u.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <User size={12} className="text-zinc-400 m-auto" />
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100 leading-tight">{u.name}</p>
+                                  {u.username && <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">@{u.username}</p>}
+                                </div>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="p-2 text-xs text-zinc-500 dark:text-zinc-400 text-center">
+                              Nenhum usuário encontrado.
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                      Mídia (Opcional)
-                    </label>
-                    <div className="flex gap-3 mb-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (mediaType === 'image') {
-                            setMediaType('none');
-                            setNewPostImage(null);
-                          } else {
-                            setMediaType('image');
-                            setNewPostVideoUrl('');
-                          }
-                        }}
-                        className={`flex-1 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-                          mediaType === 'image'
-                            ? 'bg-primary-600 text-white'
-                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                        }`}
-                      >
-                        <ImageIcon size={18} />
-                        Imagem
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (mediaType === 'video') {
-                            setMediaType('none');
-                            setNewPostVideoUrl('');
-                          } else {
-                            setMediaType('video');
-                            setNewPostImage(null);
-                          }
-                        }}
-                        className={`flex-1 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-                          mediaType === 'video'
-                            ? 'bg-red-600 text-white'
-                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                        }`}
-                      >
-                        <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
-                        </svg>
-                        YouTube
-                      </button>
-                    </div>
-
-                    {/* Campo de Imagem */}
-                    {mediaType === 'image' && (
-                      <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-zinc-300 dark:border-zinc-700 border-dashed rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer relative">
-                        <div className="space-y-1 text-center">
-                          {newPostImage ? (
-                            <div className="relative">
-                              <img
-                                src={URL.createObjectURL(newPostImage)}
-                                alt="Preview"
-                                className="mx-auto h-48 object-contain rounded-lg"
-                              />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  e.preventDefault();
-                                  setNewPostImage(null);
-                                  setMediaType('none');
-                                }}
-                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                              >
-                                <X size={16} />
-                              </button>
-                              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">{newPostImage.name}</p>
-                            </div>
-                          ) : (
-                            <>
-                              <ImageIcon className="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-500" />
-                              <div className="flex text-sm text-zinc-600 dark:text-zinc-400 justify-center">
-                                <label
-                                  htmlFor="file-upload"
-                                  className="relative cursor-pointer bg-white dark:bg-zinc-900 rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none"
-                                >
-                                  <span>Upload um arquivo</span>
-                                  <input
-                                    id="file-upload"
-                                    name="file-upload"
-                                    type="file"
-                                    className="sr-only"
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                      if (e.target.files && e.target.files[0]) {
-                                        setNewPostImage(e.target.files[0]);
-                                      }
-                                    }}
-                                  />
-                                </label>
-                              </div>
-                              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                PNG, JPG, GIF até 5MB
-                              </p>
-                            </>
-                          )}
+                    {currentUser?.user_type_id === 1 && (
+                      <div className="space-y-4 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                            Post Patrocinado
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setNewPostIsSponsored(!newPostIsSponsored)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                              newPostIsSponsored ? "bg-primary-600" : "bg-zinc-300 dark:bg-zinc-600"
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                newPostIsSponsored ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
                         </div>
-                      </div>
-                    )}
 
-                    {/* Campo de Vídeo */}
-                    {mediaType === 'video' && (
-                      <div>
-                        <input
-                          type="text"
-                          value={newPostVideoUrl}
-                          onChange={(e) => setNewPostVideoUrl(e.target.value)}
-                          className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
-                          placeholder="https://www.youtube.com/watch?v=..."
-                        />
-                        {newPostVideoUrl && (
-                          <div className="mt-2">
-                            {(() => {
-                              const videoId = extractYouTubeVideoId(newPostVideoUrl);
-                              if (videoId) {
-                                return (
-                                  <div className="relative rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                                    <img
-                                      src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
-                                      alt="YouTube thumbnail"
-                                      className="w-full h-48 object-cover"
-                                    />
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                      <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
-                                        <div className="w-0 h-0 border-t-8 border-t-transparent border-l-12 border-l-white border-b-8 border-b-transparent ml-1"></div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })()}
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                            Post vale moedas
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setNewPostEarnsCoins(!newPostEarnsCoins)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                              newPostEarnsCoins ? "bg-primary-600" : "bg-zinc-300 dark:bg-zinc-600"
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                newPostEarnsCoins ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {newPostEarnsCoins && (
+                          <div className="grid grid-cols-3 gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                            <div>
+                              <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                                Like
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={newPostBoostLikeCoins}
+                                onKeyDown={(e) => {
+                                  if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === "" || /^\d+$/.test(val)) {
+                                    setNewPostBoostLikeCoins(val);
+                                  }
+                                }}
+                                className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                                Coment.
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={newPostBoostCommentCoins}
+                                onKeyDown={(e) => {
+                                  if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === "" || /^\d+$/.test(val)) {
+                                    setNewPostBoostCommentCoins(val);
+                                  }
+                                }}
+                                className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                                Compart.
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={newPostBoostShareCoins}
+                                onKeyDown={(e) => {
+                                  if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === "" || /^\d+$/.test(val)) {
+                                    setNewPostBoostShareCoins(val);
+                                  }
+                                }}
+                                className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
                     )}
-                  </div>
 
-                  <div className="pt-2 flex gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                        Mídia (Opcional)
+                      </label>
+                      <div className="flex gap-3 mb-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (mediaType === 'image') {
+                              setMediaType('none');
+                              setNewPostImage(null);
+                            } else {
+                              setMediaType('image');
+                              setNewPostVideoUrl('');
+                            }
+                          }}
+                          className={`flex-1 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+                            mediaType === 'image'
+                              ? 'bg-primary-600 text-white'
+                              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                          }`}
+                        >
+                          <ImageIcon size={18} />
+                          Imagem
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (mediaType === 'video') {
+                              setMediaType('none');
+                              setNewPostVideoUrl('');
+                            } else {
+                              setMediaType('video');
+                              setNewPostImage(null);
+                            }
+                          }}
+                          className={`flex-1 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+                            mediaType === 'video'
+                              ? 'bg-red-600 text-white'
+                              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                          }`}
+                        >
+                          <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                          </svg>
+                          YouTube
+                        </button>
+                      </div>
+
+                      {/* Campo de Imagem */}
+                      {mediaType === 'image' && (
+                        <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-zinc-300 dark:border-zinc-700 border-dashed rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer relative">
+                          <div className="space-y-1 text-center">
+                            {newPostImage ? (
+                              <div className="relative">
+                                <img
+                                  src={URL.createObjectURL(newPostImage)}
+                                  alt="Preview"
+                                  className="mx-auto h-48 object-contain rounded-lg"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    setNewPostImage(null);
+                                    setMediaType('none');
+                                  }}
+                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                                >
+                                  <X size={16} />
+                                </button>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">{newPostImage.name}</p>
+                              </div>
+                            ) : (
+                              <>
+                                <ImageIcon className="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-500" />
+                                <div className="flex text-sm text-zinc-600 dark:text-zinc-400 justify-center">
+                                  <label
+                                    htmlFor="file-upload"
+                                    className="relative cursor-pointer bg-white dark:bg-zinc-900 rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none"
+                                  >
+                                    <span>Upload um arquivo</span>
+                                    <input
+                                      id="file-upload"
+                                      name="file-upload"
+                                      type="file"
+                                      className="sr-only"
+                                      accept="image/*"
+                                      onChange={(e) => {
+                                        if (e.target.files && e.target.files[0]) {
+                                          setNewPostImage(e.target.files[0]);
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                  PNG, JPG, GIF até 5MB
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Campo de Vídeo */}
+                      {mediaType === 'video' && (
+                        <div>
+                          <input
+                            type="text"
+                            value={newPostVideoUrl}
+                            onChange={(e) => setNewPostVideoUrl(e.target.value)}
+                            className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+                            placeholder="https://www.youtube.com/watch?v=..."
+                          />
+                          {newPostVideoUrl && (
+                            <div className="mt-2">
+                              {(() => {
+                                const videoId = extractYouTubeVideoId(newPostVideoUrl);
+                                if (videoId) {
+                                  return (
+                                    <div className="relative rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                                      <img
+                                        src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
+                                        alt="YouTube thumbnail"
+                                        className="w-full h-48 object-cover"
+                                      />
+                                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
+                                          <div className="w-0 h-0 border-t-8 border-t-transparent border-l-12 border-l-white border-b-8 border-b-transparent ml-1"></div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </form>
+                </div>
+
+                <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex-shrink-0">
+                  <div className="flex gap-3">
                     <button
                       type="button"
                       onClick={() => setCreatePostModal(false)}
@@ -1963,16 +2140,19 @@ export const PostsPage: React.FC = () => {
                       Cancelar
                     </button>
                     <button
-                      type="submit"
+                      onClick={(e) => {
+                        const form = document.querySelector('form');
+                        if (form) form.requestSubmit();
+                      }}
                       disabled={isCreating || !newPostContent.trim() || (mediaType === 'none')}
                       className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       title={mediaType === 'none' ? 'Selecione uma imagem ou vídeo do YouTube' : ''}
                     >
                       {isCreating ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
-                      Publicar
+                      Publicar Post
                     </button>
                   </div>
-                </form>
+                </div>
               </motion.div>
             </div>
           )}

@@ -478,3 +478,20 @@ export interface CoinStatementResponse {
   to: number;
   total: number;
 }
+
+export interface HashtagRewardApproval {
+  id: number;
+  status: string;
+  coins: number;
+  reference_type: string;
+  reference_id: number;
+  created_at: string;
+  approved_at: string | null;
+  user: {
+    id: number;
+    name: string;
+  };
+  hashtag: string;
+  campaign_name: string;
+  approved_by: string | null;
+}

@@ -6,6 +6,7 @@ import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, Cam
 import { authService, dashboardService, usersService, campaignsService, productsService, manufacturersService, rolesService, rewardsService, feedbacksService, postsService, redemptionsService, tenantConfigsService, surveysService, storesService, coinsService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { PendingHashtagApprovals } from '../components/Campaigns/PendingHashtagApprovals';
 import { campaignSchema } from '../validators/schemas';
 import { getFullImageUrl } from '../utils';
 
@@ -86,6 +87,27 @@ export const CampaignsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // Estados para Aprovações de Hashtags
+  const [requiresApproval, setRequiresApproval] = useState(false);
+  const [activeMainTab, setActiveMainTab] = useState<'campaigns' | 'approvals'>('campaigns');
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      if (!token) return;
+      try {
+        const response = await tenantConfigsService.getTenantConfigs(token);
+        const configs = response.data || [];
+        const config = configs.find((c: any) => c.config_key === 'hashtag_reward_requires_approval');
+        if (config && config.config_value === 'true') {
+          setRequiresApproval(true);
+        }
+      } catch (err) {
+        console.error('Error fetching tenant configs:', err);
+      }
+    };
+    fetchConfig();
+  }, [token]);
 
   // Estados para busca no modal
   const [userSearch, setUserSearch] = useState('');
@@ -1347,260 +1369,297 @@ export const CampaignsPage: React.FC = () => {
             <p className="text-zinc-500 dark:text-zinc-400">Gerencie suas campanhas e impulsione o engajamento da sua equipe.</p>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => fetchCampaigns(currentPage, searchTerm)}
-              className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-2 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all"
-              title="Atualizar"
-            >
-              <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
-            </button>
-            {isAdmin && (
-              <button
-                onClick={() => handleOpenModal()}
-                className="bg-primary-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-primary-700 shadow-sm transition-all flex items-center gap-2"
-              >
-                <Plus size={18} />
-                Nova Campanha
-              </button>
+            {activeMainTab === 'campaigns' && (
+              <>
+                <button
+                  onClick={() => fetchCampaigns(currentPage, searchTerm)}
+                  className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-2 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all"
+                  title="Atualizar"
+                >
+                  <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
+                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleOpenModal()}
+                    className="bg-primary-600 px-4 py-2 rounded-xl text-sm font-medium text-white hover:bg-primary-700 shadow-sm transition-all flex items-center gap-2"
+                  >
+                    <Plus size={18} />
+                    Nova Campanha
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 flex flex-col md:flex-row gap-4 items-center transition-colors duration-200">
-          <div className="relative flex-1 w-full">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={20} />
-            <input
-              type="text"
-              placeholder="Buscar por nome..."
-              className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Campaigns List */}
-        {loading && campaigns.length === 0 ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
-          </div>
-        ) : error ? (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
-            {error}
-            <button onClick={() => fetchCampaigns(currentPage, searchTerm)} className="block mx-auto mt-2 text-sm font-semibold hover:underline">
-              Tentar novamente
+        {/* Top level Tabs if approval is required */}
+        {requiresApproval && (
+          <div className="flex border-b border-zinc-200 dark:border-zinc-800">
+            <button
+              onClick={() => setActiveMainTab('campaigns')}
+              className={`px-6 py-3 text-sm font-bold transition-all border-b-2 ${
+                activeMainTab === 'campaigns'
+                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
+              }`}
+            >
+              Listagem de Campanhas
+            </button>
+            <button
+              onClick={() => setActiveMainTab('approvals')}
+              className={`px-6 py-3 text-sm font-bold transition-all border-b-2 flex items-center gap-2 ${
+                activeMainTab === 'approvals'
+                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
+              }`}
+            >
+              Aprovações Pendentes
+              <Hash size={16} />
             </button>
           </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
-              {campaigns.map((campaign) => {
-                const typeLabel = campaignTypeLabels[campaign.type] || campaign.type;
-                const typeColor = campaignTypeColors[campaign.type] || 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300';
-                // Fallback para campanhas antigas que usam is_active
-                const isAtiva = campaign.status === 'ativa' || (campaign.status as any) === 'active' || campaign.is_active === 1 || campaign.is_active === true;
-                const statusLabel = isAtiva ? 'Ativa' : 'Inativa';
-                const statusColor = isAtiva 
-                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400' 
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400';
+        )}
 
-                return (
-                  <motion.div
-                    key={campaign.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-all duration-200"
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="flex items-start gap-4 flex-1">
-                        <div className="bg-primary-100 dark:bg-primary-900/30 p-3 rounded-xl">
-                          <Target className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-bold text-lg text-zinc-900 dark:text-white">{campaign.name}</h3>
-                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${typeColor}`}>
-                              {typeLabel}
-                            </span>
-                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${statusColor}`}>
-                              {statusLabel.toUpperCase()}
-                            </span>
-                          </div>
-
-                          <div className="flex flex-wrap gap-4 mt-3 text-sm">
-                            {/* Meta apenas para campanhas de vendas */}
-                            {campaign.type === 'sales' && (
-                              <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                                <TrendingUp size={16} className="text-primary-500" />
-                                <span className="text-zinc-500 dark:text-zinc-500">Meta:</span>
-                                <span className="font-semibold text-zinc-900 dark:text-white">{formatCurrency(campaign.goal)}</span>
-                              </div>
-                            )}
-                            {campaign.type === 'engagement' && (
-                              <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                                <Coins size={16} className="text-amber-500" />
-                                <span className="text-zinc-500 dark:text-zinc-500">Meta:</span>
-                                <span className="font-semibold text-zinc-900 dark:text-white">
-                                  {Math.floor(campaign.goal || 0)} {coinName}
-                                </span>
-                              </div>
-                            )}
-                            <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                              <Calendar size={16} className="text-[var(--color-primary-500)]" />
-                              <span className="text-zinc-500 dark:text-zinc-500">Período:</span>
-                              <span className="font-medium text-zinc-900 dark:text-white">
-                                {formatDate(campaign.start_date)} até {formatDate(campaign.end_date)}
-                              </span>
-                            </div>
-                            {campaign.users && campaign.users.length > 0 && (
-                              <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                                <Users size={16} className="text-purple-500" />
-                                <span className="text-zinc-500 dark:text-zinc-500">Participantes:</span>
-                                <span className="font-medium text-zinc-900 dark:text-white">{campaign.users.length}</span>
-                              </div>
-                            )}
-                            {campaign.actions && campaign.actions.length > 0 && (
-                              <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                                <Coins size={16} className="text-amber-500" />
-                                <span className="text-zinc-500 dark:text-zinc-500">Ações:</span>
-                                <span className="font-medium text-zinc-900 dark:text-white">{campaign.actions.length}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Podium / Ranking Section */}
-                      {campaign.podium && campaign.podium.length > 0 && (
-                        <div className="w-full md:w-auto mt-4 md:mt-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Trophy className="w-4 h-4 text-amber-500" />
-                            <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
-                              Top {campaign.podium.length}
-                            </span>
-                          </div>
-                          <div className="space-y-1">
-                            {campaign.podium.slice(0, 3).map((member, index) => {
-                              const medalColors = [
-                                'text-amber-500',  // 1º
-                                'text-zinc-400',   // 2º
-                                'text-amber-600',  // 3º
-                              ];
-                              const bgColors = [
-                                'bg-amber-50 dark:bg-amber-900/20',
-                                'bg-zinc-50 dark:bg-zinc-800/50',
-                                'bg-amber-50 dark:bg-amber-900/20',
-                              ];
-                              
-                              return (
-                                <div
-                                  key={member.user_id}
-                                  className={`flex items-center gap-2 p-2 rounded-lg ${bgColors[index]}`}
-                                >
-                                  <div className={`w-5 h-5 flex items-center justify-center font-bold text-xs ${medalColors[index]}`}>
-                                    {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-medium text-zinc-900 dark:text-white truncate">
-                                      {member.name}
-                                    </p>
-                                    {member.store && (
-                                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
-                                        {member.store.name}
-                                      </p>
-                                    )}
-                                  </div>
-                                  {campaign.type === 'sales' && member.sales_amount !== null && (
-                                    <span className="text-xs font-semibold text-primary-600 dark:text-primary-400">
-                                      {formatCurrency(String(member.sales_amount))}
-                                    </span>
-                                  )}
-                                  {campaign.type === 'engagement' && member.coins_total !== null && (
-                                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                                      {member.coins_total} {coinName}
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-2">
-                        {/* Botão de ranking: apenas para campanhas ativas */}
-                        {isAtiva && (
-                          <button
-                            onClick={() => handleOpenRanking(campaign)}
-                            className="p-2 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
-                            title="Ver Ranking Completo"
-                          >
-                            <Trophy size={18} />
-                          </button>
-                        )}
-                        {isAdmin && (
-                          <>
-                            <button
-                              onClick={() => handleOpenModal(campaign)}
-                              className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
-                              title="Editar"
-                            >
-                              <Edit2 size={18} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(campaign)}
-                              disabled={deletingId === campaign.id}
-                              className="p-2 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                              title="Excluir"
-                            >
-                              {deletingId === campaign.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-
-              {campaigns.length === 0 && (
-                <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors duration-200">
-                  <Target className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
-                  <h3 className="text-lg font-medium text-zinc-900 dark:text-white">Nenhuma campanha encontrada</h3>
-                  <p className="text-zinc-500 dark:text-zinc-400">Tente ajustar seus filtros de busca.</p>
-                </div>
-              )}
+        {activeMainTab === 'campaigns' ? (
+          <>
+            {/* Filters */}
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 flex flex-col md:flex-row gap-4 items-center transition-colors duration-200">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={20} />
+                <input
+                  type="text"
+                  placeholder="Buscar por nome..."
+                  className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
 
-            {/* Pagination Controls */}
-            {totalItems > 0 && (
-              <div className="flex items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
-                <div className="text-sm text-zinc-500 dark:text-zinc-400">
-                  Mostrando <span className="font-medium">{fromItem}</span> até <span className="font-medium">{toItem}</span> de <span className="font-medium">{totalItems}</span> resultados
+            {/* Campaigns List */}
+            {loading && campaigns.length === 0 ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+              </div>
+            ) : error ? (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
+                {error}
+                <button onClick={() => fetchCampaigns(currentPage, searchTerm)} className="block mx-auto mt-2 text-sm font-semibold hover:underline">
+                  Tentar novamente
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  {campaigns.map((campaign) => {
+                    const typeLabel = campaignTypeLabels[campaign.type] || campaign.type;
+                    const typeColor = campaignTypeColors[campaign.type] || 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300';
+                    // Fallback para campanhas antigas que usam is_active
+                    const isAtiva = campaign.status === 'ativa' || (campaign.status as any) === 'active' || campaign.is_active === 1 || campaign.is_active === true;
+                    const statusLabel = isAtiva ? 'Ativa' : 'Inativa';
+                    const statusColor = isAtiva 
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400' 
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400';
+
+                    return (
+                      <motion.div
+                        key={campaign.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-all duration-200"
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div className="flex items-start gap-4 flex-1">
+                            <div className="bg-primary-100 dark:bg-primary-900/30 p-3 rounded-xl">
+                              <Target className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="font-bold text-lg text-zinc-900 dark:text-white">{campaign.name}</h3>
+                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${typeColor}`}>
+                                  {typeLabel}
+                                </span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${statusColor}`}>
+                                  {statusLabel.toUpperCase()}
+                                </span>
+                              </div>
+
+                              <div className="flex flex-wrap gap-4 mt-3 text-sm">
+                                {/* Meta apenas para campanhas de vendas */}
+                                {campaign.type === 'sales' && (
+                                  <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                                    <TrendingUp size={16} className="text-primary-500" />
+                                    <span className="text-zinc-500 dark:text-zinc-500">Meta:</span>
+                                    <span className="font-semibold text-zinc-900 dark:text-white">{formatCurrency(campaign.goal)}</span>
+                                  </div>
+                                )}
+                                {campaign.type === 'engagement' && (
+                                  <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                                    <Coins size={16} className="text-amber-500" />
+                                    <span className="text-zinc-500 dark:text-zinc-500">Meta:</span>
+                                    <span className="font-semibold text-zinc-900 dark:text-white">
+                                      {Math.floor(campaign.goal || 0)} {coinName}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                                  <Calendar size={16} className="text-[var(--color-primary-500)]" />
+                                  <span className="text-zinc-500 dark:text-zinc-500">Período:</span>
+                                  <span className="font-medium text-zinc-900 dark:text-white">
+                                    {formatDate(campaign.start_date)} até {formatDate(campaign.end_date)}
+                                  </span>
+                                </div>
+                                {campaign.users && campaign.users.length > 0 && (
+                                  <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                                    <Users size={16} className="text-purple-500" />
+                                    <span className="text-zinc-500 dark:text-zinc-500">Participantes:</span>
+                                    <span className="font-medium text-zinc-900 dark:text-white">{campaign.users.length}</span>
+                                  </div>
+                                )}
+                                {campaign.actions && campaign.actions.length > 0 && (
+                                  <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                                    <Coins size={16} className="text-amber-500" />
+                                    <span className="text-zinc-500 dark:text-zinc-500">Ações:</span>
+                                    <span className="font-medium text-zinc-900 dark:text-white">{campaign.actions.length}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Podium / Ranking Section */}
+                          {campaign.podium && campaign.podium.length > 0 && (
+                            <div className="w-full md:w-auto mt-4 md:mt-0">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Trophy className="w-4 h-4 text-amber-500" />
+                                <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+                                  Top {campaign.podium.length}
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                {campaign.podium.slice(0, 3).map((member, index) => {
+                                  const medalColors = [
+                                    'text-amber-500',  // 1º
+                                    'text-zinc-400',   // 2º
+                                    'text-amber-600',  // 3º
+                                  ];
+                                  const bgColors = [
+                                    'bg-amber-50 dark:bg-amber-900/20',
+                                    'bg-zinc-50 dark:bg-zinc-800/50',
+                                    'bg-amber-50 dark:bg-amber-900/20',
+                                  ];
+                                  
+                                  return (
+                                    <div
+                                      key={member.user_id}
+                                      className={`flex items-center gap-2 p-2 rounded-lg ${bgColors[index]}`}
+                                    >
+                                      <div className={`w-5 h-5 flex items-center justify-center font-bold text-xs ${medalColors[index]}`}>
+                                        {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium text-zinc-900 dark:text-white truncate">
+                                          {member.name}
+                                        </p>
+                                        {member.store && (
+                                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
+                                            {member.store.name}
+                                          </p>
+                                        )}
+                                      </div>
+                                      {campaign.type === 'sales' && member.sales_amount !== null && (
+                                        <span className="text-xs font-semibold text-primary-600 dark:text-primary-400">
+                                          {formatCurrency(String(member.sales_amount))}
+                                        </span>
+                                      )}
+                                      {campaign.type === 'engagement' && member.coins_total !== null && (
+                                        <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                                          {member.coins_total} {coinName}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2">
+                            {/* Botão de ranking: apenas para campanhas ativas */}
+                            {isAtiva && (
+                              <button
+                                onClick={() => handleOpenRanking(campaign)}
+                                className="p-2 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+                                title="Ver Ranking Completo"
+                              >
+                                <Trophy size={18} />
+                              </button>
+                            )}
+                            {isAdmin && (
+                              <>
+                                <button
+                                  onClick={() => handleOpenModal(campaign)}
+                                  className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+                                  title="Editar"
+                                >
+                                  <Edit2 size={18} />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(campaign)}
+                                  disabled={deletingId === campaign.id}
+                                  className="p-2 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Excluir"
+                                >
+                                  {deletingId === campaign.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+
+                  {campaigns.length === 0 && (
+                    <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors duration-200">
+                      <Target className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+                      <h3 className="text-lg font-medium text-zinc-900 dark:text-white">Nenhuma campanha encontrada</h3>
+                      <p className="text-zinc-500 dark:text-zinc-400">Tente ajustar seus filtros de busca.</p>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400"
-                  >
-                    <ChevronLeft size={20} />
-                  </button>
-                  <span className="text-sm font-medium px-2 text-zinc-700 dark:text-zinc-300">
-                    Página {currentPage} de {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400"
-                  >
-                    <ChevronRight size={20} />
-                  </button>
-                </div>
+
+                {/* Pagination Controls */}
+                {totalItems > 0 && (
+                  <div className="flex items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
+                    <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                      Mostrando <span className="font-medium">{fromItem}</span> até <span className="font-medium">{toItem}</span> de <span className="font-medium">{totalItems}</span> resultados
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                      <span className="text-sm font-medium px-2 text-zinc-700 dark:text-zinc-300">
+                        Página {currentPage} de {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-          </div>
+          </>
+        ) : (
+          <PendingHashtagApprovals />
         )}
 
         {/* Create/Edit Modal */}

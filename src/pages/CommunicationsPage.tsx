@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Mail, Plus, Edit2, Trash2, X, Save, Eye, Clock, CheckCircle, Archive, BarChart3, Users, User, Check } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Mail, Plus, Edit2, Trash2, X, Save, Eye, Clock, CheckCircle, Archive, BarChart3, Users, User, Check, PlusCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Communication, CommunicationStatus, CommunicationView } from '../types/communication';
@@ -46,11 +46,15 @@ export const CommunicationsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  // Seleção em massa
+  const [loadingSelectAllUsers, setLoadingSelectAllUsers] = useState(false);
+  const [selectAllUsersProgress, setSelectAllUsersProgress] = useState<{ current: number; total: number } | null>(null);
+
   // Form
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    target_all: true,
+    target_all: false,
     scheduled_at: '',
   });
 
@@ -59,6 +63,8 @@ export const CommunicationsPage: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const debouncedUserSearch = useDebounce(userSearch, 500);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersTotalPages, setUsersTotalPages] = useState(1);
 
   // Abas do modal
   const [activeTab, setActiveTab] = useState<'basic' | 'recipients'>('basic');
@@ -124,33 +130,39 @@ export const CommunicationsPage: React.FC = () => {
     setCurrentPage(1);
   }, [debouncedSearchTerm, statusFilter]);
 
-  // Buscar usuários e cargos quando modal abrir
+  // Buscar usuários e cargos quando modal abrir ou página mudar
   useEffect(() => {
     const fetchData = async () => {
       if (isModalOpen && token) {
         // Buscar usuários
-        if (!formData.target_all) {
-          try {
-            const response = await usersService.getUsers(token, 1, debouncedUserSearch, 'name');
-            setUsers(response.data || []);
-          } catch (error) {
-            console.error('Error fetching users:', error);
-          }
+        try {
+          const response = await usersService.getUsers(token, usersPage, debouncedUserSearch, 'name');
+          setUsers(response.data || []);
+          setUsersTotalPages(response.meta?.last_page || response.last_page || 1);
+        } catch (error) {
+          console.error('Error fetching users:', error);
         }
         
-        // Buscar cargos
-        try {
-          const rolesData = await rolesService.getAllRoles(token);
-          if (rolesData?.data) {
-            setRoles(rolesData.data);
+        // Buscar cargos (apenas se ainda não carregados)
+        if (roles.length === 0) {
+          try {
+            const rolesData = await rolesService.getAllRoles(token);
+            if (rolesData?.data) {
+              setRoles(rolesData.data);
+            }
+          } catch (error) {
+            console.error('Error fetching roles:', error);
           }
-        } catch (error) {
-          console.error('Error fetching roles:', error);
         }
       }
     };
     fetchData();
-  }, [isModalOpen, token, formData.target_all, debouncedUserSearch]);
+  }, [isModalOpen, token, debouncedUserSearch, usersPage]);
+
+  // Resetar página de usuários ao buscar
+  useEffect(() => {
+    setUsersPage(1);
+  }, [debouncedUserSearch]);
 
   const handleRefresh = () => {
     fetchCommunications(currentPage, debouncedSearchTerm);
@@ -171,7 +183,7 @@ export const CommunicationsPage: React.FC = () => {
       setFormData({
         title: '',
         content: '',
-        target_all: true,
+        target_all: false,
         scheduled_at: '',
       });
       setSelectedUsers([]);
@@ -184,29 +196,73 @@ export const CommunicationsPage: React.FC = () => {
     setEditingCommunication(null);
     setActiveTab('basic');
     setFullySelectedRoles(new Set());
+    setLoadingSelectAllUsers(false);
+    setSelectAllUsersProgress(null);
   };
 
-  // Verifica se todos os usuários de um cargo estão selecionados
-  const areAllUsersSelectedByRole = (role: string): boolean => {
-    const roleUsers = users.filter(u => u.role === role);
-    if (roleUsers.length === 0) return false;
-    return roleUsers.every(u => selectedUsers.includes(u.id));
+  const handleSelectAllUsers = async () => {
+    if (!token) return;
+
+    const hasSelectedUsers = selectedUsers.length > 0;
+
+    if (hasSelectedUsers) {
+      setSelectedUsers([]);
+      setFullySelectedRoles(new Set());
+      addToast('success', 'Todos os usuários foram desmarcados!');
+      return;
+    }
+
+    setLoadingSelectAllUsers(true);
+    setSelectAllUsersProgress(null);
+    try {
+      const firstData = await usersService.getUsers(token!, 1, userSearch, 'name');
+      const totalPagesCount = firstData.meta?.last_page || firstData.last_page || 1;
+      let allUsers: any[] = [...(firstData.data || [])];
+
+      if (totalPagesCount > 1) {
+        setSelectAllUsersProgress({ current: 1, total: totalPagesCount });
+      }
+
+      for (let p = 2; p <= totalPagesCount; p++) {
+        const data = await usersService.getUsers(token!, p, userSearch, 'name');
+        allUsers.push(...(data.data || []));
+        setSelectAllUsersProgress({ current: p, total: totalPagesCount });
+      }
+
+      // Pega todos os IDs sem filtrar admins
+      const validUserIds = allUsers.map(u => u.id);
+
+      setSelectedUsers(prev => {
+        const newIds = validUserIds.filter(id => !prev.includes(id));
+        return [...prev, ...newIds];
+      });
+
+      addToast('success', `Todos os ${validUserIds.length} usuários foram selecionados!`);
+    } catch (error) {
+      console.error('Error fetching all users:', error);
+      addToast('error', 'Erro ao carregar todos os usuários.');
+    } finally {
+      setLoadingSelectAllUsers(false);
+      setSelectAllUsersProgress(null);
+    }
   };
 
   // Seleciona/desseleciona todos os usuários de um cargo
   const handleSelectAllByRole = async (role: string) => {
+    if (!token) return;
     setSelectByRoleLoading(role);
     
     try {
-      // Buscar todos os usuários se necessário
-      let allUsers = users;
-      if (users.length === 0) {
-        const response = await usersService.getUsers(token!, 1, '', 'name');
-        allUsers = response.data || [];
-        setUsers(allUsers);
+      const response = await usersService.getUsers(token, 1, '', 'name');
+      const totalPagesCount = response.meta?.last_page || response.last_page || 1;
+      let allUsers = [...(response.data || [])];
+
+      for (let i = 2; i <= totalPagesCount; i++) {
+        const pageData = await usersService.getUsers(token, i, '', 'name');
+        allUsers.push(...(pageData.data || []));
       }
 
-      // Filtra usuários do cargo selecionado
+      // Filtra usuários do cargo selecionado sem ignorar admins
       const roleUsers = allUsers.filter(u => u.role === role);
       const validUserIds = roleUsers.map(u => u.id);
 
@@ -235,6 +291,11 @@ export const CommunicationsPage: React.FC = () => {
     }
   };
 
+  // Verifica se todos os usuários de um cargo estão selecionados
+  const areAllUsersSelectedByRole = (role: string): boolean => {
+    return fullySelectedRoles.has(role);
+  };
+
   const handleSubmit = async () => {
     if (!token) return;
 
@@ -247,26 +308,32 @@ export const CommunicationsPage: React.FC = () => {
       return;
     }
     if (!formData.target_all && selectedUsers.length === 0) {
-      addToast('error', 'Selecione pelo menos 1 usuário ou marque "Enviar para todos".');
+      addToast('error', 'Selecione pelo menos 1 usuário.');
       return;
     }
 
     setSaving(true);
     try {
-      const dataToSave = {
-        title: formData.title,
-        content: formData.content,
-        target_all: formData.target_all,
-        target_user_ids: formData.target_all ? undefined : selectedUsers,
-        is_draft: false, // Publica diretamente
-        scheduled_at: formData.scheduled_at || undefined,
-      };
-
       if (editingCommunication) {
-        await communicationsService.updateCommunication(token, editingCommunication.id, dataToSave);
+        const updateData = {
+          title: formData.title,
+          content: formData.content,
+          target_all: formData.target_all,
+          target_user_ids: formData.target_all ? [] : selectedUsers,
+          scheduled_at: formData.scheduled_at ? new Date(formData.scheduled_at).toISOString() : undefined,
+        };
+        await communicationsService.updateCommunication(token, editingCommunication.id, updateData);
         addToast('success', 'Comunicado atualizado com sucesso!');
       } else {
-        await communicationsService.createCommunication(token, dataToSave);
+        const createData = {
+          title: formData.title,
+          content: formData.content,
+          target_all: formData.target_all,
+          target_user_ids: formData.target_all ? undefined : selectedUsers,
+          is_draft: false,
+          scheduled_at: formData.scheduled_at || undefined,
+        };
+        await communicationsService.createCommunication(token, createData);
         addToast('success', 'Comunicado criado com sucesso!');
       }
 
@@ -290,20 +357,26 @@ export const CommunicationsPage: React.FC = () => {
 
     setSaving(true);
     try {
-      const dataToSave = {
-        title: formData.title,
-        content: formData.content || '<p></p>',
-        target_all: formData.target_all,
-        target_user_ids: formData.target_all ? undefined : selectedUsers,
-        is_draft: true,
-        scheduled_at: formData.scheduled_at || undefined,
-      };
-
       if (editingCommunication) {
-        await communicationsService.updateCommunication(token, editingCommunication.id, dataToSave);
-        addToast('success', 'Rascunho salvo com sucesso!');
+        const updateData = {
+          title: formData.title,
+          content: formData.content || '<p></p>',
+          target_all: formData.target_all,
+          target_user_ids: formData.target_all ? [] : selectedUsers,
+          scheduled_at: formData.scheduled_at ? new Date(formData.scheduled_at).toISOString() : undefined,
+        };
+        await communicationsService.updateCommunication(token, editingCommunication.id, updateData);
+        addToast('success', 'Rascunho atualizado com sucesso!');
       } else {
-        await communicationsService.createCommunication(token, dataToSave);
+        const createData = {
+          title: formData.title,
+          content: formData.content || '<p></p>',
+          target_all: formData.target_all,
+          target_user_ids: formData.target_all ? undefined : selectedUsers,
+          is_draft: true,
+          scheduled_at: formData.scheduled_at || undefined,
+        };
+        await communicationsService.createCommunication(token, createData);
         addToast('success', 'Rascunho criado com sucesso!');
       }
 
@@ -670,7 +743,7 @@ export const CommunicationsPage: React.FC = () => {
                       : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                   }`}
                 >
-                  Destinatários {!formData.target_all && selectedUsers.length > 0 && `(${selectedUsers.length})`}
+                  Destinatários {selectedUsers.length > 0 && `(${selectedUsers.length})`}
                 </button>
               </div>
 
@@ -723,184 +796,229 @@ export const CommunicationsPage: React.FC = () => {
                 {/* Aba Destinatários */}
                 {activeTab === 'recipients' && (
                   <div className="space-y-4">
-                    {/* Opção enviar para todos */}
-                    <label className="flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={formData.target_all}
-                        onChange={(e) => setFormData({ ...formData, target_all: e.target.checked })}
-                        className="w-5 h-5 text-primary-600 rounded focus:ring-primary-500"
-                      />
-                      <div>
-                        <p className="font-medium text-zinc-900 dark:text-white">Enviar para todos os usuários</p>
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400">O comunicado será enviado para todos os usuários do sistema</p>
+                    {/* Seleção Rápida */}
+                    <div className="border-b border-zinc-200 dark:border-zinc-700 pb-5 mb-4 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
+                          👥 Seleção Rápida
+                        </p>
+                        <button
+                          onClick={handleSelectAllUsers}
+                          disabled={loadingSelectAllUsers}
+                          className={`px-4 py-2 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm border ${
+                            selectedUsers.length > 0
+                              ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
+                              : 'bg-primary-600 text-white border-primary-500 hover:bg-primary-700 shadow-primary-500/20'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {loadingSelectAllUsers ? (
+                            <>
+                              <Loader2 size={16} className="animate-spin" />
+                              <span>{selectAllUsersProgress ? `Pág ${selectAllUsersProgress.current}/${selectAllUsersProgress.total}` : 'Processando...'}</span>
+                            </>
+                          ) : (
+                            <>
+                              {selectedUsers.length > 0 ? <X size={18} /> : <Users size={18} />}
+                              {selectedUsers.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                            </>
+                          )}
+                        </button>
                       </div>
-                    </label>
 
-                    {!formData.target_all && (
-                      <>
-                        {/* Filtrar por Cargo */}
-                        {roles.length > 0 && (
-                          <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                            <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 mb-3 uppercase">
-                              Filtrar por Cargo
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {roles.map((roleObj) => {
-                                const role = roleObj.description;
-                                const hasUsersFromRole = users.some(u => u.role === role);
-                                const isSelected = fullySelectedRoles.has(role);
-                                
-                                return (
-                                  <button
-                                    key={role}
-                                    onClick={() => handleSelectAllByRole(role)}
-                                    disabled={selectByRoleLoading !== null}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                                      isSelected
-                                        ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border-primary-200 dark:border-primary-800'
-                                        : 'bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-primary-300 dark:hover:border-primary-700'
-                                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                  >
-                                    {selectByRoleLoading === role ? (
-                                      <Loader2 size={12} className="animate-spin" />
-                                    ) : isSelected ? (
-                                      <Check size={12} />
-                                    ) : (
-                                      <Plus size={12} />
-                                    )}
-                                    {role}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Busca de usuários */}
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
-                          <input
-                            type="text"
-                            placeholder="Buscar por nome..."
-                            value={userSearch}
-                            onChange={(e) => setUserSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                          />
-                        </div>
-
-                        {/* Lista de usuários */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-                          {users.map(user => (
-                            <motion.button
-                              key={user.id}
-                              onClick={() => {
-                                setSelectedUsers(prev =>
-                                  prev.includes(user.id) ? prev.filter(id => id !== user.id) : [...prev, user.id]
-                                );
-                              }}
-                              className={`flex items-start gap-3 p-3 border rounded-xl text-left transition-all ${
-                                selectedUsers.includes(user.id)
-                                  ? 'border-primary-300 dark:border-primary-700 bg-primary-50/50 dark:bg-primary-900/20'
-                                  : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
-                              }`}
-                            >
-                              {/* Avatar */}
-                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-100 to-teal-100 border-2 border-primary-200 flex items-center justify-center text-primary-600 overflow-hidden flex-shrink-0">
-                                {user.profile_image_url ? (
-                                  <img
-                                    src={getFullImageUrl(user.profile_image_url) || ''}
-                                    alt={user.name}
-                                    className="w-full h-full object-cover"
-                                  />
+                      <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                        <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 mb-3 uppercase">
+                          Filtrar por Cargo
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {roles.map((roleObj) => {
+                            const role = roleObj.description;
+                            const isSelected = areAllUsersSelectedByRole(role);
+                            
+                            return (
+                              <button
+                                key={role}
+                                onClick={() => handleSelectAllByRole(role)}
+                                disabled={selectByRoleLoading !== null}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                                  isSelected
+                                    ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border-primary-200 dark:border-primary-800'
+                                    : 'bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-primary-300 dark:hover:border-primary-700'
+                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                              >
+                                {selectByRoleLoading === role ? (
+                                  <Loader2 size={12} className="animate-spin" />
+                                ) : isSelected ? (
+                                  <Check size={12} />
                                 ) : (
-                                  <span className="text-lg font-bold">
-                                    {user.name.charAt(0).toUpperCase()}
-                                  </span>
+                                  <Plus size={12} />
                                 )}
-                              </div>
-
-                              {/* Informações */}
-                              <div className="flex-1 min-w-0">
-                                <p className="font-bold text-sm text-zinc-900 dark:text-white truncate">{user.name}</p>
-                                {user.role && (
-                                  <p className="text-[10px] font-semibold text-primary-600 dark:text-primary-400 uppercase tracking-wider">
-                                    {user.role}
-                                  </p>
-                                )}
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{user.email}</p>
-                                {user.store && (
-                                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate mt-1">
-                                    {user.store.name}
-                                  </p>
-                                )}
-                              </div>
-
-                              {/* Checkbox indicator */}
-                              <div className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${
-                                selectedUsers.includes(user.id)
-                                  ? 'bg-primary-600 border-primary-600'
-                                  : 'border-zinc-300 dark:border-zinc-600'
-                              }`}>
-                                {selectedUsers.includes(user.id) && (
-                                  <Check size={12} className="text-white" />
-                                )}
-                              </div>
-                            </motion.button>
-                          ))}
+                                {role}
+                              </button>
+                            );
+                          })}
                         </div>
+                      </div>
+                    </div>
 
-                        {selectedUsers.length > 0 && (
-                          <p className="text-sm text-primary-600 dark:text-primary-400 font-medium">
-                            {selectedUsers.length} usuário(s) selecionado(s)
-                          </p>
-                        )}
-                      </>
+                    {/* Busca de usuários */}
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
+                      <input
+                        type="text"
+                        placeholder="Buscar por nome..."
+                        value={userSearch}
+                        onChange={(e) => setUserSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                      />
+                    </div>
+
+                    {/* Contador de selecionados */}
+                    {selectedUsers.length > 0 && (
+                      <div className="p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl">
+                        <p className="text-sm font-semibold text-primary-700 dark:text-primary-400">
+                          👥 {selectedUsers.length} usuário(s) selecionado(s)
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Lista de usuários */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2">
+                      {users.map(user => (
+                        <motion.button
+                          key={user.id}
+                          onClick={() => {
+                            setSelectedUsers(prev =>
+                              prev.includes(user.id) ? prev.filter(id => id !== user.id) : [...prev, user.id]
+                            );
+                          }}
+                          className={`flex items-start gap-3 p-3 border rounded-xl text-left transition-all group ${
+                            selectedUsers.includes(user.id)
+                              ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-900/20'
+                              : 'border-zinc-200 dark:border-zinc-700 hover:border-primary-300 dark:hover:border-primary-700'
+                          }`}
+                        >
+                          {/* Avatar */}
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-100 to-teal-100 border-2 border-primary-200 flex items-center justify-center text-primary-600 overflow-hidden flex-shrink-0">
+                            {user.profile_image_url ? (
+                              <img
+                                src={getFullImageUrl(user.profile_image_url) || ''}
+                                alt={user.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-lg font-bold">
+                                {user.name.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Informações */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-sm text-zinc-900 dark:text-white truncate">{user.name}</p>
+                            {user.role && (
+                              <p className="text-[10px] font-semibold text-primary-600 dark:text-primary-400 uppercase tracking-wider">
+                                {user.role}
+                              </p>
+                            )}
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{user.email}</p>
+                          </div>
+
+                          {/* Check indicator */}
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                            selectedUsers.includes(user.id)
+                              ? 'bg-primary-500 border-primary-500'
+                              : 'border-zinc-300 dark:border-zinc-600 group-hover:border-primary-400'
+                          }`}>
+                            {selectedUsers.includes(user.id) && (
+                              <Check size={12} className="text-white" />
+                            )}
+                          </div>
+                        </motion.button>
+                      ))}
+                    </div>
+
+                    {/* Paginação de Usuários */}
+                    {usersTotalPages > 1 && (
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                        <button
+                          onClick={() => setUsersPage(prev => Math.max(prev - 1, 1))}
+                          disabled={usersPage === 1}
+                          className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 text-xs font-medium"
+                        >
+                          Anterior
+                        </button>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+                          Página {usersPage} de {usersTotalPages}
+                        </span>
+                        <button
+                          onClick={() => setUsersPage(prev => Math.min(prev + 1, usersTotalPages))}
+                          disabled={usersPage === usersTotalPages}
+                          className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 text-xs font-medium"
+                        >
+                          Próxima
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}
               </div>
 
               {/* Footer */}
-              <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex justify-between items-center gap-3">
-                <button
-                  onClick={handleCloseModal}
-                  className="px-6 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all font-bold"
-                >
-                  Cancelar
-                </button>
-                
-                <div className="flex items-center gap-3">
-                  {activeTab === 'recipients' && (
+              <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex flex-col sm:flex-row gap-3 items-center justify-between">
+                <div className="flex gap-3 w-full sm:w-auto">
+                  {activeTab !== 'basic' && (
                     <button
-                      onClick={handleSaveDraft}
-                      disabled={saving || !formData.title.trim()}
-                      className="px-6 py-2.5 border border-amber-500 text-amber-600 dark:text-amber-400 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                      type="button"
+                      onClick={() => setActiveTab('basic')}
+                      className="px-6 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all font-bold flex items-center gap-2"
                     >
-                      {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                      {' '}Salvar Rascunho
+                      <ChevronLeft size={18} />
+                      Voltar
                     </button>
                   )}
+                </div>
+
+                <div className="flex gap-3 w-full sm:w-auto justify-end">
+                  <button
+                    onClick={handleCloseModal}
+                    className="px-6 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all font-bold"
+                  >
+                    Cancelar
+                  </button>
                   
-                  {activeTab === 'basic' && (
+                  {activeTab === 'basic' ? (
                     <button
-                      onClick={() => setActiveTab('recipients')}
+                      onClick={() => {
+                        if (!formData.title.trim()) {
+                          addToast('error', 'Título é obrigatório.');
+                          return;
+                        }
+                        setActiveTab('recipients');
+                      }}
                       className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all font-bold flex items-center gap-2 shadow-lg shadow-primary-500/20"
                     >
                       Próximo
                       <ChevronRight size={16} />
                     </button>
-                  )}
-                  
-                  {activeTab === 'recipients' && (
-                    <button
-                      onClick={handleSubmit}
-                      disabled={saving || !formData.title.trim() || !formData.content.trim() || (!formData.target_all && selectedUsers.length === 0)}
-                      className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold flex items-center gap-2 shadow-lg shadow-primary-500/20"
-                    >
-                      {saving ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
-                      {' '}{editingCommunication ? 'Atualizar' : 'Publicar'}
-                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleSaveDraft}
+                        disabled={saving || !formData.title.trim()}
+                        className="px-6 py-2.5 border border-amber-500 text-amber-600 dark:text-amber-400 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                        Salvar Rascunho
+                      </button>
+                      <button
+                        onClick={handleSubmit}
+                        disabled={saving || !formData.title.trim() || !formData.content.trim() || selectedUsers.length === 0}
+                        className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold flex items-center gap-2 shadow-lg shadow-primary-500/20"
+                      >
+                        {saving ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                        {editingCommunication ? 'Atualizar' : 'Publicar'}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>

@@ -2,18 +2,26 @@ import { API_BASE_URL, getHeaders, handleResponse } from '../core/apiClient';
 import { Post } from '../../types';
 
 export const postsService = {
-  getPosts: async (token: string, page = 1, filters: { userName?: string; createdAt?: string } = {}) => {
+  getPosts: async (token: string, page = 1, filters: { 
+    userName?: string; 
+    createdAt?: string; 
+    content?: string;
+    earnsCoins?: boolean;
+    isSponsored?: boolean;
+    isBoosted?: boolean;
+    sort?: string;
+  } = {}) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
     queryParams.append('include', 'user,likes,comments');
     
-    if (filters.userName) {
-      queryParams.append('filter[user.name]', filters.userName);
-    }
-    
-    if (filters.createdAt) {
-      queryParams.append('filter[created_at]', filters.createdAt);
-    }
+    if (filters.userName) queryParams.append('filter[user.name]', filters.userName);
+    if (filters.createdAt) queryParams.append('filter[created_at]', filters.createdAt);
+    if (filters.content) queryParams.append('filter[content]', filters.content);
+    if (filters.earnsCoins !== undefined) queryParams.append('filter[earns_coins]', filters.earnsCoins.toString());
+    if (filters.isSponsored !== undefined) queryParams.append('filter[is_sponsored]', filters.isSponsored.toString());
+    if (filters.isBoosted !== undefined) queryParams.append('filter[is_boosted]', filters.isBoosted.toString());
+    if (filters.sort) queryParams.append('sort', filters.sort);
 
     const response = await fetch(`${API_BASE_URL}/posts?${queryParams.toString()}`, {
       headers: getHeaders(token),

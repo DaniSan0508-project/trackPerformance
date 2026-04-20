@@ -198,7 +198,9 @@ export const SurveysPage: React.FC = () => {
     if (!token) return;
     try {
       const response = await usersService.getUsers(token, page, search, filterType);
-      setUsers(response.data || []);
+      // Filtra para não mostrar administradores (user_type_id !== 1)
+      const filteredUsers = (response.data || []).filter((u: UserType) => u.user_type_id !== 1);
+      setUsers(filteredUsers);
       setUsersTotalPages(response.meta?.last_page || response.last_page || 1);
       setUsersPage(response.meta?.current_page || response.current_page || 1);
     } catch (error) {
@@ -374,7 +376,11 @@ export const SurveysPage: React.FC = () => {
         setSelectAllUsersProgress({ current: currentPage, total: totalPages });
       }
 
-      const validUserIds = allUsers.map(u => u.id);
+      // Filtra para remover administradores da seleção em massa
+      const validUserIds = allUsers
+        .filter(u => u.user_type_id !== 1)
+        .map(u => u.id);
+
       setSelectedUsers(prev => {
         const newIds = validUserIds.filter(id => !prev.includes(id));
         return [...prev, ...newIds];
@@ -383,7 +389,7 @@ export const SurveysPage: React.FC = () => {
       // Marca todos os cargos principais como totalmente selecionados
       setFullySelectedRoles(new Set(roles.map(r => r.description)));
 
-      addToast('success', `Todos os ${validUserIds.length} usuários foram selecionados!`);
+      addToast('success', `Todos os ${validUserIds.length} colaboradores foram selecionados!`);
       setSelectAllUsersProgress(null);
     } catch (error) {
       console.error('Error fetching all users:', error);
@@ -410,8 +416,8 @@ export const SurveysPage: React.FC = () => {
         allUsers.push(...(data.data || []));
       }
 
-      // Filtra por cargo específico
-      const roleUsers = allUsers.filter(u => u.role === role);
+      // Filtra por cargo específico e remove administradores
+      const roleUsers = allUsers.filter(u => u.role === role && u.user_type_id !== 1);
       const validUserIds = roleUsers.map(u => u.id);
 
       const allRoleSelected = validUserIds.every(id => selectedUsers.includes(id));
@@ -473,14 +479,21 @@ export const SurveysPage: React.FC = () => {
   const focusLastQuestion = () => {
     setTimeout(() => {
       if (questionsContainerRef.current) {
-        const lastQuestion = questionsContainerRef.current.lastElementChild as HTMLElement;
+        // Find all question cards (they have data-question-index or a class)
+        const questionCards = questionsContainerRef.current.querySelectorAll('[data-question-card="true"]');
+        const lastQuestion = questionCards[questionCards.length - 1] as HTMLElement;
         if (lastQuestion) {
           lastQuestion.scrollIntoView({ behavior: 'smooth', block: 'center' });
           const textarea = lastQuestion.querySelector('textarea');
-          if (textarea) textarea.focus();
+          if (textarea) {
+            textarea.focus();
+            // Move cursor to the end
+            const length = textarea.value.length;
+            textarea.setSelectionRange(length, length);
+          }
         }
       }
-    }, 100);
+    }, 150);
   };
 
   const addQuestion = () => {
@@ -1420,30 +1433,29 @@ export const SurveysPage: React.FC = () => {
                         {questions.map((question, qIndex) => (
                           <motion.div
                             key={qIndex}
+                            data-question-card="true"
                             initial={{ opacity: 0, y: 10, scale: 0.98 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             className={`border-2 transition-all duration-500 rounded-xl p-5 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md ${
-                              qIndex === questions.length - 1 && !editingSurvey
+                              qIndex === questions.length - 1
                                 ? 'border-primary-500/50 dark:border-primary-500/30 ring-4 ring-primary-500/10'
                                 : 'border-zinc-200 dark:border-zinc-700'
                             }`}
-                          >
+                            >
                             {/* Header da questão */}
-                            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-                              <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            <div className="flex items-center justify-between mb-4 flex-wrap gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                                   question.type === 'choice'
                                     ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
                                     : 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
                                 }`}>
                                   {question.type === 'choice' ? <BarChart3 size={16} /> : <FileText size={16} />}
                                 </div>
-                                <span className="font-semibold text-zinc-700 dark:text-zinc-300">
-                                  Questão {question.order}
+                                <span className="font-semibold text-zinc-700 dark:text-zinc-300 truncate">
+                                  Questão {qIndex + 1}
                                 </span>
-                              </div>
-
-                              <div className="flex items-center gap-2">
+                              </div>                              <div className="flex items-center gap-2">
                                 {/* Seletor de Tipo */}
                                 <select
                                   disabled={isReadOnly}

@@ -253,8 +253,8 @@ export const Layout: React.FC = () => {
         </nav>
       </main>
 
-      {/* Polling de Comunicados */}
-      <CommunicationsPoller onUnreadCountChange={setCommunicationsUnreadCount} />
+      {/* Polling de Comunicados (Desativado temporariamente) */}
+      {/* <CommunicationsPoller onUnreadCountChange={setCommunicationsUnreadCount} /> */}
     </div>
   );
 };
