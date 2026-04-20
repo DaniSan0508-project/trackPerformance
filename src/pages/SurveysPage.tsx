@@ -344,6 +344,8 @@ export const SurveysPage: React.FC = () => {
     setIsModalOpen(false);
     setEditingSurvey(null);
     setActiveTab('basic');
+    setUserSearch('');
+    setUsersPage(1);
   };
 
   const handleSelectAllUsers = async () => {

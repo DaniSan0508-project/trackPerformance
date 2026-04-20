@@ -696,6 +696,12 @@ export const CampaignsPage: React.FC = () => {
     setFormErrors({});
     setActionSearch('');
     setHasFetchedHashtags(false);
+    setUserSearch('');
+    setProductSearch('');
+    setRewardSearch('');
+    setUsersPage(1);
+    setProductsPage(1);
+    setRewardsPage(1);
   };
 
   const handleCloseImportModal = () => {

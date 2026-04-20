@@ -198,6 +198,8 @@ export const CommunicationsPage: React.FC = () => {
     setFullySelectedRoles(new Set());
     setLoadingSelectAllUsers(false);
     setSelectAllUsersProgress(null);
+    setUserSearch('');
+    setUsersPage(1);
   };
 
   const handleSelectAllUsers = async () => {
