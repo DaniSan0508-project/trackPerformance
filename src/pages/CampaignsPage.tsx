@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift, Upload, FileSpreadsheet, Download, Hash, AlertCircle } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift, Upload, FileSpreadsheet, Download, Hash, AlertCircle, Package, User, Clock, Info, Mail, Phone } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus, Role, EngagementAction, Reward, CampaignHashtag } from '../types';
@@ -326,10 +326,25 @@ export const CampaignsPage: React.FC = () => {
     isOpen: false,
     campaign: null,
     ranking: [],
-    loading: false,
-  });
+    isLoading: false,
+    });
 
-  const isAdmin = currentUser?.user_type_id === 1;
+    // Prize approval state
+    const [approvingPrizeId, setApprovingPrizeId] = useState<number | null>(null);
+    const [prizeConfirmModal, setPrizeConfirmModal] = useState<{
+    isOpen: boolean;
+    campaign: Campaign | null;
+    }>({
+    isOpen: false,
+    campaign: null,
+    });
+
+    // Winner details modal state
+    const [selectedWinner, setSelectedWinner] = useState<UserType | null>(null);
+    const [selectedCampaignForWinner, setSelectedCampaignForWinner] = useState<Campaign | null>(null);
+    const [loadingWinnerDetails, setLoadingWinnerDetails] = useState(false);
+
+    const isAdmin = currentUser?.user_type_id === 1;
 
   // Limpa usuários inválidos quando muda o tipo de campanha para engagement
   useEffect(() => {
@@ -441,6 +456,41 @@ export const CampaignsPage: React.FC = () => {
       setLoading(false);
     }
   }, [token]);
+
+  const handleApprovePrize = async () => {
+    if (!token || !prizeConfirmModal.campaign) return;
+    
+    const campaignId = prizeConfirmModal.campaign.id;
+    setApprovingPrizeId(campaignId);
+    setPrizeConfirmModal({ isOpen: false, campaign: null });
+    
+    try {
+      await campaignsService.approvePrize(token, campaignId);
+      addToast('success', 'Entrega do prêmio aprovada com sucesso!');
+      await fetchCampaigns(currentPage, searchTerm);
+    } catch (error: any) {
+      console.error('Error approving prize:', error);
+      addToast('error', error.message || 'Erro ao aprovar entrega do prêmio.');
+    } finally {
+      setApprovingPrizeId(null);
+    }
+  };
+
+  const handleOpenWinnerDetails = async (winnerId: number, campaign: Campaign) => {
+    if (!token) return;
+    setLoadingWinnerDetails(true);
+    setSelectedCampaignForWinner(campaign);
+    try {
+      const response = await usersService.getUser(token, winnerId);
+      setSelectedWinner(response.data || response);
+    } catch (error) {
+      console.error('Error fetching winner details:', error);
+      addToast('error', 'Erro ao carregar detalhes do ganhador.');
+      setSelectedCampaignForWinner(null);
+    } finally {
+      setLoadingWinnerDetails(false);
+    }
+  };
 
   useEffect(() => {
     fetchCampaigns(currentPage, debouncedSearchTerm);
@@ -1590,16 +1640,47 @@ export const CampaignsPage: React.FC = () => {
                           )}
 
                           <div className="flex items-center gap-2">
-                            {/* Botão de ranking: apenas para campanhas ativas */}
-                            {isAtiva && (
-                              <button
-                                onClick={() => handleOpenRanking(campaign)}
-                                className="p-2 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
-                                title="Ver Ranking Completo"
+                            {/* Exibição de Ganhador para campanhas inativas */}
+                            {!isAtiva && campaign.winner_user_id && (
+                              <div 
+                                className="flex-1 p-2 px-3 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 flex items-center justify-between gap-2 cursor-pointer hover:border-amber-400 transition-all group"
+                                onClick={() => handleOpenWinnerDetails(campaign.winner_user_id!, campaign)}
+                                title={isAdmin && !campaign.prize_approved_at ? "Entregar Prêmio" : "Ver Ganhador"}
                               >
-                                <Trophy size={18} />
-                              </button>
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="w-6 h-6 rounded-full bg-white dark:bg-zinc-800 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-500 flex-shrink-0 overflow-hidden shadow-sm">
+                                    {campaign.winner?.profile_image_url ? (
+                                      <img src={getFullImageUrl(campaign.winner.profile_image_url) || ''} alt={campaign.winner.name} className="w-full h-full object-cover" />
+                                    ) : <Trophy size={14} />}
+                                  </div>
+                                  <span className="text-xs font-bold text-zinc-900 dark:text-white truncate">
+                                    {campaign.winner?.name || 'Ganhador'}
+                                  </span>
+                                  {campaign.prize_approved_at && (
+                                    <Check size={14} className="text-green-600" />
+                                  )}
+                                </div>
+                                
+                                {!campaign.prize_approved_at && (
+                                  <div className={`p-1.5 rounded-lg transition-all ${
+                                    isAdmin 
+                                      ? 'bg-amber-500 text-white shadow-sm group-hover:scale-110' 
+                                      : 'text-amber-500'
+                                  }`}>
+                                    {isAdmin ? <Gift size={14} /> : <Info size={14} />}
+                                  </div>
+                                )}
+                              </div>
                             )}
+
+                            {/* Botão de ranking: para campanhas ativas ou inativas (ranking final) */}
+                            <button
+                              onClick={() => handleOpenRanking(campaign)}
+                              className="p-2 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+                              title="Ver Ranking Completo"
+                            >
+                              <Trophy size={18} />
+                            </button>
                             {isAdmin && (
                               <>
                                 <button
@@ -3250,6 +3331,153 @@ export const CampaignsPage: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      <ConfirmModal
+        isOpen={prizeConfirmModal.isOpen}
+        onClose={() => setPrizeConfirmModal({ isOpen: false, campaign: null })}
+        onConfirm={handleApprovePrize}
+        title="Confirmar Entrega de Prêmio"
+        message={`Deseja confirmar a entrega do prêmio "${prizeConfirmModal.campaign?.reward?.name || 'vinculado'}" para ${prizeConfirmModal.campaign?.winner?.name || 'o ganhador'}?`}
+      />
+
+      {/* Winner Details Modal */}
+      <AnimatePresence>
+        {selectedWinner && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => { setSelectedWinner(null); setSelectedCampaignForWinner(null); }}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-zinc-200 dark:border-zinc-800"
+            >
+              <div className="relative h-32 bg-gradient-to-br from-primary-500 to-primary-700">
+                <button 
+                  onClick={() => { setSelectedWinner(null); setSelectedCampaignForWinner(null); }}
+                  className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full transition-colors backdrop-blur-sm"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="px-6 pb-6">
+                <div className="relative -mt-16 mb-4 flex justify-center">
+                  <div className="w-32 h-32 rounded-3xl bg-white dark:bg-zinc-900 p-1 shadow-xl border-4 border-white dark:border-zinc-900 overflow-hidden">
+                    {selectedWinner.profile_image_url ? (
+                      <img src={getFullImageUrl(selectedWinner.profile_image_url) || ''} alt={selectedWinner.name} className="w-full h-full object-cover rounded-2xl" />
+                    ) : (
+                      <div className="w-full h-full bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-400">
+                        <User size={48} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-center mb-6">
+                  <h3 className="text-2xl font-bold text-zinc-900 dark:text-white">{selectedWinner.name}</h3>
+                  <div className="inline-flex items-center px-3 py-1 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 rounded-full text-xs font-bold mt-2 uppercase tracking-wider">
+                    {selectedWinner.role || 'Ganhador'}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {selectedCampaignForWinner && (
+                    <div className="p-4 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-800 flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-amber-200 dark:border-amber-800 bg-white dark:bg-zinc-800">
+                        {selectedCampaignForWinner.reward?.primary_image ? (
+                          <img src={selectedCampaignForWinner.reward.primary_image.image_full_url} alt={selectedCampaignForWinner.reward.name} className="w-full h-full object-cover" />
+                        ) : <div className="w-full h-full flex items-center justify-center text-amber-500"><Gift size={24} /></div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] text-amber-600 dark:text-amber-500 uppercase font-bold">Prêmio da Campanha</p>
+                        <p className="text-sm font-bold text-zinc-900 dark:text-white truncate">{selectedCampaignForWinner.reward?.name || 'Prêmio vinculado'}</p>
+                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">{selectedCampaignForWinner.name}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                    <div className="w-10 h-10 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center text-primary-500 shadow-sm">
+                      <Mail size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-zinc-500 uppercase font-bold">E-mail</p>
+                      <p className="text-sm text-zinc-900 dark:text-zinc-100 truncate">{selectedWinner.email}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                    <div className="w-10 h-10 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center text-primary-500 shadow-sm">
+                      <Phone size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-zinc-500 uppercase font-bold">Telefone</p>
+                      <p className="text-sm text-zinc-900 dark:text-zinc-100">{selectedWinner.phone || 'Não informado'}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                    <div className="w-10 h-10 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center text-primary-500 shadow-sm">
+                      <StoreIcon size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-zinc-500 uppercase font-bold">Unidade</p>
+                      <p className="text-sm text-zinc-900 dark:text-zinc-100 truncate">{selectedWinner.store?.name || 'Não informada'}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                    <div className="w-10 h-10 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center text-primary-500 shadow-sm">
+                      <Coins size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-zinc-500 uppercase font-bold">Saldo Atual</p>
+                      <p className="text-sm font-bold text-amber-600">{selectedWinner.coin_balance || 0} {coinName}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button 
+                    onClick={() => { setSelectedWinner(null); setSelectedCampaignForWinner(null); }}
+                    className="flex-1 py-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                  >
+                    Fechar
+                  </button>
+                  {isAdmin && selectedCampaignForWinner && !selectedCampaignForWinner.prize_approved_at && (
+                    <button 
+                      onClick={() => {
+                        setPrizeConfirmModal({ isOpen: true, campaign: selectedCampaignForWinner });
+                        setSelectedWinner(null);
+                        setSelectedCampaignForWinner(null);
+                      }}
+                      className="flex-[2] py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Trophy size={18} />
+                      Entregar Prêmio
+                    </button>
+                  )}
+                </div>
+                {selectedCampaignForWinner?.prize_approved_at && (
+                  <div className="mt-4 flex items-center justify-center gap-2 text-green-600 dark:text-green-400 font-bold text-sm bg-green-50 dark:bg-green-900/20 py-2 rounded-lg">
+                    <Check size={18} /> Prêmio entregue em {new Date(selectedCampaignForWinner.prize_approved_at).toLocaleDateString()}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Loading Winner Details Overlay */}
+      {loadingWinnerDetails && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
+          <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl flex items-center gap-3">
+            <Loader2 className="animate-spin text-primary-600" size={24} />
+            <span className="font-bold text-zinc-900 dark:text-white">Carregando detalhes...</span>
+          </div>
+        </div>
+      )}
     </>
   );
 };

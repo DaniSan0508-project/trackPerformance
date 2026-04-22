@@ -6,6 +6,7 @@ export const campaignsService = {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
     queryParams.append('sort', '-created_at');
+    queryParams.append('include', 'reward,winner');
     if (search) {
       queryParams.append('filter[name]', search);
     }
