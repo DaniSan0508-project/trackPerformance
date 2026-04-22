@@ -206,6 +206,10 @@ export interface Campaign {
   ranking?: CampaignRanking[];
   podium?: CampaignRanking[]; // Top 3 ranking retornado pela API
   reward_id?: number | string | null;
+  reward?: Reward | null;
+  winner_user_id?: number | null;
+  winner?: User | null;
+  prize_approved_at?: string | null;
 }
 
 export interface CampaignHashtag {

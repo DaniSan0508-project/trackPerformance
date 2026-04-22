@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, ShoppingBag, Package, Coins, Images as ImagesIcon, X, Plus, Camera, Trash2, Edit2, Save, Gift, ClipboardList, CheckCircle, XCircle, Clock, AlertCircle, Ticket } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, ShoppingBag, Package, Coins, Images as ImagesIcon, X, Plus, Camera, Trash2, Edit2, Save, Gift, ClipboardList, CheckCircle, XCircle, Clock, AlertCircle, Ticket, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Reward, RewardImage, Redemption, RedemptionStatus, RedemptionStatusHistory } from '../types';
@@ -8,6 +8,7 @@ import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { rewardSchema } from '../validators/schemas';
 import { VouchersTab } from '../components/Rewards/VouchersTab';
+import { CampaignPrizesTab } from '../components/Rewards/CampaignPrizesTab';
 
 const MAX_IMAGES = 3;
 
@@ -97,7 +98,7 @@ export const RewardsPage: React.FC = () => {
   });
 
   // Redemptions states
-  const [activeTab, setActiveTab] = useState<'rewards' | 'redemptions' | 'vouchers'>('rewards');
+  const [activeTab, setActiveTab] = useState<'rewards' | 'redemptions' | 'vouchers' | 'campaign_prizes'>('rewards');
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [redemptionsLoading, setRedemptionsLoading] = useState(false);
   const [redemptionsPage, setRedemptionsPage] = useState(1);
@@ -675,19 +676,34 @@ export const RewardsPage: React.FC = () => {
             </div>
           </button>
           {isAdmin && (
-            <button
-              onClick={() => setActiveTab('vouchers')}
-              className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors ${
-                activeTab === 'vouchers'
-                  ? 'bg-primary-600 text-white'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Ticket size={18} />
-                Histórico (Vouchers)
-              </div>
-            </button>
+            <>
+              <button
+                onClick={() => setActiveTab('campaign_prizes')}
+                className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors ${
+                  activeTab === 'campaign_prizes'
+                    ? 'bg-primary-600 text-white'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Trophy size={18} />
+                  Entrega de Prêmios
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('vouchers')}
+                className={`px-4 py-2 font-medium text-sm rounded-t-lg transition-colors ${
+                  activeTab === 'vouchers'
+                    ? 'bg-primary-600 text-white'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Ticket size={18} />
+                  Histórico (Vouchers)
+                </div>
+              </button>
+            </>
           )}
         </div>
 
@@ -1229,6 +1245,11 @@ export const RewardsPage: React.FC = () => {
         {/* Vouchers Tab */}
         {activeTab === 'vouchers' && isAdmin && (
           <VouchersTab />
+        )}
+
+        {/* Campaign Prizes Tab */}
+        {activeTab === 'campaign_prizes' && isAdmin && (
+          <CampaignPrizesTab />
         )}
 
         {/* Reward Detail Modal */}

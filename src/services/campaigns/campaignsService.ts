@@ -97,4 +97,12 @@ export const campaignsService = {
     });
     return handleResponse(response);
   },
+
+  approvePrize: async (token: string, campaignId: number) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/approve-prize`, {
+      method: 'POST',
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
 };
