@@ -1012,7 +1012,8 @@ export const PostsPage: React.FC = () => {
                         </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
                           {formatRelativeDate(post.created_at)}
-                          {post.earns_coins && <span className="ml-2 text-amber-600 font-medium">• Ganha {coinName}</span>}
+                          {post.is_sponsored && <span className="ml-2 text-primary-600 font-medium">• Patrocinado</span>}
+                          {post.is_boosted && <span className="ml-2 text-primary-600 font-medium">• Turbinado</span>}
                         </p>
                       </div>
                     </div>
@@ -1377,13 +1378,20 @@ export const PostsPage: React.FC = () => {
                   <div className="text-zinc-900 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed text-sm md:text-base break-words">
                     {renderPostContent(contentModalPost.content)}
                   </div>
-                  <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center text-xs text-zinc-400 dark:text-zinc-500">
+                  <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap gap-4 items-center text-xs text-zinc-400 dark:text-zinc-500">
                     <span>Postado em {new Date(contentModalPost.created_at).toLocaleDateString()} às {new Date(contentModalPost.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    {contentModalPost.earns_coins && (
-                      <span className="text-amber-600 font-medium flex items-center gap-1">
-                        💰 Ganha {coinName}
-                      </span>
-                    )}
+                    <div className="flex gap-3 ml-auto">
+                      {contentModalPost.is_sponsored && (
+                        <span className="text-primary-600 font-medium flex items-center gap-1">
+                          <Shield size={14} /> Patrocinado
+                        </span>
+                      )}
+                      {contentModalPost.is_boosted && (
+                        <span className="text-primary-600 font-medium flex items-center gap-1">
+                          <Rocket size={14} /> Turbinado
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </motion.div>

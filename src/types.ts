@@ -127,6 +127,7 @@ export interface Post {
   video_url: string | null;
   earns_coins: boolean;
   is_sponsored?: boolean;
+  is_boosted?: boolean;
   boost_like_coins?: number;
   boost_comment_coins?: number;
   boost_share_coins?: number;
