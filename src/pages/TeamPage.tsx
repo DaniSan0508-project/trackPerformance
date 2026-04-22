@@ -386,8 +386,8 @@ export const TeamPage: React.FC = () => {
         data.append('password', formData.password);
       }
       data.append('user_type_id', String(formData.user_type_id));
-      if (formData.store_id) {
-        data.append('store_id', String(formData.store_id));
+      if (stores.length > 0) {
+        data.append('store_id', String(formData.store_id || ''));
       }
       if (formData.role_id) {
         data.append('role_id', String(formData.role_id));
@@ -857,20 +857,22 @@ export const TeamPage: React.FC = () => {
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Unidade</label>
-                      <select
-                        value={formData.store_id}
-                        onChange={(e) => setFormData({ ...formData, store_id: e.target.value ? Number(e.target.value) : '' })}
-                        disabled={!isAdmin}
-                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:bg-zinc-100 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500"
-                      >
-                        <option value="">Selecione uma unidade</option>
-                        {stores.map(store => (
-                          <option key={store.id} value={store.id}>{store.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {stores.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Unidade</label>
+                        <select
+                          value={formData.store_id}
+                          onChange={(e) => setFormData({ ...formData, store_id: e.target.value ? Number(e.target.value) : '' })}
+                          disabled={!isAdmin}
+                          className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:bg-zinc-100 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500"
+                        >
+                          <option value="">Nenhuma unidade</option>
+                          {stores.map(store => (
+                            <option key={store.id} value={store.id}>{store.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
                     <div className="col-span-2">
                       <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Cargo (Opcional)</label>
