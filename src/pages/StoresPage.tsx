@@ -288,9 +288,10 @@ export const StoresPage: React.FC = () => {
       await fetchStores(currentPage, searchTerm);
       handleCloseModal();
       addToast('success', editingStore ? 'Unidade atualizada com sucesso!' : 'Unidade criada com sucesso!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving store:', error);
-      addToast('error', 'Erro ao salvar unidade. Verifique os dados e tente novamente.');
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Erro ao salvar unidade.';
+      addToast('error', errorMessage);
     } finally {
       setSaving(false);
     }
@@ -305,11 +306,8 @@ export const StoresPage: React.FC = () => {
       addToast('success', 'Unidade excluída com sucesso!');
     } catch (error: any) {
       console.error('Error deleting store:', error);
-      if (error.message === 'STORE_HAS_LINKED_USERS') {
-        addToast('error', 'Não é possível deletar uma unidade que tenha usuários vinculados.');
-      } else {
-        addToast('error', 'Erro ao excluir unidade.');
-      }
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Erro ao excluir unidade.';
+      addToast('error', errorMessage);
     } finally {
       setDeletingId(null);
     }
@@ -334,9 +332,10 @@ export const StoresPage: React.FC = () => {
       await fetchGroups();
       setNewGroupName('');
       addToast('success', 'Grupo criado com sucesso!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating group:', error);
-      addToast('error', 'Erro ao criar grupo.');
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Erro ao criar grupo.';
+      addToast('error', errorMessage);
     } finally {
       setCreatingGroup(false);
     }
@@ -348,9 +347,10 @@ export const StoresPage: React.FC = () => {
       await storesService.updateStoreGroup(token, id, { name });
       await fetchGroups();
       addToast('success', 'Grupo atualizado com sucesso!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating group:', error);
-      addToast('error', 'Erro ao atualizar grupo.');
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Erro ao atualizar grupo.';
+      addToast('error', errorMessage);
     }
   };
 
@@ -360,9 +360,10 @@ export const StoresPage: React.FC = () => {
       await storesService.deleteStoreGroup(token, id);
       await fetchGroups();
       addToast('success', 'Grupo excluído com sucesso!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting group:', error);
-      addToast('error', 'Erro ao excluir grupo. Verifique se não há unidades vinculadas.');
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Erro ao excluir grupo.';
+      addToast('error', errorMessage);
     }
   };
 

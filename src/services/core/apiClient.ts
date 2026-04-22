@@ -17,7 +17,7 @@ export const handleResponse = async (response: Response) => {
       throw error;
     }
 
-    const error = new Error(errorData.message || 'Falha na requisição');
+    const error = new Error(errorData.error || errorData.message || 'Falha na requisição');
     (error as any).response = { data: errorData, status: response.status };
     throw error;
   }
