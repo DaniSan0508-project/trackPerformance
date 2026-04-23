@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift, Upload, FileSpreadsheet, Download, Hash, AlertCircle, Package, User, Clock, Info, Mail, Phone, FileText, CheckCircle2, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift, Upload, FileSpreadsheet, Download, Hash, AlertCircle, Package, User, Clock, Info, Mail, Phone, FileText, CheckCircle2, AlertTriangle, ChevronDown, Globe, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../context/AuthContext';
@@ -1675,6 +1675,23 @@ export const CampaignsPage: React.FC = () => {
                                 </span>
                                 <span className={`px-2 py-1 rounded-full text-xs font-bold ${statusColor}`}>
                                   {statusLabel.toUpperCase()}
+                                </span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${
+                                  campaign.is_public !== false
+                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400'
+                                }`}>
+                                  {campaign.is_public !== false ? (
+                                    <>
+                                      <Globe size={12} />
+                                      PÚBLICA
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Lock size={12} />
+                                      PRIVADA
+                                    </>
+                                  )}
                                 </span>
                               </div>
 
