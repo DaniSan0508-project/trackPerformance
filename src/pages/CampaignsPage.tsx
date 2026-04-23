@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift, Upload, FileSpreadsheet, Download, Hash, AlertCircle, Package, User, Clock, Info, Mail, Phone } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Target, Calendar, TrendingUp, X, Users, ShoppingBag, Trophy, Check, Coins, Shield, Save, Store as StoreIcon, Gift, Upload, FileSpreadsheet, Download, Hash, AlertCircle, Package, User, Clock, Info, Mail, Phone, FileText, CheckCircle2, AlertTriangle, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../context/AuthContext';
 import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, CampaignStatus, Role, EngagementAction, Reward, CampaignHashtag } from '../types';
 import { authService, dashboardService, usersService, campaignsService, productsService, manufacturersService, rolesService, rewardsService, feedbacksService, postsService, redemptionsService, tenantConfigsService, surveysService, storesService, coinsService } from '../services';
@@ -29,8 +30,8 @@ const campaignTypeLabels: Record<CampaignType, string> = {
 };
 
 const campaignTypeColors: Record<CampaignType, string> = {
-  sales: 'bg-[var(--color-primary-100)] text-[var(--color-primary-700)] dark:bg-[var(--color-primary-900/30)] dark:text-[var(--color-primary-400)]',
-  engagement: 'bg-[var(--color-primary-100)] text-[var(--color-primary-700)] dark:bg-[var(--color-primary-900/30)] dark:text-[var(--color-primary-400)]',
+  sales: 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400',
+  engagement: 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400',
 };
 
 const campaignStatusLabels: Record<CampaignStatus, string> = {
@@ -41,7 +42,7 @@ const campaignStatusLabels: Record<CampaignStatus, string> = {
 };
 
 const campaignStatusColors: Record<CampaignStatus, string> = {
-  ativa: 'bg-[var(--color-primary-100)] dark:bg-[var(--color-primary-900/30)] text-[var(--color-primary-700)] dark:text-[var(--color-primary-400)]',
+  ativa: 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400',
   pausada: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
   finalizada: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400',
   inativa: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
@@ -189,6 +190,14 @@ export const CampaignsPage: React.FC = () => {
     error_count: number;
     errors: Array<{ row: number; external_id: string; reason: string }>;
   } | null>(null);
+
+  // Novos estados para Importação Avançada
+  const [importStep, setImportStep] = useState<'upload' | 'review' | 'importing' | 'summary'>('upload');
+  const [parsedImportRows, setParsedImportRows] = useState<any[]>([]);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
+  const [importErrorDetails, setImportErrorDetails] = useState<any[]>([]);
+  const [isReviewExpanded, setIsReviewExpanded] = useState(false);
+  const [importBatchLogs, setImportBatchLogs] = useState<string[]>([]);
 
   // Estado para controlar os inputs de coins das ações (permite edição livre)
   const [actionCoinsInputs, setActionCoinsInputs] = useState<{ [key: number]: string }>({});
@@ -764,6 +773,11 @@ export const CampaignsPage: React.FC = () => {
     setImportFile(null);
     setImporting(false);
     setImportResult(null);
+    setImportStep('upload');
+    setParsedImportRows([]);
+    setImportProgress({ current: 0, total: 0 });
+    setImportErrorDetails([]);
+    setImportBatchLogs([]);
   };
 
   const handleDownloadTemplate = () => {
@@ -778,31 +792,125 @@ export const CampaignsPage: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const handleImportFile = async () => {
-    if (!importFile || !importingCampaign || !token) return;
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
+    setImportFile(file);
     setImporting(true);
+    setImportStep('upload');
+
     try {
-      const result = await campaignsService.importCampaignSales(token, importingCampaign.id, importFile);
-      setImportResult(result);
-      
-      if (result.success_count > 0) {
-        addToast('success', `Importação concluída: ${result.success_count} vendas registradas com sucesso!`);
-      } else {
-        addToast('warning', `Nenhuma venda foi registrada. Verifique os erros.`);
-      }
-      
-      // Recarregar dados da campanha
-      await fetchCampaigns();
-    } catch (error: any) {
-      console.error('Error importing sales:', error);
-      const errorMessage = error.response?.data?.message || 'Erro ao importar vendas. Verifique o arquivo.';
-      addToast('error', errorMessage);
-    } finally {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const bstr = evt.target?.result;
+          const wb = XLSX.read(bstr, { type: 'binary' });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          const data = XLSX.utils.sheet_to_json(ws);
+
+          if (data.length === 0) {
+            addToast('error', 'O arquivo está vazio.');
+            setImporting(false);
+            return;
+          }
+
+          setParsedImportRows(data);
+          setImportStep('review');
+          setImporting(false);
+        } catch (err) {
+          console.error('Error parsing file content:', err);
+          addToast('error', 'Erro ao processar o conteúdo do arquivo.');
+          setImporting(false);
+        }
+      };
+      reader.readAsBinaryString(file);
+    } catch (error) {
+      console.error('Error reading file:', error);
+      addToast('error', 'Erro ao carregar o arquivo.');
       setImporting(false);
     }
   };
 
+  const handleImportFile = async () => {
+    if (parsedImportRows.length === 0 || !importingCampaign || !token) return;
+
+    setImporting(true);
+    setImportStep('importing');
+    setImportProgress({ current: 0, total: parsedImportRows.length });
+    
+    const batchSize = 100;
+    const totalRows = parsedImportRows.length;
+    let successCount = 0;
+    let errorCount = 0;
+    const detailedHistory: Array<{ row: number; external_id: string; status: 'success' | 'error'; reason?: string }> = [];
+    const logs: string[] = [];
+
+    try {
+      for (let i = 0; i < totalRows; i += batchSize) {
+        const batch = parsedImportRows.slice(i, i + batchSize);
+        
+        const ws = XLSX.utils.json_to_sheet(batch);
+        const csv = XLSX.utils.sheet_to_csv(ws);
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const batchFile = new File([blob], `lote_${Math.floor(i/batchSize) + 1}.csv`, { type: 'text/csv' });
+
+        const result = await campaignsService.importCampaignSales(token, importingCampaign.id, batchFile);
+        
+        // Mapear erros deste lote para busca rápida
+        const batchErrorsMap: Record<number, string> = {};
+        if (result.errors && Array.isArray(result.errors)) {
+          result.errors.forEach((e: any) => {
+            batchErrorsMap[e.row] = e.reason || 'Erro desconhecido';
+          });
+        }
+
+        // Processar cada linha do lote para o histórico detalhado
+        batch.forEach((rowData: any, index: number) => {
+          const rowNumberInBatch = index + 1;
+          const globalRowNumber = i + rowNumberInBatch;
+          const errorReason = batchErrorsMap[rowNumberInBatch];
+
+          detailedHistory.push({
+            row: globalRowNumber,
+            external_id: rowData.external_id || 'N/A',
+            status: errorReason ? 'error' : 'success',
+            reason: errorReason
+          });
+        });
+
+        successCount += result.success_count || 0;
+        errorCount += result.error_count || 0;
+
+        const currentProgress = Math.min(i + batchSize, totalRows);
+        setImportProgress({ current: currentProgress, total: totalRows });
+        
+        const logMsg = `Lote ${Math.floor(i/batchSize) + 1}: ${result.success_count} sucessos, ${result.error_count} falhas.`;
+        logs.push(logMsg);
+        setImportBatchLogs([...logs]);
+      }
+
+      setImportResult({
+        total_rows: totalRows,
+        success_count: successCount,
+        error_count: errorCount,
+        errors: detailedHistory as any // Usaremos o histórico completo aqui
+      });
+      
+      setImportStep('summary');
+      if (successCount > 0) {
+        addToast('success', `Importação finalizada com ${successCount} sucessos.`);
+      }
+      
+      await fetchCampaigns();
+    } catch (error: any) {
+      console.error('Error during batch import:', error);
+      addToast('error', 'Ocorreu um erro ao enviar um dos lotes.');
+    } finally {
+      setImporting(false);
+    }
+  };
   const handleSubmit = async () => {
     if (!token) return;
     setFormErrors({});
@@ -3195,162 +3303,228 @@ export const CampaignsPage: React.FC = () => {
               </div>
 
               {/* Content */}
-              <div className="p-6 space-y-4">
-                {!importResult ? (
-                  <>
-                    {/* Instruções */}
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-semibold text-blue-800 dark:text-blue-400">
-                          📋 Formato do Arquivo
-                        </p>
-                        <button
-                          onClick={handleDownloadTemplate}
-                          className="flex items-center gap-1.5 px-3 py-1 bg-blue-100 dark:bg-blue-800/50 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-700/50 transition-all border border-blue-200 dark:border-blue-700"
-                        >
-                          <Download size={14} />
-                          Baixar Modelo (.csv)
-                        </button>
-                      </div>
-                      <ul className="text-xs text-blue-700 dark:text-blue-500 space-y-1">
-                        <li>• Formatos aceitos: <strong>.xlsx</strong>, <strong>.xls</strong> ou <strong>.csv</strong></li>
-                        <li>• Coluna A: <strong>external_id</strong> (ID externo do usuário)</li>
-                        <li>• Coluna B: <strong>barcode</strong> (código de barras do produto)</li>
-                        <li>• Coluna C: <strong>sale_date</strong> (data no formato YYYY-MM-DD)</li>
-                        <li>• Coluna D: <strong>amount</strong> (valor da venda)</li>
-                        <li>• A primeira linha (cabeçalho) é ignorada automaticamente</li>
-                        <li>• Apenas produtos vinculados à campanha serão considerados</li>
-                      </ul>
-                    </div>
-
-                    {/* Upload */}
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                        Selecione o arquivo *
-                      </label>
-                      <div className="border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-xl p-6 text-center hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
-                        <input
-                          type="file"
-                          accept=".xlsx,.xls,.csv"
-                          onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                          className="hidden"
-                          id="import-file-input"
-                          disabled={importing}
-                        />
-                        <label htmlFor="import-file-input" className="cursor-pointer">
-                          <Upload className="mx-auto text-zinc-400 mb-2" size={32} />
-                          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                            {importFile ? (
-                              <span className="text-primary-600 dark:text-primary-400 font-medium">
-                                {importFile.name}
-                              </span>
-                            ) : (
-                              <span>Clique para selecionar ou arraste o arquivo aqui</span>
-                            )}
-                          </p>
-                          <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
-                            Formatos: .xlsx, .xls, .csv
-                          </p>
-                        </label>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  /* Resultados */
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-4 text-center">
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Total de Linhas</p>
-                        <p className="text-2xl font-bold text-zinc-900 dark:text-white">{importResult.total_rows}</p>
-                      </div>
-                      <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 text-center">
-                        <p className="text-xs text-primary-600 dark:text-primary-400 mb-1">Sucesso</p>
-                        <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">{importResult.success_count}</p>
-                      </div>
-                      <div className={`rounded-xl p-4 text-center ${
-                        importResult.error_count > 0
-                          ? 'bg-red-50 dark:bg-red-900/20'
-                          : 'bg-emerald-50 dark:bg-emerald-900/20'
-                      }`}>
-                        <p className={`text-xs mb-1 ${
-                          importResult.error_count > 0
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-emerald-600 dark:text-emerald-400'
-                        }`}>Erros</p>
-                        <p className={`text-2xl font-bold ${
-                          importResult.error_count > 0
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-emerald-600 dark:text-emerald-400'
-                        }`}>{importResult.error_count}</p>
-                      </div>
-                    </div>
-
-                    {/* Lista de erros */}
-                    {importResult.errors.length > 0 && (
-                      <div className="max-h-64 overflow-y-auto border border-red-200 dark:border-red-800 rounded-xl">
-                        <div className="bg-red-50 dark:bg-red-900/20 px-4 py-2 border-b border-red-200 dark:border-red-800">
-                          <p className="text-sm font-semibold text-red-800 dark:text-red-400">
-                            ⚠️ Linhas com erro
-                          </p>
-                        </div>
-                        <div className="divide-y divide-red-100 dark:divide-red-900/30">
-                          {importResult.errors.slice(0, 10).map((error, idx) => (
-                            <div key={idx} className="px-4 py-2 text-xs">
-                              <span className="text-red-600 dark:text-red-400 font-medium">Linha {error.row}:</span>
-                              <span className="text-red-700 dark:text-red-300 ml-2">{error.reason}</span>
-                              {error.external_id && (
-                                <span className="text-red-500 dark:text-red-400 ml-2">(ID: {error.external_id})</span>
-                              )}
-                            </div>
-                          ))}
-                          {importResult.errors.length > 10 && (
-                            <div className="px-4 py-2 text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/10">
-                              + {importResult.errors.length - 10} erros não exibidos
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 flex justify-end gap-3">
-                {!importResult ? (
-                  <>
-                    <button
-                      onClick={handleCloseImportModal}
-                      disabled={importing}
-                      className="px-4 py-2 text-zinc-700 dark:text-zinc-300 font-medium hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors disabled:opacity-50"
+              <div className="p-6">
+                {importStep === 'upload' && (
+                  <div className="space-y-6">
+                    <div 
+                      className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl p-10 flex flex-col items-center justify-center transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer relative"
+                      onClick={() => document.getElementById('file-upload-input')?.click()}
                     >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleImportFile}
-                      disabled={!importFile || importing}
-                      className="px-6 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
+                      <input
+                        id="file-upload-input"
+                        type="file"
+                        className="hidden"
+                        accept=".csv, .xlsx, .xls"
+                        onChange={handleFileChange}
+                      />
                       {importing ? (
-                        <>
-                          <Loader2 className="animate-spin" size={18} />
-                          Importando...
-                        </>
+                        <div className="flex flex-col items-center">
+                          <Loader2 className="text-primary-600 animate-spin mb-3" size={48} />
+                          <p className="text-zinc-600 dark:text-zinc-400 font-medium">Lendo arquivo...</p>
+                        </div>
                       ) : (
                         <>
-                          <Upload size={18} />
-                          Importar
+                          <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900/30 text-primary-600 rounded-full flex items-center justify-center mb-4">
+                            <Upload size={32} />
+                          </div>
+                          <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Clique ou arraste o arquivo</h3>
+                          <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">Formatos suportados: CSV, Excel (.xlsx, .xls)</p>
                         </>
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {importStep === 'review' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-xl flex items-center justify-center">
+                          <FileText size={24} />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-zinc-900 dark:text-white">Arquivo pronto</h3>
+                          <p className="text-sm text-zinc-500 dark:text-zinc-400">{parsedImportRows.length} registros encontrados</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setImportStep('upload')}
+                        className="text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                      >
+                        Alterar arquivo
+                      </button>
+                    </div>
+
+                    <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                      <p className="text-sm text-amber-700 dark:text-amber-400 leading-relaxed">
+                        <strong>Confirmação necessária:</strong> Ao clicar em "Iniciar Processamento", as vendas serão vinculadas à campanha <strong>{importingCampaign?.name}</strong>. O envio será feito em lotes automáticos para garantir a segurança dos dados.
+                      </p>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleCloseImportModal}
+                        className="flex-1 px-4 py-3 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors font-bold"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleImportFile}
+                        className="flex-[2] px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all font-bold shadow-lg shadow-primary-600/20 flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle2 size={20} />
+                        Iniciar Processamento
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {importStep === 'importing' && (
+                  <div className="py-8 space-y-6 text-center">
+                    <div className="relative w-32 h-32 mx-auto">
+                      <svg className="w-full h-full transform -rotate-90">
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="58"
+                          stroke="currentColor"
+                          strokeWidth="8"
+                          fill="transparent"
+                          className="text-zinc-100 dark:text-zinc-800"
+                        />
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="58"
+                          stroke="currentColor"
+                          strokeWidth="8"
+                          fill="transparent"
+                          strokeDasharray={364}
+                          strokeDashoffset={364 - (364 * (importProgress.current / (importProgress.total || 1)))}
+                          className="text-primary-600 transition-all duration-500 ease-out"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-2xl font-bold text-zinc-900 dark:text-white">
+                          {Math.round((importProgress.current / (importProgress.total || 1)) * 100)}%
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Processando Lotes...</h3>
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                        Enviando {importProgress.current} de {importProgress.total} registros
+                      </p>
+                    </div>
+
+                    <div className="max-h-32 overflow-y-auto bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-3 border border-zinc-100 dark:border-zinc-700 text-left space-y-1">
+                      {importBatchLogs.map((log, idx) => (
+                        <p key={idx} className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
+                          <Check size={10} className="text-green-500" />
+                          {log}
+                        </p>
+                      ))}
+                      {importing && (
+                        <div className="flex items-center gap-2 text-[10px] font-mono text-primary-600 animate-pulse">
+                          <Loader2 size={10} className="animate-spin" />
+                          Processando próximo lote...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {importStep === 'summary' && importResult && (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/30 rounded-2xl text-center">
+                        <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider mb-1">Sucessos</p>
+                        <p className="text-3xl font-black text-green-700 dark:text-green-400">{importResult.success_count}</p>
+                      </div>
+                      <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-2xl text-center">
+                        <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider mb-1">Falhas</p>
+                        <p className="text-3xl font-black text-red-700 dark:text-red-400">{importResult.error_count}</p>
+                      </div>
+                    </div>
+
+                    {importResult.total_rows > 0 && (
+                      <div className="border border-zinc-200 dark:border-zinc-700 rounded-2xl overflow-hidden">
+                        <button 
+                          onClick={() => setIsReviewExpanded(!isReviewExpanded)}
+                          className="w-full p-4 flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                        >
+                          <div className="flex items-center gap-2 text-sm font-bold text-zinc-700 dark:text-zinc-300">
+                            <FileText className="text-primary-500" size={18} />
+                            Ver relatório detalhado do processamento
+                          </div>
+                          <ChevronDown size={20} className={`text-zinc-400 transition-transform ${isReviewExpanded ? 'rotate-180' : ''}`} />
+                        </button>
+                        
+                        <AnimatePresence>
+                          {isReviewExpanded && (
+                            <motion.div
+                              initial={{ height: 0 }}
+                              animate={{ height: 'auto' }}
+                              exit={{ height: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="max-h-64 overflow-y-auto p-4 space-y-2 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-700">
+                                {importResult.errors.map((item: any, idx) => {
+                                  // Tenta encontrar o nome do vendedor na lista de usuários carregada
+                                  const sellerName = users.find(u => String(u.external_id) === String(item.external_id))?.name || `ID: ${item.external_id}`;
+
+                                  return (
+                                    <div key={idx} className={`flex items-center gap-3 p-3 rounded-xl border ${
+                                      item.status === 'success' 
+                                        ? 'bg-green-50/30 dark:bg-green-900/5 border-green-100/50 dark:border-green-900/10' 
+                                        : 'bg-red-50/50 dark:bg-red-900/5 border-red-100/50 dark:border-red-900/10'
+                                    }`}>
+                                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+                                        item.status === 'success' ? 'bg-green-100 dark:bg-green-900/30 text-green-600' : 'bg-red-100 dark:bg-red-900/30 text-red-600'
+                                      }`}>
+                                        {item.row}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">
+                                          Vendedor: {sellerName}
+                                        </p>
+                                        {item.status === 'error' ? (
+                                          <p className="text-[10px] text-red-600 dark:text-red-400 mt-0.5">
+                                            {item.reason.includes('exist') || item.reason.includes('vendedor') ? 'Vendedor não cadastrado no sistema' : 
+                                             item.reason.includes('barcode') || item.reason.includes('produto') ? 'Produto não encontrado pelo código de barras' : 
+                                             item.reason || 'Erro desconhecido'}
+                                          </p>
+                                        ) : (
+                                          <p className="text-[10px] text-green-600 dark:text-green-400 mt-0.5 flex items-center gap-1">
+                                            <Check size={10} /> Registrado com sucesso
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div className="flex-shrink-0">
+                                        {item.status === 'success' ? (
+                                          <CheckCircle2 size={16} className="text-green-500" />
+                                        ) : (
+                                          <AlertTriangle size={16} className="text-red-500" />
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleCloseImportModal}
+                      className="w-full px-4 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all font-bold shadow-xl"
+                    >
+                      Fechar Relatório
                     </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={handleCloseImportModal}
-                    className="px-6 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors"
-                  >
-                    Fechar
-                  </button>
+                  </div>
                 )}
               </div>
             </motion.div>

@@ -38,6 +38,7 @@ export interface Role {
 export interface User {
   id: number;
   name: string;
+  username?: string | null;
   email: string;
   phone?: string | null;
   tenant_id: number;

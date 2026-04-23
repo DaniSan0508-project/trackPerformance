@@ -857,12 +857,11 @@ export const SurveysPage: React.FC = () => {
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-bold text-lg text-zinc-900 dark:text-white">{survey.title}</h3>
                             {survey.is_published ? (
-                              <span className="px-2 py-1 rounded-full text-xs font-bold bg-[var(--color-primary-100)] dark:bg-[var(--color-primary-900/30)] text-[var(--color-primary-700)] dark:text-[var(--color-primary-400)] flex items-center gap-1">
+                              <span className="px-2 py-1 rounded-full text-xs font-bold bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 flex items-center gap-1">
                                 <CheckCircle size={12} />
                                 Publicada
                               </span>
-                            ) : (
-                              <span className="px-2 py-1 rounded-full text-xs font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 flex items-center gap-1">
+                            ) : (                              <span className="px-2 py-1 rounded-full text-xs font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 flex items-center gap-1">
                                 <XCircle size={12} />
                                 Não Publicada
                               </span>
@@ -891,7 +890,7 @@ export const SurveysPage: React.FC = () => {
 
                           <div className="flex flex-wrap gap-4 mt-3 text-sm">
                             <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                              <Calendar size={16} className="text-[var(--color-primary-500)]" />
+                              <Calendar size={16} className="text-primary-500" />
                               <span className="text-zinc-500 dark:text-zinc-500">Período:</span>
                               <span className="font-medium text-zinc-900 dark:text-white">
                                 {formatDate(survey.starts_at)} até {formatDate(survey.ends_at)}
@@ -1108,7 +1107,7 @@ export const SurveysPage: React.FC = () => {
                           Data de Início *
                         </label>
                         <div className="relative">
-                          <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
+                          <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 dark:text-primary-400 pointer-events-none z-10" />
                           <input
                             type="date"
                             disabled={isReadOnly}
@@ -1123,7 +1122,7 @@ export const SurveysPage: React.FC = () => {
                           Data de Término *
                         </label>
                         <div className="relative">
-                          <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
+                          <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 dark:text-primary-400 pointer-events-none z-10" />
                           <input
                             type="date"
                             disabled={isReadOnly}
