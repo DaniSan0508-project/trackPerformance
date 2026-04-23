@@ -92,6 +92,13 @@ export const campaignsService = {
     return handleResponse(response);
   },
 
+  getCampaignPodium: async (token: string, campaignId: number) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/users?sort=-sales_amount&per_page=3`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
   getHashtags: async (token: string) => {
     const response = await fetch(`${API_BASE_URL}/campaigns/hashtags?per_page=9999`, {
       headers: getHeaders(token),

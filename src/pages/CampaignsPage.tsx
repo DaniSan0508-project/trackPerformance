@@ -453,12 +453,37 @@ export const CampaignsPage: React.FC = () => {
     setError(null);
     try {
       const data = await campaignsService.getCampaigns(token, page, search);
-      setCampaigns(data.data);
+      const campaignsList: Campaign[] = data.data;
+      
+      setCampaigns(campaignsList);
       setCurrentPage(data.current_page);
       setTotalPages(data.last_page);
       setTotalItems(data.total);
       setFromItem(data.from);
       setToItem(data.to);
+
+      // Buscar pódio para campanhas finalizadas que não possuem pódio carregado
+      const finishedCampaigns = campaignsList.filter(c => 
+        (c.status === 'finalizada' || c.is_active === false || c.is_active === 0) && 
+        (!c.podium || c.podium.length === 0)
+      );
+
+      if (finishedCampaigns.length > 0) {
+        // Busca pódios em paralelo (limitado para não sobrecarregar)
+        Promise.all(finishedCampaigns.slice(0, 5).map(async (c) => {
+          try {
+            const podiumData = await campaignsService.getCampaignPodium(token, c.id);
+            if (podiumData && (podiumData.data || Array.isArray(podiumData))) {
+              const members = Array.isArray(podiumData) ? podiumData : podiumData.data;
+              setCampaigns(prev => prev.map(cap => 
+                cap.id === c.id ? { ...cap, podium: members } : cap
+              ));
+            }
+          } catch (err) {
+            console.error(`Error fetching podium for campaign ${c.id}:`, err);
+          }
+        }));
+      }
     } catch (err: any) {
       console.error('Error fetching campaigns:', err);
       setError(err.message || 'Não foi possível carregar as campanhas.');
@@ -1695,63 +1720,6 @@ export const CampaignsPage: React.FC = () => {
                               </div>
                             </div>
                           </div>
-
-                          {/* Podium / Ranking Section */}
-                          {campaign.podium && campaign.podium.length > 0 && (
-                            <div className="w-full md:w-auto mt-4 md:mt-0">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Trophy className="w-4 h-4 text-amber-500" />
-                                <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
-                                  Top {campaign.podium.length}
-                                </span>
-                              </div>
-                              <div className="space-y-1">
-                                {campaign.podium.slice(0, 3).map((member, index) => {
-                                  const medalColors = [
-                                    'text-amber-500',  // 1º
-                                    'text-zinc-400',   // 2º
-                                    'text-amber-600',  // 3º
-                                  ];
-                                  const bgColors = [
-                                    'bg-amber-50 dark:bg-amber-900/20',
-                                    'bg-zinc-50 dark:bg-zinc-800/50',
-                                    'bg-amber-50 dark:bg-amber-900/20',
-                                  ];
-                                  
-                                  return (
-                                    <div
-                                      key={member.user_id}
-                                      className={`flex items-center gap-2 p-2 rounded-lg ${bgColors[index]}`}
-                                    >
-                                      <div className={`w-5 h-5 flex items-center justify-center font-bold text-xs ${medalColors[index]}`}>
-                                        {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-medium text-zinc-900 dark:text-white truncate">
-                                          {member.name}
-                                        </p>
-                                        {member.store && (
-                                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
-                                            {member.store.name}
-                                          </p>
-                                        )}
-                                      </div>
-                                      {campaign.type === 'sales' && member.sales_amount !== null && (
-                                        <span className="text-xs font-semibold text-primary-600 dark:text-primary-400">
-                                          {formatCurrency(String(member.sales_amount))}
-                                        </span>
-                                      )}
-                                      {campaign.type === 'engagement' && member.coins_total !== null && (
-                                        <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                                          {member.coins_total} {coinName}
-                                        </span>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
 
                           <div className="flex items-center gap-2">
                             {/* Exibição de Ganhador para campanhas inativas */}
