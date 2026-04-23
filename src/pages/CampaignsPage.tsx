@@ -165,6 +165,7 @@ export const CampaignsPage: React.FC = () => {
     end_date: '',
     status: 'ativa' as CampaignStatus,
     reward_id: '' as number | '',
+    is_public: true,
   });
 
   // Seleções
@@ -587,6 +588,7 @@ export const CampaignsPage: React.FC = () => {
         end_date: campaign.end_date,
         status: currentStatus,
         reward_id: campaign.reward_id || '',
+        is_public: campaign.is_public !== undefined ? !!campaign.is_public : true,
       });
 
       if (token) {
@@ -678,6 +680,7 @@ export const CampaignsPage: React.FC = () => {
         end_date: '',
         status: 'ativa',
         reward_id: '',
+        is_public: true,
       });
       setSelectedUsers([]);
       setSelectedProducts([]);
@@ -734,6 +737,7 @@ export const CampaignsPage: React.FC = () => {
       end_date: '',
       status: 'ativa',
       reward_id: '',
+      is_public: true,
     });
     setSelectedUsers([]);
     setSelectedProducts([]);
@@ -927,6 +931,7 @@ export const CampaignsPage: React.FC = () => {
 
         // Sempre envia is_active na edição (status pode ser alterado)
         dataToSave.is_active = formData.status === 'ativa';
+        dataToSave.is_public = formData.is_public;
 
         // Envia users apenas se houver selecionados
         if (selectedUsers.length > 0) {
@@ -956,6 +961,7 @@ export const CampaignsPage: React.FC = () => {
         dataToSave.name = formData.name;
         dataToSave.type = formData.type;
         dataToSave.is_active = formData.status === 'ativa';
+        dataToSave.is_public = formData.is_public;
         dataToSave.users = selectedUsers;
 
         // Goal para vendas e engajamento
@@ -2053,6 +2059,26 @@ export const CampaignsPage: React.FC = () => {
                           <option value="ativa">Ativa</option>
                           <option value="inativa">Inativa</option>
                         </select>
+                      </div>
+
+                      <div className="pt-2">
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Visibilidade</label>
+                        <label className="flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={formData.is_public}
+                            onChange={(e) => setFormData({ ...formData, is_public: e.target.checked })}
+                            className="w-5 h-5 text-primary-600 rounded focus:ring-primary-500 bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600"
+                          />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold text-zinc-900 dark:text-white">Campanha Pública</span>
+                            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                              {formData.is_public 
+                                ? 'Visível para todos os colaboradores do app' 
+                                : 'Visível apenas para os participantes selecionados'}
+                            </span>
+                          </div>
+                        </label>
                       </div>
 
                       {/* Card de Prêmio da Campanha */}

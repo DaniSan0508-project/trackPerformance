@@ -197,6 +197,7 @@ export interface Campaign {
   end_date: string;
   status: CampaignStatus;
   is_active?: number; // Manter para compatibilidade com dados antigos
+  is_public?: boolean;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

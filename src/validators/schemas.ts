@@ -247,6 +247,7 @@ export const campaignSchema = z.object({
     .refine((val) => val === 'ativa' || val === 'pausada' || val === 'finalizada', {
       message: 'Status inválido',
     }),
+  is_public: z.boolean().optional(),
   hashtags: z.array(z.object({
     hashtag: z.string().startsWith('#', 'Hashtag deve começar com #'),
     coins: z.number().positive('Valor de coins deve ser positivo')
