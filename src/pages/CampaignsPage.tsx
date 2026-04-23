@@ -830,18 +830,55 @@ export const CampaignsPage: React.FC = () => {
       reader.onload = (evt) => {
         try {
           const bstr = evt.target?.result;
-          const wb = XLSX.read(bstr, { type: 'binary' });
+          const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
           const wsname = wb.SheetNames[0];
           const ws = wb.Sheets[wsname];
-          const data = XLSX.utils.sheet_to_json(ws);
+          
+          // Pegar as linhas como array de arrays para ter controle total
+          const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
 
-          if (data.length === 0) {
+          if (rows.length === 0) {
             addToast('error', 'O arquivo está vazio.');
             setImporting(false);
             return;
           }
 
-          setParsedImportRows(data);
+          const firstRow = rows[0];
+          const isHeader = firstRow.some(cell => {
+            const val = String(cell || '').toLowerCase();
+            return val.includes('id') || val.includes('barcode') || val.includes('vendedor') || val.includes('ean') || val.includes('data') || val.includes('valor');
+          });
+
+          const dataRows = isHeader ? rows.slice(1) : rows;
+          
+          const formattedData = dataRows
+            .filter(row => row.length >= 2 && (row[0] || row[1]))
+            .map(row => {
+              let saleDate = row[2];
+              if (saleDate instanceof Date) {
+                saleDate = saleDate.toISOString().split('T')[0];
+              }
+
+              let amount = row[3];
+              if (typeof amount === 'string') {
+                amount = amount.replace(',', '.').trim();
+              }
+
+              return {
+                external_id: String(row[0] || '').trim(),
+                barcode: String(row[1] || '').trim(),
+                sale_date: saleDate || '',
+                amount: amount || '0'
+              };
+            });
+
+          if (formattedData.length === 0) {
+            addToast('error', 'Não foi possível encontrar dados válidos no arquivo.');
+            setImporting(false);
+            return;
+          }
+
+          setParsedImportRows(formattedData);
           setImportStep('review');
           setImporting(false);
         } catch (err) {
@@ -893,9 +930,9 @@ export const CampaignsPage: React.FC = () => {
 
         // Processar cada linha do lote para o histórico detalhado
         batch.forEach((rowData: any, index: number) => {
-          const rowNumberInBatch = index + 1;
-          const globalRowNumber = i + rowNumberInBatch;
-          const errorReason = batchErrorsMap[rowNumberInBatch];
+          const apiRowNumber = index + 2; // +2 porque o CSV enviado tem cabeçalho (linha 1) e o dado começa na 2
+          const globalRowNumber = i + (index + 1);
+          const errorReason = batchErrorsMap[apiRowNumber];
 
           detailedHistory.push({
             row: globalRowNumber,
@@ -3346,6 +3383,36 @@ export const CampaignsPage: React.FC = () => {
                       </p>
                     </div>
 
+                    <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+                      <div className="max-h-64 overflow-y-auto">
+                        <table className="w-full text-left text-sm border-collapse">
+                          <thead className="bg-zinc-50 dark:bg-zinc-800/50 sticky top-0">
+                            <tr>
+                              <th className="px-4 py-2 font-bold text-zinc-900 dark:text-white border-b border-zinc-200 dark:border-zinc-800">External ID</th>
+                              <th className="px-4 py-2 font-bold text-zinc-900 dark:text-white border-b border-zinc-200 dark:border-zinc-800">Barcode</th>
+                              <th className="px-4 py-2 font-bold text-zinc-900 dark:text-white border-b border-zinc-200 dark:border-zinc-800">Data</th>
+                              <th className="px-4 py-2 font-bold text-zinc-900 dark:text-white border-b border-zinc-200 dark:border-zinc-800">Valor</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            {parsedImportRows.slice(0, 10).map((row, idx) => (
+                              <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
+                                <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">{row.external_id}</td>
+                                <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">{row.barcode}</td>
+                                <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">{row.sale_date}</td>
+                                <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">{row.amount}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {parsedImportRows.length > 10 && (
+                        <div className="px-4 py-2 bg-zinc-50 dark:bg-zinc-800/50 text-xs text-zinc-500 dark:text-zinc-400 text-center border-t border-zinc-200 dark:border-zinc-800">
+                          Exibindo as primeiras 10 de {parsedImportRows.length} linhas
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex gap-3">
                       <button
                         onClick={handleCloseImportModal}
@@ -3456,9 +3523,6 @@ export const CampaignsPage: React.FC = () => {
                             >
                               <div className="max-h-64 overflow-y-auto p-4 space-y-2 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-700">
                                 {importResult.errors.map((item: any, idx) => {
-                                  // Tenta encontrar o nome do vendedor na lista de usuários carregada
-                                  const sellerName = users.find(u => String(u.external_id) === String(item.external_id))?.name || `ID: ${item.external_id}`;
-
                                   return (
                                     <div key={idx} className={`flex items-center gap-3 p-3 rounded-xl border ${
                                       item.status === 'success' 
@@ -3472,13 +3536,11 @@ export const CampaignsPage: React.FC = () => {
                                       </div>
                                       <div className="flex-1 min-w-0">
                                         <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">
-                                          Vendedor: {sellerName}
+                                          Vendedor: {item.external_id || 'N/A'}
                                         </p>
                                         {item.status === 'error' ? (
                                           <p className="text-[10px] text-red-600 dark:text-red-400 mt-0.5">
-                                            {item.reason.includes('exist') || item.reason.includes('vendedor') ? 'Vendedor não cadastrado no sistema' : 
-                                             item.reason.includes('barcode') || item.reason.includes('produto') ? 'Produto não encontrado pelo código de barras' : 
-                                             item.reason || 'Erro desconhecido'}
+                                            {item.reason || 'Erro desconhecido'}
                                           </p>
                                         ) : (
                                           <p className="text-[10px] text-green-600 dark:text-green-400 mt-0.5 flex items-center gap-1">
