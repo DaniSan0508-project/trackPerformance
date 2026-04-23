@@ -575,7 +575,7 @@ export const CampaignsPage: React.FC = () => {
       
       // Mapeia status
       let currentStatus: CampaignStatus = 'inativa';
-      if (campaign.status === 'ativa' || (campaign.status as any) === 'active' || campaign.is_active === 1 || campaign.is_active === true) {
+      if (campaign.status === 'ativa' || (campaign.status as any) === 'active' || campaign.is_active === 1) {
         currentStatus = 'ativa';
       }
 
@@ -1516,7 +1516,7 @@ export const CampaignsPage: React.FC = () => {
                     const typeLabel = campaignTypeLabels[campaign.type] || campaign.type;
                     const typeColor = campaignTypeColors[campaign.type] || 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300';
                     // Fallback para campanhas antigas que usam is_active
-                    const isAtiva = campaign.status === 'ativa' || (campaign.status as any) === 'active' || campaign.is_active === 1 || campaign.is_active === true;
+                    const isAtiva = campaign.status === 'ativa' || (campaign.status as any) === 'active' || campaign.is_active === 1;
                     const statusLabel = isAtiva ? 'Ativa' : 'Inativa';
                     const statusColor = isAtiva 
                       ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400' 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar, Rocket } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar, Rocket, Shield, Coins } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Post, Like, Comment, User as UserType } from '../types';
@@ -254,11 +254,14 @@ export const PostsPage: React.FC = () => {
 
       if (currentUser?.user_type_id === 1) {
         formData.append('is_sponsored', newPostIsSponsored ? '1' : '0');
-        formData.append('earns_coins', newPostEarnsCoins ? '1' : '0');
         if (newPostEarnsCoins) {
           formData.append('boost_like_coins', newPostBoostLikeCoins.toString());
           formData.append('boost_comment_coins', newPostBoostCommentCoins.toString());
           formData.append('boost_share_coins', newPostBoostShareCoins.toString());
+        } else {
+          formData.append('boost_like_coins', '0');
+          formData.append('boost_comment_coins', '0');
+          formData.append('boost_share_coins', '0');
         }
       }
 
@@ -453,11 +456,14 @@ export const PostsPage: React.FC = () => {
 
       if (currentUser?.user_type_id === 1) {
         formData.append('is_sponsored', editIsSponsored ? '1' : '0');
-        formData.append('earns_coins', editEarnsCoins ? '1' : '0');
         if (editEarnsCoins) {
           formData.append('boost_like_coins', editBoostLikeCoins.toString());
           formData.append('boost_comment_coins', editBoostCommentCoins.toString());
           formData.append('boost_share_coins', editBoostShareCoins.toString());
+        } else {
+          formData.append('boost_like_coins', '0');
+          formData.append('boost_comment_coins', '0');
+          formData.append('boost_share_coins', '0');
         }
       }
 
@@ -513,7 +519,10 @@ export const PostsPage: React.FC = () => {
     }, 0);
     
     setEditIsSponsored(post.is_sponsored || false);
-    setEditEarnsCoins(post.earns_coins || false);
+    const hasBoosts = (Number(post.boost_like_coins) > 0 || 
+                      Number(post.boost_comment_coins) > 0 || 
+                      Number(post.boost_share_coins) > 0);
+    setEditEarnsCoins(hasBoosts);
     setEditBoostLikeCoins(String(post.boost_like_coins || 10));
     setEditBoostCommentCoins(String(post.boost_comment_coins || 5));
     setEditBoostShareCoins(String(post.boost_share_coins || 8));
@@ -685,7 +694,7 @@ export const PostsPage: React.FC = () => {
         
         const mentionedUser = allMentionUsers.find(
           u => (u.username?.toLowerCase() === username || (u.name && u.name.toLowerCase() === username))
-        ) || Object.values(usersCache).find(
+        ) || (Object.values(usersCache) as UserType[]).find(
           u => (u.username?.toLowerCase() === username || (u.name && u.name.toLowerCase() === username))
         );
 
@@ -1004,11 +1013,18 @@ export const PostsPage: React.FC = () => {
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 leading-none truncate">{post.user?.name || 'Usuário'}</h3>
-                          {post.is_boosted && (
-                            <div className="flex-shrink-0 text-primary-600 dark:text-primary-400" title="Turbinado">
-                              <Rocket size={14} className="fill-primary-600/10" />
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {post.is_sponsored && (
+                              <div className="text-amber-500" title="Patrocinado">
+                                <Coins size={14} className="fill-amber-500/10" />
+                              </div>
+                            )}
+                            {post.is_boosted && (
+                              <div className="text-primary-600 dark:text-primary-400" title="Turbinado">
+                                <Rocket size={14} className="fill-primary-600/10" />
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
                           {formatRelativeDate(post.created_at)}
@@ -1547,7 +1563,7 @@ export const PostsPage: React.FC = () => {
 
                       <div className="flex items-center justify-between">
                         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                          Post vale moedas
+                          Post Turbinado
                         </label>
                         <button
                           type="button"
@@ -1902,7 +1918,7 @@ export const PostsPage: React.FC = () => {
 
                         <div className="flex items-center justify-between">
                           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                            Post vale moedas
+                            Post Turbinado
                           </label>
                           <button
                             type="button"
