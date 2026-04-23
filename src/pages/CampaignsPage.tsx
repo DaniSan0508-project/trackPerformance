@@ -3522,7 +3522,7 @@ export const CampaignsPage: React.FC = () => {
         onClose={() => setPrizeConfirmModal({ isOpen: false, campaign: null })}
         onConfirm={handleApprovePrize}
         title="Confirmar Entrega de Prêmio"
-        message={`Deseja confirmar a entrega do prêmio "${prizeConfirmModal.campaign?.reward?.name || 'vinculado'}" para ${prizeConfirmModal.campaign?.winner?.name || 'o ganhador'}?`}
+        message={`Deseja confirmar a entrega do prêmio para ${prizeConfirmModal.campaign?.winner?.name || 'o ganhador'}?`}
       />
 
       {/* Winner Details Modal */}
@@ -3566,21 +3566,6 @@ export const CampaignsPage: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {selectedCampaignForWinner && (
-                    <div className="p-4 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-800 flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-amber-200 dark:border-amber-800 bg-white dark:bg-zinc-800">
-                        {selectedCampaignForWinner.reward?.primary_image ? (
-                          <img src={selectedCampaignForWinner.reward.primary_image.image_full_url} alt={selectedCampaignForWinner.reward.name} className="w-full h-full object-cover" />
-                        ) : <div className="w-full h-full flex items-center justify-center text-amber-500"><Gift size={24} /></div>}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-amber-600 dark:text-amber-500 uppercase font-bold">Prêmio da Campanha</p>
-                        <p className="text-sm font-bold text-zinc-900 dark:text-white truncate">{selectedCampaignForWinner.reward?.name || 'Prêmio vinculado'}</p>
-                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">{selectedCampaignForWinner.name}</p>
-                      </div>
-                    </div>
-                  )}
-
                   <div className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
                     <div className="w-10 h-10 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center text-primary-500 shadow-sm">
                       <Mail size={18} />
