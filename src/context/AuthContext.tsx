@@ -14,6 +14,7 @@ interface AuthContextType {
   primaryColor: string;
   login: (data: AuthResponse, rememberMe?: boolean) => void;
   logout: () => void;
+  updateCurrentUser: (updatedUser: User) => void;
   isAuthenticated: boolean;
   refreshAccessToken: () => Promise<void>;
 }
@@ -143,6 +144,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     sessionStorage.removeItem('track_performance_auth');
   }, []);
 
+  const updateCurrentUser = useCallback((updatedUser: User) => {
+    setUser(updatedUser);
+
+    const updateStorage = (storage: Storage) => {
+      const stored = storage.getItem('track_performance_auth');
+      if (!stored) return;
+
+      try {
+        const parsed = JSON.parse(stored);
+        parsed.user = updatedUser;
+        storage.setItem('track_performance_auth', JSON.stringify(parsed));
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    updateStorage(localStorage);
+    updateStorage(sessionStorage);
+  }, []);
+
   // Listen for unauthorized events from api service
   useEffect(() => {
     const handleUnauthorized = () => {
@@ -203,7 +224,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         const userData = await usersService.getUser(token, user.id);
         // Handle if response is wrapped in { data: ... } or direct
-        const freshUser = userData.data || userData;
+        const apiUser = userData.data || userData;
+        const freshUser = {
+          ...user,
+          ...apiUser,
+          name: apiUser?.name || user.name,
+          email: apiUser?.email || user.email,
+        };
         
         // Only update if there are changes to avoid loops, or just update
         // Here we specifically care about user_type_id
@@ -215,10 +242,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
              const stored = storage.getItem('track_performance_auth');
              if (stored) {
                const parsed = JSON.parse(stored);
-               parsed.user = freshUser;
-               storage.setItem('track_performance_auth', JSON.stringify(parsed));
-             }
-           };
+                parsed.user = freshUser;
+                storage.setItem('track_performance_auth', JSON.stringify(parsed));
+              }
+            };
            
            if (localStorage.getItem('track_performance_auth')) {
              updateStorage(localStorage);
@@ -236,7 +263,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [token, user?.id]);
 
   return (
-    <AuthContext.Provider value={{ user, tenant, token, logoUrl, coinName, primaryColor, login, logout, isAuthenticated: !!token, refreshAccessToken }}>
+    <AuthContext.Provider value={{ user, tenant, token, logoUrl, coinName, primaryColor, login, logout, updateCurrentUser, isAuthenticated: !!token, refreshAccessToken }}>
       {!loading && children}
     </AuthContext.Provider>
   );

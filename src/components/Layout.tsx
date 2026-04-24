@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
@@ -22,10 +22,12 @@ import {
   Sun,
   Moon,
   Trophy,
-    LucidePackage,
-    Mail
+  LucidePackage,
+  Mail,
+  User,
 } from 'lucide-react';
 import { CommunicationsPoller } from './CommunicationsPoller';
+import { UserProfileModal } from './UserProfileModal';
 
 export const Layout: React.FC = () => {
   const { user, logout, logoUrl } = useAuth();
@@ -33,6 +35,25 @@ export const Layout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [communicationsUnreadCount, setCommunicationsUnreadCount] = useState(0);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserMenu]);
 
   const handleLogout = () => {
     logout();
@@ -187,11 +208,45 @@ export const Layout: React.FC = () => {
                 <p className="text-sm font-semibold text-zinc-900 dark:text-white">{user.name}</p>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">{user.user_type}</p>
               </div>
-              <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-bold border-2 border-primary-50 dark:border-primary-900/50 shadow-sm overflow-hidden">
-                {user.profile_image_url ? (
-                  <img src={user.profile_image_url} alt={user.name} className="w-full h-full object-cover" />
-                ) : (
-                  user.name.charAt(0)
+              <div ref={userMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowUserMenu(prev => !prev)}
+                  className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-bold border-2 border-primary-50 dark:border-primary-900/50 shadow-sm overflow-hidden hover:ring-2 hover:ring-primary-400 transition-all focus:outline-none"
+                  title="Menu do usuário"
+                >
+                  {user.profile_image_url ? (
+                    <img src={user.profile_image_url} alt={user.name || 'Usuário'} className="w-full h-full object-cover" />
+                  ) : (
+                    user.name?.charAt(0)?.toUpperCase() ?? '?'
+                  )}
+                </button>
+
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg py-1 z-50">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setShowProfileModal(true);
+                      }}
+                      className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                    >
+                      <User size={16} />
+                      Perfil
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        handleLogout();
+                      }}
+                      className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                      <LogOut size={16} />
+                      Sair
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -255,6 +310,7 @@ export const Layout: React.FC = () => {
 
       {/* Polling de Comunicados (Desativado temporariamente) */}
       {/* <CommunicationsPoller onUnreadCountChange={setCommunicationsUnreadCount} /> */}
+      <UserProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
     </div>
   );
 };
