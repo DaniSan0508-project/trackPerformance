@@ -154,11 +154,14 @@ export const tenantConfigValidations = {
   secondary_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Cor inválida (use #RRGGBB)'),
   path_logo: z.string().url('URL inválida').or(z.literal('')),
   privacy_policy_url: z.string().url('URL inválida').or(z.literal('')),
-  post_quantity: z.string().regex(/^\d+$/, 'Deve ser um número válido'),
+  post_quantity: z.string()
+    .regex(/^\d+$/, 'Deve ser um número válido')
+    .refine((val) => { const n = parseInt(val, 10); return n >= 3 && n <= 10; }, 'Deve ser entre 3 e 10'),
   user_profile: z.enum(['corporate', 'multiple_companies']),
   email_notifications_enabled: z.enum(['true', 'false']),
   api_integration_enabled: z.enum(['true', 'false']),
   allow_user_post: z.enum(['true', 'false']),
+  hashtag_reward_requires_approval: z.enum(['true', 'false']),
 };
 
 // Schema para Recompensa (criação)
