@@ -508,16 +508,23 @@ export const PostsPage: React.FC = () => {
   const openEditModal = (post: Post) => {
     setEditPostModal(post);
     setEditTitle(post.title || '');
-    setEditContent(post.content);
+
+    // Limpar tags HTML do conteúdo antes de editar e transformar menções em pills
+    const cleanContent = (post.content || '').replace(/<[^>]*>?/gm, '');
+    setEditContent(cleanContent);
+
+    const mentionRegex = /(@[A-Za-z0-9_.-]+)/g;
+    const htmlWithPills = cleanContent.replace(mentionRegex, (match) => {
+      return `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5" contenteditable="false">${match}</span>`;
+    });
 
     // Sincronizar o DOM do editor de edição
     setTimeout(() => {
       const editor = document.querySelector('[data-field="edit"]') as HTMLDivElement;
       if (editor) {
-        editor.innerText = post.content;
+        editor.innerHTML = htmlWithPills;
       }
-    }, 0);
-    
+    }, 0);    
     setEditIsSponsored(post.is_sponsored || false);
     const hasBoosts = (Number(post.boost_like_coins) > 0 || 
                       Number(post.boost_comment_coins) > 0 || 
@@ -682,7 +689,8 @@ export const PostsPage: React.FC = () => {
     const cleanText = text.replace(/<[^>]*>?/gm, '');
 
     // Regex robusta para capturar menções (@usuario) e hashtags (#campanha)
-    const regex = /(@[A-Za-zÀ-ÖØ-öø-ÿ0-9_.-]+(?:\s[A-Za-zÀ-ÖØ-öø-ÿ0-9_.-]+)*|#[A-Za-zÀ-ÖØ-öø-ÿ0-9_.-]+)/g;
+    // Menções agora não permitem espaços para seguir o padrão de usernames
+    const regex = /(@[A-Za-z0-9_.-]+|#[A-Za-zÀ-ÖØ-öø-ÿ0-9_.-]+)/g;
     const parts = cleanText.split(regex);
 
     return parts.map((part, index) => {
@@ -693,9 +701,9 @@ export const PostsPage: React.FC = () => {
         const username = part.substring(1).trim().toLowerCase();
         
         const mentionedUser = allMentionUsers.find(
-          u => (u.username?.toLowerCase() === username || (u.name && u.name.toLowerCase() === username))
+          u => u.username?.toLowerCase() === username
         ) || (Object.values(usersCache) as UserType[]).find(
-          u => (u.username?.toLowerCase() === username || (u.name && u.name.toLowerCase() === username))
+          u => u.username?.toLowerCase() === username
         );
 
         return (
@@ -878,31 +886,7 @@ export const PostsPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-y-4 gap-x-6 pt-2 border-t border-zinc-50 dark:border-zinc-700/50">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Moedas:</span>
-              <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-lg w-fit">
-                {[
-                  { label: 'Todos', value: 'all' },
-                  { label: 'Sim', value: true },
-                  { label: 'Não', value: false }
-                ].map((opt) => (
-                  <button
-                    key={opt.label}
-                    onClick={() => setFilterEarnsCoins(opt.value as any)}
-                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                      filterEarnsCoins === opt.value
-                        ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 shadow-sm'
-                        : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Patrocinado:</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Patrocinado:</span>
               <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-lg w-fit">
                 {[
                   { label: 'Todos', value: 'all' },
@@ -1511,28 +1495,29 @@ export const PostsPage: React.FC = () => {
                             <Loader2 className="animate-spin text-primary-500" size={18} />
                           </div>
                         ) : mentionUsers.length > 0 ? (
-                          mentionUsers.map((u) => (
-                            <button
-                              key={u.id}
-                              type="button"
-                              onClick={() => handleSelectMention(u.username || u.name)}
-                              className="w-full flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors text-left"
-                            >
-                              <div className="w-6 h-6 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex-shrink-0">
-                                {u.profile_image_url ? (
-                                  <img src={getFullImageUrl(u.profile_image_url) || ''} alt={u.name} className="w-full h-full object-cover" />
-                                ) : (
-                                  <User size={12} className="text-zinc-400 m-auto" />
-                                )}
-                              </div>
-                              <div>
-                                <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100 leading-tight">{u.name}</p>
-                                {u.username && <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">@{u.username}</p>}
-                              </div>
-                            </button>
-                          ))
-                        ) : (
-                          <div className="p-2 text-xs text-zinc-500 dark:text-zinc-400 text-center">
+                          mentionUsers
+                            .filter(u => u.username) // Filtra usuários sem username
+                            .map((u) => (
+                              <button
+                                key={u.id}
+                                type="button"
+                                onClick={() => handleSelectMention(u.username)}
+                                className="w-full flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors text-left"
+                              >
+                                <div className="w-6 h-6 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex-shrink-0">
+                                  {u.profile_image_url ? (
+                                    <img src={getFullImageUrl(u.profile_image_url) || ''} alt={u.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <User size={12} className="text-zinc-400 m-auto" />
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-primary-600 dark:text-primary-400 leading-tight">@{u.username}</p>
+                                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">{u.name}</p>
+                                </div>
+                              </button>
+                            ))
+                        ) : (                          <div className="p-2 text-xs text-zinc-500 dark:text-zinc-400 text-center">
                             Nenhum usuário encontrado.
                           </div>
                         )}
@@ -1866,26 +1851,28 @@ export const PostsPage: React.FC = () => {
                               <Loader2 className="animate-spin text-primary-500" size={18} />
                             </div>
                           ) : mentionUsers.length > 0 ? (
-                            mentionUsers.map((u) => (
-                              <button
-                                key={u.id}
-                                type="button"
-                                onClick={() => handleSelectMention(u.username || u.name)}
-                                className="w-full flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors text-left"
-                              >
-                                <div className="w-6 h-6 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex-shrink-0">
-                                  {u.profile_image_url ? (
-                                    <img src={getFullImageUrl(u.profile_image_url) || ''} alt={u.name} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <User size={12} className="text-zinc-400 m-auto" />
-                                  )}
-                                </div>
-                                <div>
-                                  <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100 leading-tight">{u.name}</p>
-                                  {u.username && <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">@{u.username}</p>}
-                                </div>
-                              </button>
-                            ))
+                            mentionUsers
+                              .filter(u => u.username) // Filtra usuários sem username
+                              .map((u) => (
+                                <button
+                                  key={u.id}
+                                  type="button"
+                                  onClick={() => handleSelectMention(u.username)}
+                                  className="w-full flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors text-left"
+                                >
+                                  <div className="w-6 h-6 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex-shrink-0">
+                                    {u.profile_image_url ? (
+                                      <img src={getFullImageUrl(u.profile_image_url) || ''} alt={u.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <User size={12} className="text-zinc-400 m-auto" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-bold text-primary-600 dark:text-primary-400 leading-tight">@{u.username}</p>
+                                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">{u.name}</p>
+                                  </div>
+                                </button>
+                              ))
                           ) : (
                             <div className="p-2 text-xs text-zinc-500 dark:text-zinc-400 text-center">
                               Nenhum usuário encontrado.
