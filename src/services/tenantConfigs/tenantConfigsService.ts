@@ -23,4 +23,15 @@ export const tenantConfigsService = {
     });
     return handleResponse(response);
   },
+
+  uploadLogo: async (token: string, file: File) => {
+    const formData = new FormData();
+    formData.append('logo', file);
+    const response = await fetch(`${API_BASE_URL}/tenant-configs/logo`, {
+      method: 'POST',
+      headers: getHeaders(token, true),
+      body: formData,
+    });
+    return handleResponse(response);
+  },
 };

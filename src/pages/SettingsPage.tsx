@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Loader2, RefreshCw, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Search, Loader2, RefreshCw, X, Check, ChevronLeft, ChevronRight, Upload, ImageIcon, RefreshCcw } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { TenantConfig } from '../types';
 import { tenantConfigsService } from '../services';
@@ -33,7 +33,7 @@ const translateConfigKey = (key: string): string => {
         allow_user_post: 'Permitir posts de usuários',
         primary_color: 'Cor primária',
         secondary_color: 'Cor secundária',
-        path_logo: 'Endereço logomarca',
+        path_logo: 'Logo',
         coin_name: 'Nome da Moeda',
         post_quantity: 'Quantidade de posts exibidos na tela inicial do aplicativo',
         hashtag_reward_requires_approval: 'Exigir aprovação para recompensas por hashtag',
@@ -58,15 +58,77 @@ const formatCnpj = (digits: string) =>
         .replace(/\.(\d{3})(\d)/, '.$1/$2')
         .replace(/(\d{4})(\d)/, '$1-$2');
 
+// Keys that trigger the "refresh page?" prompt after saving
+const REFRESH_PROMPT_KEYS = ['path_logo', 'primary_color'];
+
+const RefreshPromptModal: React.FC<{
+    configLabel: string;
+    onConfirm: () => void;
+    onDismiss: () => void;
+}> = ({ configLabel, onConfirm, onDismiss }) => (
+    <AnimatePresence>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={onDismiss}
+            />
+            {/* Dialog */}
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ duration: 0.18 }}
+                className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-100 dark:border-zinc-800 p-6 w-full max-w-sm flex flex-col gap-4"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <RefreshCcw size={20} className="text-primary-600 dark:text-primary-400" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-zinc-900 dark:text-zinc-100">Atualizar página?</h3>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                            A configuração <span className="font-semibold text-zinc-700 dark:text-zinc-300">"{configLabel}"</span> foi salva. Deseja atualizar a página agora para refletir as mudanças?
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex gap-3 justify-end pt-1">
+                    <button
+                        onClick={onDismiss}
+                        className="px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-sm font-medium transition-colors"
+                    >
+                        Não, continuar
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        className="px-4 py-2 rounded-xl bg-primary-600 text-white hover:bg-primary-700 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                        <RefreshCcw size={15} />
+                        Sim, atualizar
+                    </button>
+                </div>
+            </motion.div>
+        </div>
+    </AnimatePresence>
+);
+
 const ConfigItem: React.FC<{
     config: TenantConfig;
     onUpdate: (config: TenantConfig, newValue: string) => Promise<boolean>;
-}> = ({ config, onUpdate }) => {
+    onUploadLogo?: (file: File) => Promise<string | null>;
+}> = ({ config, onUpdate, onUploadLogo }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [value, setValue] = useState(config.config_value);
     const [updating, setUpdating] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
     const colorInputRef = useRef<HTMLInputElement>(null);
+    const logoFileInputRef = useRef<HTMLInputElement>(null);
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [logoUploading, setLogoUploading] = useState(false);
 
     const isBoolean = BOOLEAN_KEYS.includes(config.config_key);
     const isUserProfile = config.config_key === 'user_profile';
@@ -75,9 +137,10 @@ const ConfigItem: React.FC<{
     const isCnpj = config.config_key === 'cnpj';
     const isEmail = config.config_key === 'email';
     const isPostQuantity = config.config_key === 'post_quantity';
+    const isLogo = config.config_key === 'path_logo';
     const hasChanged = value !== config.config_value;
 
-    const showInlineEditor = isBoolean || isUserProfile || isEngagementFrequency || isEmail || isEditing;
+    const showInlineEditor = isBoolean || isUserProfile || isEngagementFrequency || isEmail || isLogo || isEditing;
 
     const validateValue = (val: string) => {
         const validation = tenantConfigValidations[config.config_key as keyof typeof tenantConfigValidations];
@@ -109,6 +172,41 @@ const ConfigItem: React.FC<{
         const digits = e.target.value.replace(/\D/g, '').slice(0, 14);
         setValue(formatCnpj(digits));
         setValidationError(null);
+    };
+
+    const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !onUploadLogo) return;
+
+        // Validate type
+        const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowed.includes(file.type)) {
+            setValidationError('Formato inválido. Use jpeg, png, gif ou webp.');
+            return;
+        }
+        // Validate size (5 MB)
+        if (file.size > 5 * 1024 * 1024) {
+            setValidationError('A imagem deve ter no máximo 5 MB.');
+            return;
+        }
+
+        setValidationError(null);
+        // Show local preview while uploading
+        const reader = new FileReader();
+        reader.onload = (ev) => setLogoPreview(ev.target?.result as string);
+        reader.readAsDataURL(file);
+
+        setLogoUploading(true);
+        const newUrl = await onUploadLogo(file);
+        setLogoUploading(false);
+        if (newUrl) {
+            setValue(newUrl);
+            setLogoPreview(null); // will use the real URL from config_value now
+        } else {
+            setLogoPreview(null);
+        }
+        // Reset file input
+        if (logoFileInputRef.current) logoFileInputRef.current.value = '';
     };
 
     const formatDisplayValue = (key: string, val: string) => {
@@ -222,6 +320,48 @@ const ConfigItem: React.FC<{
                                 </>
                             )}
 
+                            {isLogo && (
+                                <div className="flex items-center gap-3 w-full md:w-auto justify-end flex-wrap">
+                                    {/* Current / preview logo thumbnail */}
+                                    <div className="flex-shrink-0 w-16 h-16 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 overflow-hidden flex items-center justify-center">
+                                        {logoPreview || config.config_value ? (
+                                            <img
+                                                src={logoPreview ?? config.config_value}
+                                                alt="Logo"
+                                                className="w-full h-full object-contain p-1"
+                                            />
+                                        ) : (
+                                            <ImageIcon size={24} className="text-zinc-400 dark:text-zinc-500" />
+                                        )}
+                                    </div>
+
+                                    {/* Hidden file input */}
+                                    <input
+                                        ref={logoFileInputRef}
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/gif,image/webp"
+                                        className="hidden"
+                                        onChange={handleLogoFileChange}
+                                    />
+
+                                    {/* Upload button */}
+                                    <button
+                                        onClick={() => logoFileInputRef.current?.click()}
+                                        disabled={logoUploading}
+                                        className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                                    >
+                                        {logoUploading
+                                            ? <><Loader2 size={16} className="animate-spin" /> Enviando...</>
+                                            : <><Upload size={16} /> Alterar Logo</>
+                                        }
+                                    </button>
+
+                                    {validationError && (
+                                        <p className="text-xs text-red-600 dark:text-red-400 w-full text-right">{validationError}</p>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Non-boolean, non-select editors (only shown when isEditing) */}
                             {isEditing && isColor && (
                                 <>
@@ -314,6 +454,9 @@ export const SettingsPage: React.FC = () => {
     const [fromItem, setFromItem] = useState(0);
     const [toItem, setToItem] = useState(0);
 
+    // Refresh prompt modal state
+    const [refreshPrompt, setRefreshPrompt] = useState<{ label: string } | null>(null);
+
     const fetchConfigs = useCallback(async (page = 1, search = '') => {
         if (!token) return;
         setLoading(true);
@@ -361,10 +504,33 @@ export const SettingsPage: React.FC = () => {
                 c.id === config.id ? { ...c, config_value: newValue, updated_at: new Date().toISOString() } : c
             ));
             addToast('success', 'Configuração atualizada com sucesso!');
+            // Prompt refresh for visual-impact configs
+            if (REFRESH_PROMPT_KEYS.includes(config.config_key)) {
+                setRefreshPrompt({ label: translateConfigKey(config.config_key) });
+            }
             return true;
         } catch (err) {
             addToast('error', 'Erro ao atualizar configuração. Tente novamente.');
             return false;
+        }
+    };
+
+    const handleUploadLogo = async (file: File): Promise<string | null> => {
+        if (!token) return null;
+        try {
+            const data = await tenantConfigsService.uploadLogo(token, file);
+            setConfigs(prev => prev.map(c =>
+                c.config_key === 'path_logo'
+                    ? { ...c, config_value: data.logo_full_url ?? data.config_value, updated_at: data.updated_at }
+                    : c
+            ));
+            addToast('success', 'Logo atualizado com sucesso!');
+            // Prompt refresh after logo upload
+            setRefreshPrompt({ label: translateConfigKey('path_logo') });
+            return data.logo_full_url ?? data.config_value;
+        } catch (err: any) {
+            addToast('error', err.message || 'Erro ao enviar logo. Tente novamente.');
+            return null;
         }
     };
 
@@ -375,6 +541,14 @@ export const SettingsPage: React.FC = () => {
 
     return (
         <div className="p-4 md:p-8 space-y-6">
+            {/* Refresh-prompt modal */}
+            {refreshPrompt && (
+                <RefreshPromptModal
+                    configLabel={refreshPrompt.label}
+                    onConfirm={() => window.location.reload()}
+                    onDismiss={() => setRefreshPrompt(null)}
+                />
+            )}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Configurações do Sistema</h1>
@@ -419,7 +593,7 @@ export const SettingsPage: React.FC = () => {
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 gap-4">
                         {sortedConfigs.map((config) => (
-                            <ConfigItem key={config.id} config={config} onUpdate={handleUpdateConfig} />
+                            <ConfigItem key={config.id} config={config} onUpdate={handleUpdateConfig} onUploadLogo={handleUploadLogo} />
                         ))}
 
                         {sortedConfigs.length === 0 && (
