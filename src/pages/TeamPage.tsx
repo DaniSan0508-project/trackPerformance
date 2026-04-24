@@ -99,6 +99,7 @@ export const TeamPage: React.FC = () => {
     store_id: '' as number | '',
     role_id: '' as number | '',
     description: '',
+    external_id: '',
     photo: null as File | null
   });
 
@@ -223,6 +224,7 @@ export const TeamPage: React.FC = () => {
         store_id: user.store_id || '',
         role_id: user.role_id || '',
         description: user.description || '',
+        external_id: (user as any).external_id || '',
         photo: null
       });
     } else {
@@ -236,6 +238,7 @@ export const TeamPage: React.FC = () => {
         store_id: '',
         role_id: '',
         description: '',
+        external_id: '',
         photo: null
       });
     }
@@ -359,6 +362,7 @@ export const TeamPage: React.FC = () => {
       store_id: formData.store_id === '' ? undefined : String(formData.store_id),
       role_id: formData.role_id === '' ? undefined : String(formData.role_id),
       description: formData.description || undefined,
+      external_id: formData.external_id || undefined,
     });
 
     if (!result.success) {
@@ -395,6 +399,9 @@ export const TeamPage: React.FC = () => {
       if (formData.description) {
         data.append('description', formData.description);
       }
+      // Sempre envia o external_id (mesmo que vazio) para permitir a limpeza do campo
+      data.append('external_id', formData.external_id || '');
+      
       if (formData.photo) {
         data.append('photo', formData.photo);
       }
@@ -873,6 +880,21 @@ export const TeamPage: React.FC = () => {
                         </select>
                       </div>
                     )}
+
+                    <div className={stores.length > 0 ? 'col-span-2' : ''}>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Código de integração (Referência externa)</label>
+                      <input
+                        type="text"
+                        value={formData.external_id}
+                        onChange={(e) => setFormData({ ...formData, external_id: e.target.value })}
+                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                          formErrors.external_id ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                        }`}
+                        placeholder="Ex: 12345"
+                        maxLength={255}
+                      />
+                      {formErrors.external_id && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.external_id}</p>}
+                    </div>
 
                     <div className="col-span-2">
                       <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Cargo (Opcional)</label>

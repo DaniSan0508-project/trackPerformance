@@ -115,6 +115,7 @@ export const RewardsPage: React.FC = () => {
     stock: '',
     reward_type: 'standard' as 'standard' | 'campaign',
     fulfillment_type: 'physical' as 'physical' | 'voucher',
+    voucher_validity_days: '',
     valid_until: '',
     voucher_instructions: '',
     is_active: '1',
@@ -243,23 +244,52 @@ export const RewardsPage: React.FC = () => {
     setCurrentPage(1);
   }, [debouncedSearchTerm]);
 
-  const handleOpenModal = (reward?: Reward) => {
+  const handleOpenModal = async (reward?: Reward) => {
+    setFormErrors({});
     if (reward) {
       setEditingReward(reward);
-      setFormData({
-        name: reward.name,
-        description: reward.description,
-        price_coins: String(reward.price_coins),
-        stock: String(reward.stock),
-        reward_type: reward.reward_type || 'standard',
-        fulfillment_type: reward.fulfillment_type || 'physical',
-        valid_until: reward.valid_until ? reward.valid_until.split('T')[0] : '',
-        voucher_instructions: reward.voucher_instructions || '',
-        is_active: reward.is_active ? '1' : '0',
-        images: [],
-        primary_image_index: '0',
-        existingImages: reward.images || (reward.primary_image ? [reward.primary_image] : []),
-      });
+      setLoading(true); // Reutilizando o estado de loading para a busca do detalhe
+      try {
+        const fullRewardRes = await rewardsService.getRewardById(token!, reward.id);
+        const fullReward = fullRewardRes.data;
+
+        setFormData({
+          name: fullReward.name,
+          description: fullReward.description,
+          price_coins: String(fullReward.price_coins),
+          stock: String(fullReward.stock),
+          reward_type: fullReward.reward_type || 'standard',
+          fulfillment_type: fullReward.fulfillment_type || 'physical',
+          voucher_validity_days: fullReward.voucher_validity_days ? String(fullReward.voucher_validity_days) : '',
+          valid_until: fullReward.valid_until ? fullReward.valid_until.split('T')[0] : '',
+          voucher_instructions: fullReward.voucher_instructions || '',
+          is_active: fullReward.is_active ? '1' : '0',
+          images: [],
+          primary_image_index: '0',
+          existingImages: fullReward.images || (fullReward.primary_image ? [fullReward.primary_image] : []),
+        });
+      } catch (err: any) {
+        console.error('Error fetching reward details:', err);
+        addToast('error', 'Não foi possível carregar os detalhes da recompensa.');
+        // Fallback para os dados da listagem se a busca do detalhe falhar
+        setFormData({
+          name: reward.name,
+          description: reward.description,
+          price_coins: String(reward.price_coins),
+          stock: String(reward.stock),
+          reward_type: reward.reward_type || 'standard',
+          fulfillment_type: reward.fulfillment_type || 'physical',
+          voucher_validity_days: reward.voucher_validity_days ? String(reward.voucher_validity_days) : '',
+          valid_until: reward.valid_until ? reward.valid_until.split('T')[0] : '',
+          voucher_instructions: reward.voucher_instructions || '',
+          is_active: reward.is_active ? '1' : '0',
+          images: [],
+          primary_image_index: '0',
+          existingImages: reward.images || (reward.primary_image ? [reward.primary_image] : []),
+        });
+      } finally {
+        setLoading(false);
+      }
     } else {
       setEditingReward(null);
       setFormData({
@@ -269,6 +299,7 @@ export const RewardsPage: React.FC = () => {
         stock: '',
         reward_type: 'standard',
         fulfillment_type: 'physical',
+        voucher_validity_days: '',
         valid_until: '',
         voucher_instructions: '',
         is_active: '1',
@@ -304,9 +335,11 @@ export const RewardsPage: React.FC = () => {
     const result = rewardSchema.safeParse({
       name: formData.name,
       description: formData.description,
-      price_coins: formData.price_coins,
+      price_coins: formData.reward_type === 'campaign' ? '0' : formData.price_coins,
       stock: formData.stock,
       is_active: formData.is_active,
+      fulfillment_type: formData.fulfillment_type,
+      voucher_validity_days: formData.fulfillment_type === 'voucher' ? (formData.voucher_validity_days || undefined) : undefined,
       images: formData.images,
       primary_image_index: formData.primary_image_index,
     });
@@ -329,7 +362,7 @@ export const RewardsPage: React.FC = () => {
       const data = new FormData();
       data.append('name', formData.name);
       data.append('description', formData.description);
-      data.append('price_coins', formData.price_coins);
+      data.append('price_coins', formData.reward_type === 'campaign' ? '0' : formData.price_coins);
       data.append('stock', formData.stock);
       data.append('reward_type', formData.reward_type);
       data.append('fulfillment_type', formData.fulfillment_type);
@@ -338,6 +371,9 @@ export const RewardsPage: React.FC = () => {
       }
       if (formData.voucher_instructions) {
         data.append('voucher_instructions', formData.voucher_instructions);
+      }
+      if (formData.fulfillment_type === 'voucher' && formData.voucher_validity_days) {
+        data.append('voucher_validity_days', formData.voucher_validity_days);
       }
       data.append('is_active', formData.is_active);
 
@@ -835,10 +871,14 @@ export const RewardsPage: React.FC = () => {
                       </p>
 
                       <div className="flex items-center justify-between mt-auto">
-                        <div className="flex items-center gap-1.5 text-amber-500 font-bold">
-                          <Coins size={18} className="fill-current" />
-                          <span>{parseFloat(reward.price_coins as string).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
-                        </div>
+                        {reward.reward_type !== 'campaign' ? (
+                          <div className="flex items-center gap-1.5 text-amber-500 font-bold">
+                            <Coins size={18} className="fill-current" />
+                            <span>{parseFloat(reward.price_coins as string).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+                          </div>
+                        ) : (
+                          <div />
+                        )}
                         <div className="text-xs text-zinc-400 dark:text-zinc-500">
                           {reward.stock > 0 ? `${reward.stock} em estoque` : 'Esgotado'}
                         </div>
@@ -1137,7 +1177,7 @@ export const RewardsPage: React.FC = () => {
                                   <button
                                     onClick={() => handleCompleteRedemption(redemption.id)}
                                     disabled={updatingRedemptionId === redemption.id}
-                                    className="flex-1 lg:flex-none px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                                    className="flex-1 lg:flex-none px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 w-full"
                                     title="Marcar como concluído"
                                   >
                                     {updatingRedemptionId === redemption.id ? (
@@ -1146,19 +1186,6 @@ export const RewardsPage: React.FC = () => {
                                       <CheckCircle size={16} />
                                     )}
                                     Concluir
-                                  </button>
-                                  <button
-                                    onClick={() => handleRejectRedemption(redemption.id)}
-                                    disabled={updatingRedemptionId === redemption.id}
-                                    className="flex-1 lg:flex-none px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
-                                    title="Rejeitar resgate (ainda não concluído)"
-                                  >
-                                    {updatingRedemptionId === redemption.id ? (
-                                      <Loader2 size={16} className="animate-spin" />
-                                    ) : (
-                                      <XCircle size={16} />
-                                    )}
-                                    Rejeitar
                                   </button>
                                 </div>
                               )}
@@ -1317,10 +1344,12 @@ export const RewardsPage: React.FC = () => {
                   </div>
 
                   <div className="p-6 flex-1 overflow-y-auto">
-                    <div className="flex items-center gap-2 text-amber-500 font-bold text-2xl mb-6">
-                      <Coins size={28} className="fill-current" />
-                      <span>{parseFloat(selectedReward.price_coins as string).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
-                    </div>
+                    {selectedReward.reward_type !== 'campaign' && (
+                      <div className="flex items-center gap-2 text-amber-500 font-bold text-2xl mb-6">
+                        <Coins size={28} className="fill-current" />
+                        <span>{parseFloat(selectedReward.price_coins as string).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+                      </div>
+                    )}
 
                     <div className="space-y-4">
                       {/* Tipo de Uso (Campaign/Standard) */}
@@ -1532,21 +1561,23 @@ export const RewardsPage: React.FC = () => {
                     {formErrors.description && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.description}</p>}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Preço (moedas) *</label>
-                      <input
-                        type="number"
-                        value={formData.price_coins}
-                        onChange={(e) => setFormData({ ...formData, price_coins: e.target.value })}
-                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
-                          formErrors.price_coins ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                        }`}
-                        placeholder="100"
-                        min="0"
-                      />
-                      {formErrors.price_coins && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.price_coins}</p>}
-                    </div>
+                  <div className={`grid ${formData.reward_type === 'campaign' ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
+                    {formData.reward_type !== 'campaign' && (
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Preço (moedas) *</label>
+                        <input
+                          type="number"
+                          value={formData.price_coins}
+                          onChange={(e) => setFormData({ ...formData, price_coins: e.target.value })}
+                          className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                            formErrors.price_coins ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                          }`}
+                          placeholder="100"
+                          min="0"
+                        />
+                        {formErrors.price_coins && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.price_coins}</p>}
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Estoque *</label>
@@ -1596,6 +1627,28 @@ export const RewardsPage: React.FC = () => {
                       <option value="voucher">🎫 Voucher Digital</option>
                     </select>
                   </div>
+
+                  {formData.fulfillment_type === 'voucher' && (
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Validade do Voucher (dias após resgate)</label>
+                        <input
+                          type="number"
+                          value={formData.voucher_validity_days}
+                          onChange={(e) => setFormData({ ...formData, voucher_validity_days: e.target.value })}
+                          className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                            formErrors.voucher_validity_days ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                          }`}
+                          placeholder="Ex: 30"
+                          min="1"
+                        />
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 italic">
+                          Deixe vazio para que o voucher não tenha data de expiração.
+                        </p>
+                        {formErrors.voucher_validity_days && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.voucher_validity_days}</p>}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Data de Validade */}
                   <div>

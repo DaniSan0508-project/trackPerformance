@@ -241,9 +241,10 @@ export const PostsPage: React.FC = () => {
 
     setIsCreating(true);
     try {
+      const processedContent = getProcessedContent('create');
       const formData = new FormData();
       formData.append('title', newPostTitle);
-      formData.append('content', newPostContent);
+      formData.append('content', processedContent);
       if (newPostImage) {
         formData.append('image', newPostImage);
       }
@@ -427,9 +428,10 @@ export const PostsPage: React.FC = () => {
     });
     
     try {
+      const processedContent = getProcessedContent('edit');
       const formData = new FormData();
       formData.append('title', editTitle);
-      formData.append('content', editContent);
+      formData.append('content', processedContent);
 
       // Lógica de mídia: sempre envia os dois campos
       if (editMediaType === 'image') {
@@ -515,7 +517,12 @@ export const PostsPage: React.FC = () => {
 
     const mentionRegex = /(@[A-Za-z0-9_.-]+)/g;
     const htmlWithPills = cleanContent.replace(mentionRegex, (match) => {
-      return `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5" contenteditable="false">${match}</span>`;
+      const username = match.substring(1).toLowerCase();
+      const user = allMentionUsers.find(u => u.username?.toLowerCase() === username) || 
+                   (Object.values(usersCache) as UserType[]).find(u => u.username?.toLowerCase() === username);
+      
+      const displayName = user ? user.name : username;
+      return `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5" contenteditable="false" data-username="${username}">@${displayName}</span>`;
     });
 
     // Sincronizar o DOM do editor de edição
@@ -582,6 +589,24 @@ export const PostsPage: React.FC = () => {
     }
   }, [debouncedMentionQuery, showMentionDropdown, token]);
 
+  const getProcessedContent = (field: 'create' | 'edit') => {
+    const editor = document.querySelector(`[data-field="${field}"]`) as HTMLDivElement;
+    if (!editor) return '';
+
+    // Clonamos o editor para manipular sem mexer na UI
+    const clone = editor.cloneNode(true) as HTMLDivElement;
+    const pills = clone.querySelectorAll('span[data-username]');
+    
+    // Substitui cada pill pelo seu respectivo @username
+    pills.forEach(pill => {
+      const username = (pill as HTMLElement).dataset.username;
+      const textNode = document.createTextNode(`@${username}`);
+      pill.parentNode?.replaceChild(textNode, pill);
+    });
+
+    return clone.innerText.trim();
+  };
+
   const getCaretCharacterOffsetWithin = (element: HTMLElement) => {
     let caretOffset = 0;
     const selection = window.getSelection();
@@ -630,7 +655,7 @@ export const PostsPage: React.FC = () => {
     }
   };
 
-  const handleSelectMention = (userName: string) => {
+  const handleSelectMention = (user: UserType) => {
     const selection = window.getSelection();
     if (!selection || !selection.rangeCount) return;
 
@@ -651,7 +676,8 @@ export const PostsPage: React.FC = () => {
       const mentionSpan = document.createElement('span');
       mentionSpan.className = 'inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5';
       mentionSpan.contentEditable = 'false';
-      mentionSpan.textContent = `@${userName}`;
+      mentionSpan.dataset.username = user.username || '';
+      mentionSpan.textContent = `@${user.name}`;
       
       range.insertNode(mentionSpan);
       
@@ -688,8 +714,8 @@ export const PostsPage: React.FC = () => {
     // para processarmos apenas o texto puro e aplicarmos nossa própria estilização.
     const cleanText = text.replace(/<[^>]*>?/gm, '');
 
-    // Regex robusta para capturar menções (@usuario) e hashtags (#campanha)
-    // Menções agora não permitem espaços para seguir o padrão de usernames
+    // Regex para capturar menções (@usuario) e hashtags (#campanha)
+    // No DB, as menções são sempre @username (sem espaços)
     const regex = /(@[A-Za-z0-9_.-]+|#[A-Za-zÀ-ÖØ-öø-ÿ0-9_.-]+)/g;
     const parts = cleanText.split(regex);
 
@@ -719,7 +745,7 @@ export const PostsPage: React.FC = () => {
                 className="w-4 h-4 rounded-full object-cover border border-blue-200 dark:border-blue-800"
               />
             )}
-            {part}
+            @{mentionedUser ? mentionedUser.name : username}
             {mentionedUser?.profile_image_url && (
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 z-[100] mb-2 opacity-0 invisible group-hover/mention:opacity-100 group-hover/mention:visible transition-all duration-300 pointer-events-none drop-shadow-lg">
                 <div className={`bg-white dark:bg-zinc-800 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700 ${isCompact ? 'w-10 h-10' : 'w-24 h-24'} overflow-hidden`}>
@@ -1501,7 +1527,7 @@ export const PostsPage: React.FC = () => {
                               <button
                                 key={u.id}
                                 type="button"
-                                onClick={() => handleSelectMention(u.username)}
+                                onClick={() => handleSelectMention(u)}
                                 className="w-full flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors text-left"
                               >
                                 <div className="w-6 h-6 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex-shrink-0">
@@ -1857,7 +1883,7 @@ export const PostsPage: React.FC = () => {
                                 <button
                                   key={u.id}
                                   type="button"
-                                  onClick={() => handleSelectMention(u.username)}
+                                  onClick={() => handleSelectMention(u)}
                                   className="w-full flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors text-left"
                                 >
                                   <div className="w-6 h-6 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex-shrink-0">

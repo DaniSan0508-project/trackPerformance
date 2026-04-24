@@ -15,6 +15,13 @@ export const rewardsService = {
     return handleResponse(response);
   },
 
+  getRewardById: async (token: string, id: number) => {
+    const response = await fetch(`${API_BASE_URL}/rewards/${id}`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
   createReward: async (token: string, formData: FormData) => {
     const response = await fetch(`${API_BASE_URL}/rewards`, {
       method: 'POST',

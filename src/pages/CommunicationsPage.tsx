@@ -68,6 +68,7 @@ export const CommunicationsPage: React.FC = () => {
 
   // Abas do modal
   const [activeTab, setActiveTab] = useState<'basic' | 'recipients'>('basic');
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
   // Cargos para seleção em massa
   const [roles, setRoles] = useState<Role[]>([]);
@@ -169,13 +170,28 @@ export const CommunicationsPage: React.FC = () => {
   };
 
   const handleOpenModal = (communication?: Communication) => {
+    setFormErrors({});
     if (communication) {
       setEditingCommunication(communication);
+      
+      // Formata a data para o input datetime-local (YYYY-MM-DDTHH:mm)
+      let scheduledAtValue = '';
+      if (communication.scheduled_at) {
+        const date = new Date(communication.scheduled_at);
+        // Ajuste para o fuso horário local ao converter para string de input
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        scheduledAtValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+
       setFormData({
         title: communication.title,
         content: communication.content,
         target_all: communication.target_all,
-        scheduled_at: communication.scheduled_at?.split('T')[0] || '',
+        scheduled_at: scheduledAtValue,
       });
       setSelectedUsers(communication.target_users?.map(u => u.id) || []);
     } else {
@@ -195,6 +211,7 @@ export const CommunicationsPage: React.FC = () => {
     setIsModalOpen(false);
     setEditingCommunication(null);
     setActiveTab('basic');
+    setFormErrors({});
     setFullySelectedRoles(new Set());
     setLoadingSelectAllUsers(false);
     setSelectAllUsersProgress(null);
@@ -300,18 +317,39 @@ export const CommunicationsPage: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!token) return;
+    setFormErrors({});
 
     if (!formData.title.trim()) {
+      setFormErrors({ title: 'Título é obrigatório' });
       addToast('error', 'Título é obrigatório.');
+      setActiveTab('basic');
       return;
     }
     if (!formData.content.trim()) {
+      setFormErrors({ content: 'Conteúdo é obrigatório' });
       addToast('error', 'Conteúdo é obrigatório.');
+      setActiveTab('basic');
       return;
     }
     if (!formData.target_all && selectedUsers.length === 0) {
       addToast('error', 'Selecione pelo menos 1 usuário.');
+      setActiveTab('recipients');
       return;
+    }
+
+    // Validação de agendamento retroativo
+    if (formData.scheduled_at) {
+      const scheduledDate = new Date(formData.scheduled_at);
+      const now = new Date();
+      // Adicionamos uma margem de 1 minuto para evitar erros por segundos de diferença
+      now.setMinutes(now.getMinutes() - 1);
+      
+      if (scheduledDate < now) {
+        setFormErrors({ scheduled_at: 'O horário deve ser posterior ao atual' });
+        addToast('error', 'O horário de agendamento deve ser posterior ao horário atual.');
+        setActiveTab('basic');
+        return;
+      }
     }
 
     setSaving(true);
@@ -351,10 +389,27 @@ export const CommunicationsPage: React.FC = () => {
 
   const handleSaveDraft = async () => {
     if (!token) return;
+    setFormErrors({});
 
     if (!formData.title.trim()) {
+      setFormErrors({ title: 'Título é obrigatório' });
       addToast('error', 'Título é obrigatório.');
+      setActiveTab('basic');
       return;
+    }
+
+    // Validação de agendamento retroativo
+    if (formData.scheduled_at) {
+      const scheduledDate = new Date(formData.scheduled_at);
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - 1);
+      
+      if (scheduledDate < now) {
+        setFormErrors({ scheduled_at: 'O horário deve ser posterior ao atual' });
+        addToast('error', 'O horário de agendamento deve ser posterior ao horário atual.');
+        setActiveTab('basic');
+        return;
+      }
     }
 
     setSaving(true);
@@ -764,8 +819,11 @@ export const CommunicationsPage: React.FC = () => {
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         placeholder="Ex: Comunicado Importante"
-                        className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                        className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white transition-all ${
+                          formErrors.title ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                        }`}
                       />
+                      {formErrors.title && <p className="mt-1 text-xs text-red-500 font-medium">{formErrors.title}</p>}
                     </div>
 
                     {/* Conteúdo */}
@@ -773,11 +831,14 @@ export const CommunicationsPage: React.FC = () => {
                       <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                         Conteúdo *
                       </label>
-                      <RichTextEditor
-                        value={formData.content}
-                        onChange={(value) => setFormData({ ...formData, content: value })}
-                        placeholder="Digite o conteúdo do comunicado..."
-                      />
+                      <div className={formErrors.content ? 'border border-red-500 rounded-lg p-0.5' : ''}>
+                        <RichTextEditor
+                          value={formData.content}
+                          onChange={(value) => setFormData({ ...formData, content: value })}
+                          placeholder="Digite o conteúdo do comunicado..."
+                        />
+                      </div>
+                      {formErrors.content && <p className="mt-1 text-xs text-red-500 font-medium">{formErrors.content}</p>}
                     </div>
 
                     {/* Agendamento */}
@@ -789,8 +850,11 @@ export const CommunicationsPage: React.FC = () => {
                         type="datetime-local"
                         value={formData.scheduled_at}
                         onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                        className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white transition-all ${
+                          formErrors.scheduled_at ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                        }`}
                       />
+                      {formErrors.scheduled_at && <p className="mt-1 text-xs text-red-500 font-medium">{formErrors.scheduled_at}</p>}
                     </div>
                   </div>
                 )}

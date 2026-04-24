@@ -628,11 +628,14 @@ export const CampaignsPage: React.FC = () => {
       if (token) {
         setLoadingAux(true);
         try {
-          // Busca dados vinculados e listas auxiliares em paralelo
-          const [usersRes, productsRes, actionsRes, allUsersList, allProductsList, manufacturersData] = await Promise.all([
+          // Busca os detalhes completos da campanha (incluindo hashtags e ações com coins)
+          const campaignDetailsRes = await campaignsService.getCampaignById(token, campaign.id);
+          const campaignDetails = campaignDetailsRes.data;
+
+          // Busca listas auxiliares em paralelo
+          const [usersRes, productsRes, allUsersList, allProductsList, manufacturersData] = await Promise.all([
             campaignsService.getCampaignUsers(token, campaign.id).catch(() => ({ data: [] })),
             campaign.type === 'sales' ? campaignsService.getCampaignProducts(token, campaign.id).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-            campaign.type === 'engagement' ? campaignsService.getCampaignActions(token, campaign.id).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
             usersService.getAllUsersComplete(token).catch(() => []),
             productsService.getAllProductsComplete(token).catch(() => []),
             manufacturersService.getAllManufacturers(token).catch(() => []),
@@ -641,35 +644,39 @@ export const CampaignsPage: React.FC = () => {
           // Processar Fabricantes
           if (manufacturersData) setManufacturers(manufacturersData);
 
-          // Processar Usuários
+          // Processar Usuários (IDs completos)
           const campaignUserIds = (usersRes.data || []).map((u: any) => u.id);
           setSelectedUsers(campaignUserIds);
-          setUsers(allUsersList.slice(0, 10)); // Mostra os primeiros 10 na lista auxiliar
+          setUsers(allUsersList.slice(0, 10));
 
-          // Processar Produtos/Ações
+          // Processar Produtos
           const campaignProductIds = (productsRes.data || []).map((p: any) => p.id);
           setSelectedProducts(campaignProductIds);
 
-          // Processar Hashtags (com fallback para diferentes nomes de propriedade)
-          const hashtags = campaign.hashtags || (campaign as any).campaign_hashtags || [];
-          console.log('Campaign Hashtags Loaded:', hashtags);
+          // Processar Hashtags do novo endpoint
+          const hashtags = campaignDetails.hashtags || [];
+          console.log('Campaign Hashtags Loaded from Details:', hashtags);
           setSelectedHashtags(hashtags);
 
           // Carregar prêmios
           fetchRewardsPaginated(1);
 
           if (campaign.type === 'engagement') {
-            // Garante carregamento das ações globais se for engajamento
+            // Garante carregamento das ações globais
             loadEngagementActions();
             
-            const campaignActions = (actionsRes.data || []).map((a: any) => ({
+            // Mapeia ações do previews.actions (que contém os coins configurados)
+            const campaignActions = (campaignDetails.previews?.actions || []).map((a: any) => ({
               id: a.id,
               coins: parseInt(a.coins) || 0
             }));
             setSelectedActions(campaignActions);
 
+            // Popula os inputs de moedas para a UI
             const coinsInputsMap: { [key: number]: string } = {};
-            campaignActions.forEach(a => { coinsInputsMap[a.id] = a.coins.toString(); });
+            campaignActions.forEach((a: any) => { 
+              coinsInputsMap[a.id] = a.coins.toString(); 
+            });
             setActionCoinsInputs(coinsInputsMap);
           }
 
@@ -1032,8 +1039,10 @@ export const CampaignsPage: React.FC = () => {
             return;
           }
         }
-        if (selectedActions.length === 0) {
-          addToast('error', 'Campanhas de engajamento exigem pelo menos 1 ação vinculada.');
+        
+        // Deve existir pelo menos 1 ação OU 1 hashtag
+        if (selectedActions.length === 0 && selectedHashtags.length === 0) {
+          addToast('error', 'Campanhas de engajamento exigem pelo menos 1 ação ou 1 hashtag vinculada.');
           setActiveTab('actions');
           return;
         }
@@ -1907,19 +1916,6 @@ export const CampaignsPage: React.FC = () => {
                         </p>
                       )}
                     </div>
-                    {/* Ícone de Importar Vendas - apenas para campanhas de vendas e administradores */}
-                    {editingCampaign && editingCampaign.type === 'sales' && currentUser?.user_type_id === 1 && (
-                      <button
-                        onClick={() => {
-                          setImportingCampaign(editingCampaign);
-                          setIsImportModalOpen(true);
-                        }}
-                        className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-lg"
-                        title="Importar vendas por arquivo XLSX ou CSV"
-                      >
-                        <FileSpreadsheet size={20} />
-                      </button>
-                    )}
                   </div>
                   <button onClick={handleCloseModal} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
                     <X size={24} />
@@ -2552,8 +2548,9 @@ export const CampaignsPage: React.FC = () => {
                               return actionLabel.toLowerCase().includes(actionSearch.toLowerCase());
                             })
                             .map((action) => {
-                              const isUsed = !action.is_enabled || !!action.campaign || !!(action as any).campaign_id;
-                              const isDisabled = isUsed && !manuallyUnselectedActions.includes(action.id);
+                              const actionCampaignId = action.campaign?.id || (action as any).campaign_id;
+                              const isUsedInAnotherCampaign = (!action.is_enabled || (!!actionCampaignId && Number(actionCampaignId) !== Number(editingCampaign?.id)));
+                              const isDisabled = isUsedInAnotherCampaign && !manuallyUnselectedActions.includes(action.id);
                               const campaignName = action.campaign?.name || (action as any).campaign_name;
                               const isSelected = selectedActions.find(a => a.id === action.id);
                               const actionLabel = actionLabels[action.name] || action.name;
@@ -2590,14 +2587,14 @@ export const CampaignsPage: React.FC = () => {
                                       }`}>
                                         {actionLabel}
                                       </p>
-                                      {isDisabled && campaignName && !isSelected && (
+                                      {isDisabled && campaignName && !isSelected && Number(actionCampaignId) !== Number(editingCampaign?.id) && (
                                         <p className="text-xs text-red-500 dark:text-red-400 mt-0.5 flex items-center gap-1">
                                           <span>🚫</span> Em uso em: {campaignName}
                                         </p>
                                       )}
                                     </div>
                                   </button>
-                                  {isSelected && !isDisabled && (
+                                  {isSelected && (
                                     <div className="flex items-center gap-2">
                                       <span className="text-xs text-zinc-500 dark:text-zinc-400">
                                         {coinName.charAt(0).toUpperCase() + coinName.slice(1)}:
@@ -3021,6 +3018,22 @@ export const CampaignsPage: React.FC = () => {
                       className="px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors font-medium"
                     >
                       Cancelar
+                    </button>
+                  )}
+
+                  {/* Botão Importar Vendas - visível apenas para Admin em campanhas de Vendas no modo edição */}
+                  {editingCampaign && editingCampaign.type === 'sales' && currentUser?.user_type_id === 1 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImportingCampaign(editingCampaign);
+                        setIsImportModalOpen(true);
+                      }}
+                      className="px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium flex items-center gap-2 shadow-sm"
+                      title="Importar vendas por arquivo XLSX ou CSV"
+                    >
+                      <FileSpreadsheet size={20} />
+                      Importar Vendas
                     </button>
                   )}
 

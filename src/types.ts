@@ -176,6 +176,7 @@ export interface Reward {
   fulfillment_type: 'physical' | 'voucher';
   valid_until?: string;
   voucher_instructions?: string;
+  voucher_validity_days?: number | null;
   is_expired?: boolean;
   is_available?: boolean;
   created_at: string;
