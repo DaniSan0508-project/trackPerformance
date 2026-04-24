@@ -610,7 +610,7 @@ export const FeedbacksPage: React.FC = () => {
                         className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6 flex gap-4 transition-colors duration-200 relative"
                       >
                         <div className="w-14 h-14 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 flex-shrink-0 overflow-hidden border border-primary-200 dark:border-primary-800">
-                          {!isAnonymous && sender?.profile_image_url ? (
+                          {(!isAnonymous || isAdmin) && sender?.profile_image_url ? (
                             <img src={getFullImageUrl(sender.profile_image_url) || ''} alt={sender.name} className="w-full h-full object-cover" />
                           ) : (
                             <User size={28} />
@@ -621,7 +621,7 @@ export const FeedbacksPage: React.FC = () => {
                             <div>
                               <div className="flex items-center gap-2">
                                 <h3 className="font-semibold text-zinc-900 dark:text-white">
-                                  {isAnonymous ? 'Remetente Anônimo' : (sender?.name || 'Usuário Desconhecido')}
+                                  {(!isAnonymous || isAdmin) ? (sender?.name || 'Usuário Desconhecido') : 'Remetente Anônimo'}
                                 </h3>
                                 {isAnonymous && (
                                   <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
@@ -932,7 +932,7 @@ export const FeedbacksPage: React.FC = () => {
                         className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6 flex gap-4 transition-colors duration-200 relative group"
                       >
                         <div className="w-14 h-14 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 flex-shrink-0 overflow-hidden border border-primary-200 dark:border-primary-800">
-                          {!isAnonymous && sender?.profile_image_url ? (
+                          {(!isAnonymous || isAdmin) && sender?.profile_image_url ? (
                             <img src={getFullImageUrl(sender.profile_image_url) || ''} alt={sender.name} className="w-full h-full object-cover" />
                           ) : (
                             <User size={28} />
@@ -943,7 +943,7 @@ export const FeedbacksPage: React.FC = () => {
                             <div>
                               <div className="flex items-center gap-2">
                                 <h3 className="font-semibold text-zinc-900 dark:text-white">
-                                  {isAnonymous ? 'Anônimo' : (sender?.name || 'Usuário Desconhecido')}
+                                  {(!isAnonymous || isAdmin) ? (sender?.name || 'Usuário Desconhecido') : 'Anônimo'}
                                 </h3>
                                 <span className="text-xs text-zinc-500 dark:text-zinc-400">→</span>
                                 <span className="font-medium text-sm text-zinc-700 dark:text-zinc-300">

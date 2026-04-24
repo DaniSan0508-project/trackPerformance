@@ -58,6 +58,7 @@ export const userSchema = z.object({
     .refine((val) => !val || /^\(\d{2}\)\s?\d{4,5}-\d{4}$/.test(val), {
       message: 'Telefone inválido',
     }),
+  external_id: z.string().max(255, 'Código de integração deve ter no máximo 255 caracteres').optional().or(z.literal('')),
 });
 
 // Schema para Usuário (edição - senha opcional)
@@ -79,6 +80,7 @@ export const userUpdateSchema = z.object({
     .refine((val) => !val || /^\(\d{2}\)\s?\d{4,5}-\d{4}$/.test(val), {
       message: 'Telefone inválido',
     }),
+  external_id: z.string().max(255, 'Código de integração deve ter no máximo 255 caracteres').optional().or(z.literal('')),
 });
 
 // Schema para Loja
@@ -185,6 +187,7 @@ export const rewardSchema = z.object({
   fulfillment_type: z
     .enum(['physical', 'voucher'])
     .default('physical'),
+  voucher_validity_days: z.union([z.string().regex(/^\d+$/, 'Deve ser um número válido'), z.number()]).optional().nullable(),
   valid_until: z.string().optional(),
   voucher_instructions: z.string().optional(),
   is_active: z.string(),
@@ -213,6 +216,7 @@ export const rewardUpdateSchema = z.object({
   fulfillment_type: z
     .enum(['physical', 'voucher'])
     .default('physical'),
+  voucher_validity_days: z.union([z.string().regex(/^\d+$/, 'Deve ser um número válido'), z.number()]).optional().nullable(),
   valid_until: z.string().optional(),
   voucher_instructions: z.string().optional(),
   is_active: z.string(),

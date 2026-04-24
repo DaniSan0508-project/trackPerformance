@@ -24,6 +24,14 @@ export const campaignsService = {
     return handleResponse(response);
   },
 
+  getCampaignById: async (token: string, id: number) => {
+    // Incluímos os parâmetros de include para garantir que o backend retorne as relações necessárias
+    const response = await fetch(`${API_BASE_URL}/campaigns/${id}?include=users,products,actions,hashtags`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
   createCampaign: async (token: string, data: Partial<Campaign>) => {
     const response = await fetch(`${API_BASE_URL}/campaigns`, {
       method: 'POST',

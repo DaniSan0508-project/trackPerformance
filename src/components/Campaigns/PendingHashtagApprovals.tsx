@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, Check, RefreshCw, ChevronLeft, ChevronRight, Hash, User, Calendar, Coins, Target } from 'lucide-react';
 import { hashtagApprovalsService } from '../../services/hashtags/hashtagApprovalsService';
 import { HashtagRewardApproval, PaginatedResponse } from '../../types';
+import { getFullImageUrl } from '../../utils/formatters';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { motion } from 'motion/react';
@@ -101,12 +102,19 @@ export const PendingHashtagApprovals: React.FC = () => {
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400">
-                        <User size={16} />
+                      <div className="w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 overflow-hidden flex-shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-sm">
+                        {item.user.profile_image_url ? (
+                          <img 
+                            src={getFullImageUrl(item.user.profile_image_url) || ''} 
+                            alt={item.user.name} 
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          <User size={18} />
+                        )}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-zinc-900 dark:text-white">{item.user.name}</p>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">ID: {item.user.id}</p>
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-white leading-tight">{item.user.name}</p>
                       </div>
                     </div>
                   </td>
