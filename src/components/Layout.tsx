@@ -75,22 +75,34 @@ export const Layout: React.FC = () => {
             active={location.pathname === '/dashboard'}
           />
           <NavItem
-            to="/stores"
-            icon={<Building2 size={20} />}
-            label="Unidades"
-            active={location.pathname === '/stores'}
-          />
-          <NavItem
             to="/posts"
             icon={<Megaphone size={20} />}
             label="Postagens"
             active={location.pathname === '/posts'}
           />
           <NavItem
+            to="/campaigns"
+            icon={<Flag size={20} />}
+            label="Campanhas"
+            active={location.pathname === '/campaigns'}
+          />
+          <NavItem
             to="/feedbacks"
             icon={<ThumbsUp size={20} />}
             label="Feedbacks"
             active={location.pathname === '/feedbacks'}
+          />
+          <NavItem
+            to="/communications"
+            icon={<Mail size={20} />}
+            label="Comunicados"
+            active={location.pathname === '/communications'}
+          />
+          <NavItem
+            to="/surveys"
+            icon={<FileText size={20} />}
+            label="Pesquisas"
+            active={location.pathname === '/surveys'}
           />
           <NavItem
             to="/team"
@@ -105,28 +117,16 @@ export const Layout: React.FC = () => {
             active={location.pathname === '/rewards'}
           />
           <NavItem
-            to="/campaigns"
-            icon={<Flag size={20} />}
-            label="Campanhas"
-            active={location.pathname === '/campaigns'}
-          />
-            <NavItem
             to="/products"
             icon={<LucidePackage size={20} />}
             label="Produtos"
             active={location.pathname === '/products'}
           />
           <NavItem
-            to="/surveys"
-            icon={<FileText size={20} />}
-            label="Pesquisas"
-            active={location.pathname === '/surveys'}
-          />
-          <NavItem
-            to="/communications"
-            icon={<Mail size={20} />}
-            label="Comunicados"
-            active={location.pathname === '/communications'}
+            to="/stores"
+            icon={<Building2 size={20} />}
+            label="Unidades"
+            active={location.pathname === '/stores'}
           />
           <NavItem
             to="/settings"
