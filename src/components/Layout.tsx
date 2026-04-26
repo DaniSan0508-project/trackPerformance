@@ -26,17 +26,18 @@ import {
   Mail,
   User,
 } from 'lucide-react';
-import { CommunicationsPoller } from './CommunicationsPoller';
 import { UserProfileModal } from './UserProfileModal';
+import { NotificationsSidebar } from './NotificationsSidebar';
 
 export const Layout: React.FC = () => {
   const { user, logout, logoUrl } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const [communicationsUnreadCount, setCommunicationsUnreadCount] = useState(0);
+  const [notificationsUnreadCount, setNotificationsUnreadCount] = useState(0);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showNotificationsSidebar, setShowNotificationsSidebar] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,11 +59,6 @@ export const Layout: React.FC = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
-  };
-
-  const handleOpenCommunications = () => {
-    // Dispara evento para abrir modal de comunicados
-    window.dispatchEvent(new CustomEvent('openCommunicationsModal'));
   };
 
   if (!user) return null;
@@ -183,14 +179,14 @@ export const Layout: React.FC = () => {
           <div className="flex items-center gap-3 md:gap-6">
             {/* Notificações de Comunicados */}
             <button
-              onClick={handleOpenCommunications}
+              onClick={() => setShowNotificationsSidebar(true)}
               className="relative p-2 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-all"
-              title="Comunicados"
+              title="Notificações"
             >
               <Bell size={20} />
-              {communicationsUnreadCount > 0 && (
+              {notificationsUnreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-                  {communicationsUnreadCount > 9 ? '9+' : communicationsUnreadCount}
+                  {notificationsUnreadCount > 9 ? '9+' : notificationsUnreadCount}
                 </span>
               )}
             </button>
@@ -308,8 +304,11 @@ export const Layout: React.FC = () => {
         </nav>
       </main>
 
-      {/* Polling de Comunicados (Desativado temporariamente) */}
-      {/* <CommunicationsPoller onUnreadCountChange={setCommunicationsUnreadCount} /> */}
+      <NotificationsSidebar
+        isOpen={showNotificationsSidebar}
+        onClose={() => setShowNotificationsSidebar(false)}
+        onUnreadCountChange={setNotificationsUnreadCount}
+      />
       <UserProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
     </div>
   );

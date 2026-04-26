@@ -5,6 +5,7 @@ export * from './communications/communicationsService';
 export * from './dashboard/dashboardService';
 export * from './feedbacks/feedbacksService';
 export * from './manufacturers/manufacturersService';
+export * from './notifications/notificationsService';
 export * from './posts/postsService';
 export * from './products/productsService';
 export * from './redemptions/redemptionsService';
