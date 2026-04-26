@@ -214,6 +214,10 @@ export const TeamPage: React.FC = () => {
 
   const handleOpenModal = (user?: UserType) => {
     if (user) {
+      if (user.user_type_id === 1) {
+        addToast('error', 'Não é permitido editar usuários administradores nesta tela.');
+        return;
+      }
       setEditingUser(user);
       setFormData({
         name: user.name,
@@ -246,6 +250,10 @@ export const TeamPage: React.FC = () => {
   };
 
   const handleViewCoinStatement = (user: UserType) => {
+    if (user.user_type_id === 1) {
+      addToast('error', 'Não é permitido visualizar extrato de moedas para usuários administradores.');
+      return;
+    }
     setCoinStatementModal({ isOpen: true, user });
   };
 
@@ -469,6 +477,10 @@ export const TeamPage: React.FC = () => {
   };
 
   const handleDelete = (user: UserType) => {
+    if (user.user_type_id === 1) {
+      addToast('error', 'Não é permitido excluir usuários administradores nesta tela.');
+      return;
+    }
     setConfirmModal({
       isOpen: true,
       title: 'Excluir Usuário',
@@ -609,7 +621,7 @@ export const TeamPage: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
-                      {isAdmin && (
+                      {isAdmin && user.user_type_id !== 1 && (
                         <button
                           onClick={() => handleViewCoinStatement(user)}
                           className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
@@ -618,7 +630,7 @@ export const TeamPage: React.FC = () => {
                           <FileText size={16} />
                         </button>
                       )}
-                      {(isAdmin || currentUser?.id === user.id) && (
+                      {user.user_type_id !== 1 && (isAdmin || currentUser?.id === user.id) && (
                         <button
                           onClick={() => handleOpenModal(user)}
                           className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
@@ -627,7 +639,7 @@ export const TeamPage: React.FC = () => {
                           <Edit2 size={16} />
                         </button>
                       )}
-                      {isAdmin && (
+                      {isAdmin && user.user_type_id !== 1 && (
                         <button
                           onClick={() => handleDelete(user)}
                           className="p-2 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
@@ -669,13 +681,15 @@ export const TeamPage: React.FC = () => {
                     )}
 
                     <div className="flex items-center justify-between gap-4 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                      <div className="flex items-center gap-1.5 text-sm">
-                        <Coins size={14} className="text-amber-500 flex-shrink-0" />
-                        <span className="font-semibold text-zinc-900 dark:text-white text-xs">
-                          {user.coin_balance || 0}
-                        </span>
-                        <span className="text-zinc-500 dark:text-zinc-400 text-xs">{coinName}</span>
-                      </div>
+                      {user.user_type_id !== 1 && (
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <Coins size={14} className="text-amber-500 flex-shrink-0" />
+                          <span className="font-semibold text-zinc-900 dark:text-white text-xs">
+                            {user.coin_balance || 0}
+                          </span>
+                          <span className="text-zinc-500 dark:text-zinc-400 text-xs">{coinName}</span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 text-sm">
                         <LogOut size={14} className="text-zinc-400 flex-shrink-0" />
                         <span className="text-zinc-600 dark:text-zinc-400 text-xs" title={user.last_login_at || 'Nunca'}>
