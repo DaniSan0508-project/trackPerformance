@@ -294,6 +294,11 @@ export const Layout: React.FC = () => {
             active={location.pathname === '/surveys'}
           />
           <MobileNavItem
+            to="/communications"
+            icon={<Mail size={24} />}
+            active={location.pathname === '/communications'}
+          />
+          <MobileNavItem
             to="/settings"
             icon={<Settings size={24} />}
             active={location.pathname === '/settings'}

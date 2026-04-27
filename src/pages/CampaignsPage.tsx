@@ -223,7 +223,6 @@ export const CampaignsPage: React.FC = () => {
   }, [token]);
 
   const handleAddHashtag = async () => {
-    console.log('BOTÃO CLICADO - Iniciando handleAddHashtag');
     
     if (!token) {
       console.error('ERRO: Token ausente');
@@ -241,7 +240,14 @@ export const CampaignsPage: React.FC = () => {
       return;
     }
 
-    // Validação de caracteres inválidos (Permite apenas # seguido de letras, números e _)
+    const alreadySelected = selectedHashtags.find(
+      h => h.hashtag.toLowerCase() === hashtag.toLowerCase()
+    );
+    if (alreadySelected) {
+      addToast('error', `A hashtag "${hashtag}" já foi adicionada a esta campanha.`);
+      return;
+    }
+
     const hashtagRegex = /^#[A-Za-z0-9_]+$/;
     if (!hashtagRegex.test(hashtag)) {
       addToast('error', 'A hashtag deve conter apenas letras, números e sublinhados (_), começando com #.');
