@@ -1662,6 +1662,7 @@ export const RewardsPage: React.FC = () => {
                     <input
                       type="date"
                       value={formData.valid_until}
+                      min={new Date().toLocaleDateString('en-CA')} // en-CA format is YYYY-MM-DD
                       onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
                       className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                     />
