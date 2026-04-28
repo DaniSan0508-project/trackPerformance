@@ -44,6 +44,7 @@ export interface User {
   tenant_id: number;
   user_type?: string; // Keep optional if not always present
   user_type_id: number;
+  is_super_admin: boolean;
   profile_image_url: string | null;
   coin_balance?: number;
   role_id?: number | null;

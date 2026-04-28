@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera, LogOut, Store as StoreIcon, FileText, Eye, EyeOff, Settings } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera, LogOut, Store as StoreIcon, FileText, Eye, EyeOff, Settings, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { User as UserType, Role, Store } from '../types';
@@ -133,6 +133,7 @@ export const TeamPage: React.FC = () => {
   };
 
   const isAdmin = currentUser?.user_type_id === 1;
+  const isSuperAdmin = !!currentUser?.is_super_admin;
 
   const fetchUsers = useCallback(async (page = 1, search = '') => {
     if (!token) return;
@@ -214,8 +215,9 @@ export const TeamPage: React.FC = () => {
 
   const handleOpenModal = (user?: UserType) => {
     if (user) {
-      if (user.user_type_id === 1) {
-        addToast('error', 'Não é permitido editar usuários administradores nesta tela.');
+      // Apenas super admin pode editar outros admins
+      if (user.user_type_id === 1 && !isSuperAdmin && user.id !== currentUser?.id) {
+        addToast('error', 'Apenas super administradores podem editar outros administradores.');
         return;
       }
       setEditingUser(user);
@@ -250,8 +252,9 @@ export const TeamPage: React.FC = () => {
   };
 
   const handleViewCoinStatement = (user: UserType) => {
-    if (user.user_type_id === 1) {
-      addToast('error', 'Não é permitido visualizar extrato de moedas para usuários administradores.');
+    // Apenas super admin pode ver extrato de outros admins
+    if (user.user_type_id === 1 && !isSuperAdmin) {
+      addToast('error', 'Apenas super administradores podem visualizar extrato de outros administradores.');
       return;
     }
     setCoinStatementModal({ isOpen: true, user });
@@ -477,10 +480,18 @@ export const TeamPage: React.FC = () => {
   };
 
   const handleDelete = (user: UserType) => {
-    if (user.user_type_id === 1) {
-      addToast('error', 'Não é permitido excluir usuários administradores nesta tela.');
+    // Apenas super admin pode excluir outros admins
+    if (user.user_type_id === 1 && !isSuperAdmin) {
+      addToast('error', 'Apenas super administradores podem excluir outros administradores.');
       return;
     }
+    
+    // Ninguém exclui a si mesmo por aqui
+    if (user.id === currentUser?.id) {
+      addToast('error', 'Você não pode excluir sua própria conta.');
+      return;
+    }
+
     setConfirmModal({
       isOpen: true,
       title: 'Excluir Usuário',
@@ -607,7 +618,12 @@ export const TeamPage: React.FC = () => {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-zinc-900 dark:text-white line-clamp-1" title={user.name}>{user.name}</h3>
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="font-bold text-zinc-900 dark:text-white line-clamp-1" title={user.name}>{user.name}</h3>
+                          {user.is_super_admin && (
+                            <Crown size={14} className="text-amber-500 fill-amber-500 flex-shrink-0" title="Super Administrador" />
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 flex-wrap mt-1">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getUserTypeColor(user.user_type_id)}`}>
                             {getUserTypeLabel(user.user_type_id)}
@@ -621,7 +637,8 @@ export const TeamPage: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
-                      {isAdmin && user.user_type_id !== 1 && (
+                      {/* Ver extrato: Admin vê de colaboradores. Super Admin vê de todos (exceto ele mesmo se quiser) */}
+                      {(isSuperAdmin || (isAdmin && user.user_type_id !== 1)) && currentUser?.id !== user.id && (
                         <button
                           onClick={() => handleViewCoinStatement(user)}
                           className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
@@ -630,7 +647,9 @@ export const TeamPage: React.FC = () => {
                           <FileText size={16} />
                         </button>
                       )}
-                      {user.user_type_id !== 1 && (isAdmin || currentUser?.id === user.id) && (
+                      
+                      {/* Editar: Super Admin edita todos. Admin edita colaboradores. Próprio usuário edita a si mesmo. */}
+                      {(isSuperAdmin || currentUser?.id === user.id || (isAdmin && user.user_type_id !== 1)) && (
                         <button
                           onClick={() => handleOpenModal(user)}
                           className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
@@ -639,7 +658,9 @@ export const TeamPage: React.FC = () => {
                           <Edit2 size={16} />
                         </button>
                       )}
-                      {isAdmin && user.user_type_id !== 1 && (
+
+                      {/* Excluir: Super Admin exclui todos (exceto ele mesmo). Admin exclui colaboradores. */}
+                      {(isSuperAdmin || (isAdmin && user.user_type_id !== 1)) && currentUser?.id !== user.id && (
                         <button
                           onClick={() => handleDelete(user)}
                           className="p-2 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
@@ -870,11 +891,15 @@ export const TeamPage: React.FC = () => {
                       <select
                         value={formData.user_type_id}
                         onChange={(e) => setFormData({ ...formData, user_type_id: Number(e.target.value) })}
-                        disabled={!isAdmin}
+                        disabled={!isAdmin || (formData.user_type_id === 1 && !isSuperAdmin)}
                         className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:bg-zinc-100 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500"
                       >
                         <option value={2}>Colaborador</option>
-                        <option value={1}>Administrador</option>
+                        {isSuperAdmin && <option value={1}>Administrador</option>}
+                        {/* Se por acaso um admin comum estiver editando um admin (não deveria via UI, mas por segurança), mostra a opção desabilitada ou apenas o label */}
+                        {!isSuperAdmin && formData.user_type_id === 1 && (
+                          <option value={1}>Administrador</option>
+                        )}
                       </select>
                     </div>
 
