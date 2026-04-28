@@ -423,9 +423,8 @@ export const DashboardPage = () => {
                                                 <div className="flex-1">
                                                     <div
                                                         className="w-full h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-emerald-500 dark:bg-emerald-600"
-                                                             style={{width: `${c.progress_percentage}%`}}/>
-                                                    </div>
+                                                        <div className="h-full bg-primary-500 dark:bg-primary-600"
+                                                             style={{width: `${c.progress_percentage}%`}}/>                                                    </div>
                                                 </div>
                                                 <span className="w-12 text-right">{c.progress_percentage}%</span>
                                             </div>

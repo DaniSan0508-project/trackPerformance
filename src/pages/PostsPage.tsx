@@ -119,29 +119,6 @@ export const PostsPage: React.FC = () => {
   const [allMentionUsers, setAllMentionUsers] = useState<UserType[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
-  const fetchAllMentionUsers = useCallback(async () => {
-    if (!token) return;
-    try {
-      // Passa search='', page=1, perPage=9999
-      const response = await usersService.getMentions(token, '', 1, 9999);
-      const users = response.data || [];
-      setAllMentionUsers(users);
-      
-      // Também alimenta o cache geral para evitar buscas repetidas
-      const newCache: Record<number, UserType> = {};
-      users.forEach((u: UserType) => {
-        newCache[u.id] = u;
-      });
-      setUsersCache(prev => ({ ...prev, ...newCache }));
-    } catch (error) {
-      console.error('Error fetching all mention users:', error);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    fetchAllMentionUsers();
-  }, [fetchAllMentionUsers]);
-
   const fetchPosts = useCallback(async (page = 1, filters: { 
     userName?: string; 
     content?: string;

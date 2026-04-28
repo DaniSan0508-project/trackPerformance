@@ -336,7 +336,7 @@ export const RewardsPage: React.FC = () => {
       name: formData.name,
       description: formData.description,
       price_coins: formData.reward_type === 'campaign' ? '0' : formData.price_coins,
-      stock: formData.stock,
+      stock: formData.reward_type === 'campaign' ? '1' : formData.stock,
       is_active: formData.is_active,
       fulfillment_type: formData.fulfillment_type,
       voucher_validity_days: formData.fulfillment_type === 'voucher' ? (formData.voucher_validity_days || undefined) : undefined,
@@ -363,7 +363,7 @@ export const RewardsPage: React.FC = () => {
       data.append('name', formData.name);
       data.append('description', formData.description);
       data.append('price_coins', formData.reward_type === 'campaign' ? '0' : formData.price_coins);
-      data.append('stock', formData.stock);
+      data.append('stock', formData.reward_type === 'campaign' ? '1' : formData.stock);
       data.append('reward_type', formData.reward_type);
       data.append('fulfillment_type', formData.fulfillment_type);
       if (formData.valid_until) {
@@ -880,7 +880,9 @@ export const RewardsPage: React.FC = () => {
                           <div />
                         )}
                         <div className="text-xs text-zinc-400 dark:text-zinc-500">
-                          {reward.stock > 0 ? `${reward.stock} em estoque` : 'Esgotado'}
+                          {reward.reward_type !== 'campaign' && (
+                            reward.stock > 0 ? `${reward.stock} em estoque` : 'Esgotado'
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1409,14 +1411,16 @@ export const RewardsPage: React.FC = () => {
                         </div>
                       )}
 
-                      <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-zinc-500 dark:text-zinc-400">Estoque disponível:</span>
-                          <span className={`font-medium ${selectedReward.stock > 0 ? 'text-primary-600 dark:text-primary-400' : 'text-red-600 dark:text-red-400'}`}>
-                            {selectedReward.stock} unidades
-                          </span>
+                      {selectedReward.reward_type !== 'campaign' && (
+                        <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-zinc-500 dark:text-zinc-400">Estoque disponível:</span>
+                            <span className={`font-medium ${selectedReward.stock > 0 ? 'text-primary-600 dark:text-primary-400' : 'text-red-600 dark:text-red-400'}`}>
+                              {selectedReward.stock} unidades
+                            </span>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
 
@@ -1561,8 +1565,8 @@ export const RewardsPage: React.FC = () => {
                     {formErrors.description && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.description}</p>}
                   </div>
 
-                  <div className={`grid ${formData.reward_type === 'campaign' ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
-                    {formData.reward_type !== 'campaign' && (
+                  {formData.reward_type !== 'campaign' && (
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Preço (moedas) *</label>
                         <input
@@ -1577,23 +1581,23 @@ export const RewardsPage: React.FC = () => {
                         />
                         {formErrors.price_coins && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.price_coins}</p>}
                       </div>
-                    )}
 
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Estoque *</label>
-                      <input
-                        type="number"
-                        value={formData.stock}
-                        onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
-                          formErrors.stock ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                        }`}
-                        placeholder="50"
-                        min="0"
-                      />
-                      {formErrors.stock && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.stock}</p>}
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Estoque *</label>
+                        <input
+                          type="number"
+                          value={formData.stock}
+                          onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                          className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                            formErrors.stock ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                          }`}
+                          placeholder="50"
+                          min="0"
+                        />
+                        {formErrors.stock && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.stock}</p>}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Tipo de Reward (Standard ou Campaign) */}
                   <div>
