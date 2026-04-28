@@ -1378,19 +1378,26 @@ export const RewardsPage: React.FC = () => {
                       </div>
 
                       {/* Data de Validade */}
-                      {selectedReward.valid_until && (
+                      {(selectedReward.valid_until || selectedReward.voucher_validity_days) && (
                         <div className={`p-3 rounded-lg border ${
                           selectedReward.is_expired
                             ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
                             : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
                         }`}>
-                          <p className={`text-sm font-medium ${
-                            selectedReward.is_expired
-                              ? 'text-red-700 dark:text-red-400'
-                              : 'text-amber-700 dark:text-amber-400'
-                          }`}>
-                            {selectedReward.is_expired ? '⚠️ Expirado em' : '📅 Válido até'} {new Date(selectedReward.valid_until).toLocaleDateString('pt-BR')}
-                          </p>
+                          {selectedReward.valid_until && (
+                            <p className={`text-sm font-medium mb-1 ${
+                              selectedReward.is_expired
+                                ? 'text-red-700 dark:text-red-400'
+                                : 'text-amber-700 dark:text-amber-400'
+                            }`}>
+                              {selectedReward.is_expired ? '⚠️ Expirado em' : '📅 Resgate até'} {new Date(selectedReward.valid_until).toLocaleDateString('pt-BR')}
+                            </p>
+                          )}
+                          {selectedReward.voucher_validity_days && (
+                            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                              ⏱️ Voucher válido por {selectedReward.voucher_validity_days} dias após o resgate
+                            </p>
+                          )}
                         </div>
                       )}
 
