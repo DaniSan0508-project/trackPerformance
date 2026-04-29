@@ -3243,7 +3243,7 @@ export const CampaignsPage: React.FC = () => {
                           {/* Validade */}
                           {reward.valid_until && (
                             <p className={`text-[10px] text-center mb-1 ${reward.is_expired ? 'text-red-500 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                              {reward.is_expired ? '⚠️ Expirado' : '📅'} {new Date(reward.valid_until).toLocaleDateString('pt-BR')}
+                              {reward.is_expired ? '⚠️ Expirado' : '📅'} {new Date(reward.valid_until).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                             </p>
                           )}
 

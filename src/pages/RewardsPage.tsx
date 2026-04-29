@@ -115,7 +115,6 @@ export const RewardsPage: React.FC = () => {
     stock: '',
     reward_type: 'standard' as 'standard' | 'campaign',
     fulfillment_type: 'physical' as 'physical' | 'voucher',
-    voucher_validity_days: '',
     valid_until: '',
     voucher_instructions: '',
     is_active: '1',
@@ -260,8 +259,7 @@ export const RewardsPage: React.FC = () => {
           stock: String(fullReward.stock),
           reward_type: fullReward.reward_type || 'standard',
           fulfillment_type: fullReward.fulfillment_type || 'physical',
-          voucher_validity_days: fullReward.voucher_validity_days ? String(fullReward.voucher_validity_days) : '',
-          valid_until: fullReward.valid_until ? fullReward.valid_until.split('T')[0] : '',
+          valid_until: fullReward.valid_until ? fullReward.valid_until.slice(0, 16) : '',
           voucher_instructions: fullReward.voucher_instructions || '',
           is_active: fullReward.is_active ? '1' : '0',
           images: [],
@@ -279,8 +277,7 @@ export const RewardsPage: React.FC = () => {
           stock: String(reward.stock),
           reward_type: reward.reward_type || 'standard',
           fulfillment_type: reward.fulfillment_type || 'physical',
-          voucher_validity_days: reward.voucher_validity_days ? String(reward.voucher_validity_days) : '',
-          valid_until: reward.valid_until ? reward.valid_until.split('T')[0] : '',
+          valid_until: reward.valid_until ? reward.valid_until.slice(0, 16) : '',
           voucher_instructions: reward.voucher_instructions || '',
           is_active: reward.is_active ? '1' : '0',
           images: [],
@@ -299,7 +296,6 @@ export const RewardsPage: React.FC = () => {
         stock: '',
         reward_type: 'standard',
         fulfillment_type: 'physical',
-        voucher_validity_days: '',
         valid_until: '',
         voucher_instructions: '',
         is_active: '1',
@@ -1378,26 +1374,19 @@ export const RewardsPage: React.FC = () => {
                       </div>
 
                       {/* Data de Validade */}
-                      {(selectedReward.valid_until || selectedReward.voucher_validity_days) && (
+                      {selectedReward.valid_until && (
                         <div className={`p-3 rounded-lg border ${
                           selectedReward.is_expired
                             ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
                             : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
                         }`}>
-                          {selectedReward.valid_until && (
-                            <p className={`text-sm font-medium mb-1 ${
-                              selectedReward.is_expired
-                                ? 'text-red-700 dark:text-red-400'
-                                : 'text-amber-700 dark:text-amber-400'
-                            }`}>
-                              {selectedReward.is_expired ? '⚠️ Expirado em' : '📅 Resgate até'} {new Date(selectedReward.valid_until).toLocaleDateString('pt-BR')}
-                            </p>
-                          )}
-                          {selectedReward.voucher_validity_days && (
-                            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                              ⏱️ Voucher válido por {selectedReward.voucher_validity_days} dias após o resgate
-                            </p>
-                          )}
+                          <p className={`text-sm font-medium ${
+                            selectedReward.is_expired
+                              ? 'text-red-700 dark:text-red-400'
+                              : 'text-amber-700 dark:text-amber-400'
+                          }`}>
+                            {selectedReward.is_expired ? '⚠️ Expirado em' : '📅 Resgate até'} {new Date(selectedReward.valid_until).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                          </p>
                         </div>
                       )}
 
@@ -1639,42 +1628,20 @@ export const RewardsPage: React.FC = () => {
                     </select>
                   </div>
 
-                  {formData.fulfillment_type === 'voucher' && (
-                    <div className="grid grid-cols-1 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Validade do Voucher (dias após resgate)</label>
-                        <input
-                          type="number"
-                          value={formData.voucher_validity_days}
-                          onChange={(e) => setFormData({ ...formData, voucher_validity_days: e.target.value })}
-                          className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
-                            formErrors.voucher_validity_days ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                          }`}
-                          placeholder="Ex: 30"
-                          min="1"
-                        />
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 italic">
-                          Deixe vazio para que o voucher não tenha data de expiração.
-                        </p>
-                        {formErrors.voucher_validity_days && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.voucher_validity_days}</p>}
-                      </div>
-                    </div>
-                  )}
-
                   {/* Data de Validade */}
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                      Data de Validade (opcional)
+                      Data e hora limite para resgate
                     </label>
                     <input
-                      type="date"
+                      type="datetime-local"
                       value={formData.valid_until}
-                      min={new Date().toLocaleDateString('en-CA')} // en-CA format is YYYY-MM-DD
+                      min={new Date().toISOString().slice(0, 16)}
                       onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
                       className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                     />
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                      Deixe vazio se não houver data de expiração
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 italic">
+                      Define até quando a recompensa estará disponível no catálogo para resgate.
                     </p>
                   </div>
 
