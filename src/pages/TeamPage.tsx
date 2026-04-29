@@ -252,9 +252,12 @@ export const TeamPage: React.FC = () => {
   };
 
   const handleViewCoinStatement = (user: UserType) => {
-    // Apenas super admin pode ver extrato de outros admins
-    if (user.user_type_id === 1 && !isSuperAdmin) {
-      addToast('error', 'Apenas super administradores podem visualizar extrato de outros administradores.');
+    // Super admin pode ver de todos.
+    // Admin pode ver o seu próprio e de colaboradores (user_type_id !== 1).
+    const canView = isSuperAdmin || currentUser?.id === user.id || (isAdmin && user.user_type_id !== 1);
+    
+    if (!canView) {
+      addToast('error', 'Você não tem permissão para visualizar o extrato deste usuário.');
       return;
     }
     setCoinStatementModal({ isOpen: true, user });
@@ -637,8 +640,8 @@ export const TeamPage: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
-                      {/* Ver extrato: Admin vê de colaboradores. Super Admin vê de todos (exceto ele mesmo se quiser) */}
-                      {(isSuperAdmin || (isAdmin && user.user_type_id !== 1)) && currentUser?.id !== user.id && (
+                      {/* Ver extrato: Super Admin vê de todos. Admin vê o seu e de colaboradores. */}
+                      {(isSuperAdmin || currentUser?.id === user.id || (isAdmin && user.user_type_id !== 1)) && (
                         <button
                           onClick={() => handleViewCoinStatement(user)}
                           className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
@@ -702,7 +705,7 @@ export const TeamPage: React.FC = () => {
                     )}
 
                     <div className="flex items-center justify-between gap-4 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                      {user.user_type_id !== 1 && (
+                      {(isSuperAdmin || currentUser?.id === user.id || (isAdmin && user.user_type_id !== 1)) && (
                         <div className="flex items-center gap-1.5 text-sm">
                           <Coins size={14} className="text-amber-500 flex-shrink-0" />
                           <span className="font-semibold text-zinc-900 dark:text-white text-xs">
