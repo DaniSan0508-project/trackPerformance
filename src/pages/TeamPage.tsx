@@ -640,8 +640,8 @@ export const TeamPage: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
-                      {/* Ver extrato: Super Admin vê de todos. Admin vê o seu e de colaboradores. */}
-                      {(isSuperAdmin || currentUser?.id === user.id || (isAdmin && user.user_type_id !== 1)) && (
+                      {/* Ver extrato: Apenas colaboradores possuem extrato. Admin e Super Admin podem ver de colaboradores. */}
+                      {user.user_type_id !== 1 && (isSuperAdmin || isAdmin) && (
                         <button
                           onClick={() => handleViewCoinStatement(user)}
                           className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
@@ -705,7 +705,7 @@ export const TeamPage: React.FC = () => {
                     )}
 
                     <div className="flex items-center justify-between gap-4 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                      {(isSuperAdmin || currentUser?.id === user.id || (isAdmin && user.user_type_id !== 1)) && (
+                      {user.user_type_id !== 1 && (isSuperAdmin || isAdmin) && (
                         <div className="flex items-center gap-1.5 text-sm">
                           <Coins size={14} className="text-amber-500 flex-shrink-0" />
                           <span className="font-semibold text-zinc-900 dark:text-white text-xs">
