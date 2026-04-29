@@ -3421,6 +3421,56 @@ export const CampaignsPage: React.FC = () => {
               <div className="p-6">
                 {importStep === 'upload' && (
                   <div className="space-y-6">
+                    {/* Guia de Formato */}
+                    <div className="bg-primary-50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/30 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-bold text-primary-900 dark:text-primary-400 uppercase tracking-wider flex items-center gap-2">
+                          <Info size={16} />
+                          Formato do Arquivo
+                        </h4>
+                        <button
+                          onClick={handleDownloadTemplate}
+                          className="text-xs font-bold text-primary-600 hover:text-primary-700 dark:text-primary-400 flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-primary-100 dark:border-primary-800 transition-all"
+                        >
+                          <Download size={14} />
+                          Baixar Modelo
+                        </button>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[11px] text-left border-collapse">
+                          <thead>
+                            <tr className="border-b border-primary-100 dark:border-primary-900/30 text-primary-700 dark:text-primary-300">
+                              <th className="pb-2 pr-4 font-bold uppercase">Coluna</th>
+                              <th className="pb-2 pr-4 font-bold uppercase">Exemplo</th>
+                              <th className="pb-2 font-bold uppercase">Descrição</th>
+                            </tr>
+                          </thead>
+                          <tbody className="text-primary-800 dark:text-primary-400">
+                            <tr className="border-b border-primary-50 dark:border-primary-900/10">
+                              <td className="py-2 pr-4 font-mono font-bold">external_id</td>
+                              <td className="py-2 pr-4 italic">12345</td>
+                              <td className="py-2">Código externo da loja.</td>
+                            </tr>
+                            <tr className="border-b border-primary-50 dark:border-primary-900/10">
+                              <td className="py-2 pr-4 font-mono font-bold">barcode</td>
+                              <td className="py-2 pr-4 italic">7891234567890</td>
+                              <td className="py-2">EAN/Código de barras do produto.</td>
+                            </tr>
+                            <tr className="border-b border-primary-50 dark:border-primary-900/10">
+                              <td className="py-2 pr-4 font-mono font-bold">sale_date</td>
+                              <td className="py-2 pr-4 italic">2026-04-29</td>
+                              <td className="py-2">Data da venda (AAAA-MM-DD).</td>
+                            </tr>
+                            <tr>
+                              <td className="py-2 pr-4 font-mono font-bold">amount</td>
+                              <td className="py-2 pr-4 italic">10,20</td>
+                              <td className="py-2">Valor da venda.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
                     <div 
                       className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl p-10 flex flex-col items-center justify-center transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer relative"
                       onClick={() => document.getElementById('file-upload-input')?.click()}
