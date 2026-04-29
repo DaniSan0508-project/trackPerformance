@@ -498,7 +498,7 @@ export const PostsPage: React.FC = () => {
       const user = allMentionUsers.find(u => u.username?.toLowerCase() === username) || 
                    (Object.values(usersCache) as UserType[]).find(u => u.username?.toLowerCase() === username);
       
-      const displayName = user ? user.name : username;
+      const displayName = user ? (user.username || user.name) : username;
       return `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5" contenteditable="false" data-username="${username}">@${displayName}</span>`;
     });
 
@@ -654,11 +654,11 @@ export const PostsPage: React.FC = () => {
       mentionSpan.className = 'inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5';
       mentionSpan.contentEditable = 'false';
       mentionSpan.dataset.username = user.username || '';
-      mentionSpan.textContent = `@${user.name}`;
+      mentionSpan.textContent = `@${user.username || user.name}`;
       
       range.insertNode(mentionSpan);
       
-      // Adicionar um espaço após a menção para facilitar a digitação contínua
+      // Adicionar um space após a menção para facilitar a digitação contínua
       const space = document.createTextNode(' ');
       mentionSpan.after(space);
       
@@ -687,19 +687,56 @@ export const PostsPage: React.FC = () => {
   const renderPostContent = (text: string, isCompact = false) => {
     if (!text) return null;
 
-    // Primeiro, limpamos tags HTML que possam vir da API (como os <a> das hashtags/menções)
-    // para processarmos apenas o texto puro e aplicarmos nossa própria estilização.
-    const cleanText = text.replace(/<[^>]*>?/gm, '');
-
-    // Regex para capturar menções (@usuario) e hashtags (#campanha)
-    // No DB, as menções são sempre @username (sem espaços)
-    const regex = /(@[A-Za-z0-9_.-]+|#[A-Za-zÀ-ÖØ-öø-ÿ0-9_.-]+)/g;
-    const parts = cleanText.split(regex);
+    // Regex para capturar tags <a> de menção ou texto que pareça menção/hashtag
+    // Prioriza tags <a> vindas da API que contêm metadados (username, pic)
+    const regex = /(<a\s+[^>]*mention="true"[^>]*>.*?<\/a>|@[A-Za-z0-9_.-]+|#[A-Za-zÀ-ÖØ-öø-ÿ0-9_.-]+)/g;
+    
+    // Divide o texto em partes, mantendo os delimitadores (capturados pelos parênteses no regex)
+    const parts = text.split(regex);
 
     return parts.map((part, index) => {
       if (!part) return null;
 
-      // Trata Menções (@)
+      // Trata tags <a> de menção (vinda da API)
+      if (part.startsWith('<a') && part.includes('mention="true"')) {
+        const usernameMatch = part.match(/username="([^"]*)"/);
+        const picMatch = part.match(/pic="([^"]*)"/);
+        const contentMatch = part.match(/>(.*?)<\/a>/);
+        
+        const username = usernameMatch ? usernameMatch[1] : '';
+        const pic = picMatch ? picMatch[1] : null;
+        const displayName = username || (contentMatch ? contentMatch[1].replace(/^@/, '') : '');
+
+        return (
+          <span 
+            key={index} 
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5 hover:underline cursor-pointer transition-colors relative group/mention"
+          >
+            {pic && (
+              <img 
+                src={pic} 
+                alt={username} 
+                className="w-4 h-4 rounded-full object-cover border border-blue-200 dark:border-blue-800"
+              />
+            )}
+            @{displayName}
+            {pic && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 z-[100] mb-2 opacity-0 invisible group-hover/mention:opacity-100 group-hover/mention:visible transition-all duration-300 pointer-events-none drop-shadow-lg">
+                <div className={`bg-white dark:bg-zinc-800 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700 ${isCompact ? 'w-10 h-10' : 'w-24 h-24'} overflow-hidden`}>
+                  <img 
+                    src={pic} 
+                    alt={username} 
+                    className="w-full h-full rounded-lg object-cover bg-zinc-100 dark:bg-zinc-900"
+                  />
+                </div>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-8 border-transparent border-t-white dark:border-t-zinc-800"></div>
+              </div>
+            )}
+          </span>
+        );
+      }
+
+      // Trata Menções (@) em texto puro (ex: durante criação ou se a API não formatar)
       if (part.startsWith('@')) {
         const username = part.substring(1).trim().toLowerCase();
         
@@ -712,7 +749,6 @@ export const PostsPage: React.FC = () => {
         return (
           <span 
             key={index} 
-            contentEditable={false} 
             className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5 hover:underline cursor-pointer transition-colors relative group/mention"
           >
             {mentionedUser?.profile_image_url && (
@@ -722,7 +758,7 @@ export const PostsPage: React.FC = () => {
                 className="w-4 h-4 rounded-full object-cover border border-blue-200 dark:border-blue-800"
               />
             )}
-            @{mentionedUser ? mentionedUser.name : username}
+            @{mentionedUser ? (mentionedUser.username || mentionedUser.name) : username}
             {mentionedUser?.profile_image_url && (
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 z-[100] mb-2 opacity-0 invisible group-hover/mention:opacity-100 group-hover/mention:visible transition-all duration-300 pointer-events-none drop-shadow-lg">
                 <div className={`bg-white dark:bg-zinc-800 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700 ${isCompact ? 'w-10 h-10' : 'w-24 h-24'} overflow-hidden`}>
@@ -751,7 +787,9 @@ export const PostsPage: React.FC = () => {
         );
       }
 
-      return <span key={index}>{part}</span>;
+      // Texto normal (remove quaisquer tags HTML residuais para segurança e evitar quebras)
+      const cleanText = part.replace(/<[^>]*>?/gm, '');
+      return <span key={index}>{cleanText}</span>;
     });
   };
 
@@ -1497,9 +1535,9 @@ export const PostsPage: React.FC = () => {
                           <div className="p-3 flex items-center justify-center">
                             <Loader2 className="animate-spin text-primary-500" size={18} />
                           </div>
-                        ) : mentionUsers.length > 0 ? (
+                        ) : mentionUsers.filter(u => u.username).length > 0 ? (
                           mentionUsers
-                            .filter(u => u.username) // Filtra usuários sem username
+                            .filter(u => u.username)
                             .map((u) => (
                               <button
                                 key={u.id}
@@ -1520,8 +1558,10 @@ export const PostsPage: React.FC = () => {
                                 </div>
                               </button>
                             ))
-                        ) : (                          <div className="p-2 text-xs text-zinc-500 dark:text-zinc-400 text-center">
-                            Nenhum usuário encontrado.
+                        ) : (
+                          <div className="p-3 text-xs text-zinc-500 dark:text-zinc-400 text-center flex flex-col items-center gap-2">
+                            <User size={16} className="opacity-50" />
+                            <span>Nenhum usuário localizado</span>
                           </div>
                         )}
                       </div>
@@ -1853,9 +1893,9 @@ export const PostsPage: React.FC = () => {
                             <div className="p-3 flex items-center justify-center">
                               <Loader2 className="animate-spin text-primary-500" size={18} />
                             </div>
-                          ) : mentionUsers.length > 0 ? (
+                          ) : mentionUsers.filter(u => u.username).length > 0 ? (
                             mentionUsers
-                              .filter(u => u.username) // Filtra usuários sem username
+                              .filter(u => u.username)
                               .map((u) => (
                                 <button
                                   key={u.id}
@@ -1877,11 +1917,11 @@ export const PostsPage: React.FC = () => {
                                 </button>
                               ))
                           ) : (
-                            <div className="p-2 text-xs text-zinc-500 dark:text-zinc-400 text-center">
-                              Nenhum usuário encontrado.
+                            <div className="p-3 text-xs text-zinc-500 dark:text-zinc-400 text-center flex flex-col items-center gap-2">
+                              <User size={16} className="opacity-50" />
+                              <span>Nenhum usuário localizado</span>
                             </div>
-                          )}
-                        </div>
+                          )}                        </div>
                       )}
                     </div>
 

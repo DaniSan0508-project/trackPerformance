@@ -199,6 +199,16 @@ export const CampaignsPage: React.FC = () => {
   const [isReviewExpanded, setIsReviewExpanded] = useState(false);
   const [importBatchLogs, setImportBatchLogs] = useState<string[]>([]);
 
+  // Histórico de Importações
+  const [isImportHistoryModalOpen, setIsImportHistoryModalOpen] = useState(false);
+  const [historyCampaign, setHistoryCampaign] = useState<Campaign | null>(null);
+  const [importHistory, setImportHistory] = useState<any[]>([]);
+  const [loadingImportHistory, setLoadingImportHistory] = useState(false);
+  const [importHistoryPage, setImportHistoryPage] = useState(1);
+  const [importHistoryTotalPages, setImportHistoryTotalPages] = useState(1);
+  const [importHistoryTotal, setImportHistoryTotal] = useState(0);
+  const [expandedImportIds, setExpandedImportIds] = useState<Set<number>>(new Set());
+
   // Estado para controlar os inputs de coins das ações (permite edição livre)
   const [actionCoinsInputs, setActionCoinsInputs] = useState<{ [key: number]: string }>({});
 
@@ -375,6 +385,39 @@ export const CampaignsPage: React.FC = () => {
       }
     }
   }, [formData.type]);
+
+  const fetchImportHistory = useCallback(async (campaignId: number, page = 1) => {
+    if (!token) return;
+    setLoadingImportHistory(true);
+    try {
+      const response = await campaignsService.getCampaignSalesImports(token, campaignId, page);
+      setImportHistory(response.data || []);
+      setImportHistoryPage(response.meta?.current_page || 1);
+      setImportHistoryTotalPages(response.meta?.last_page || 1);
+      setImportHistoryTotal(response.meta?.total || 0);
+    } catch (error) {
+      console.error('Error fetching import history:', error);
+      addToast('error', 'Erro ao carregar histórico de importações.');
+    } finally {
+      setLoadingImportHistory(false);
+    }
+  }, [token]);
+
+  const toggleExpandImport = (id: number) => {
+    setExpandedImportIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleOpenImportHistory = (campaign: Campaign) => {
+    setHistoryCampaign(campaign);
+    setIsImportHistoryModalOpen(true);
+    setExpandedImportIds(new Set());
+    fetchImportHistory(campaign.id, 1);
+  };
 
   const fetchAuxiliaryData = useCallback(async () => {
     if (!token) return;
@@ -1832,6 +1875,27 @@ export const CampaignsPage: React.FC = () => {
                             >
                               <Trophy size={18} />
                             </button>
+                            {isAdmin && campaign.type === 'sales' && (
+                              <>
+                                <button
+                                  onClick={() => handleOpenImportHistory(campaign)}
+                                  className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+                                  title="Ver Histórico de Importações"
+                                >
+                                  <Clock size={18} />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setImportingCampaign(campaign);
+                                    setIsImportModalOpen(true);
+                                  }}
+                                  className="p-2 text-zinc-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                                  title="Importar Vendas"
+                                >
+                                  <Upload size={18} />
+                                </button>
+                              </>
+                            )}
                             {isAdmin && (
                               <>
                                 <button
@@ -3029,20 +3093,30 @@ export const CampaignsPage: React.FC = () => {
 
                   {/* Botão Importar Vendas - visível apenas para Admin em campanhas de Vendas no modo edição */}
                   {editingCampaign && editingCampaign.type === 'sales' && currentUser?.user_type_id === 1 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setImportingCampaign(editingCampaign);
-                        setIsImportModalOpen(true);
-                      }}
-                      className="px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium flex items-center gap-2 shadow-sm"
-                      title="Importar vendas por arquivo XLSX ou CSV"
-                    >
-                      <FileSpreadsheet size={20} />
-                      Importar Vendas
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenImportHistory(editingCampaign)}
+                        className="px-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors font-medium flex items-center gap-2 shadow-sm"
+                        title="Ver histórico de importações de vendas"
+                      >
+                        <Clock size={20} />
+                        Histórico
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImportingCampaign(editingCampaign);
+                          setIsImportModalOpen(true);
+                        }}
+                        className="px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium flex items-center gap-2 shadow-sm"
+                        title="Importar vendas por arquivo XLSX ou CSV"
+                      >
+                        <FileSpreadsheet size={20} />
+                        Importar Vendas
+                      </button>
+                    </div>
                   )}
-
                   <div className="flex-1 flex gap-3 justify-end">
                     {/* Botão Próximo (apenas se não for a última aba) */}
                     {((activeTab === 'basic' || activeTab === 'users')) && (
@@ -3715,6 +3789,181 @@ export const CampaignsPage: React.FC = () => {
                   </div>
                 )}
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Histórico de Importações */}
+      <AnimatePresence>
+        {isImportHistoryModalOpen && historyCampaign && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={() => setIsImportHistoryModalOpen(false)}
+              className="absolute inset-0"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden border border-zinc-200 dark:border-zinc-800 z-10 flex flex-col max-h-[90vh]"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50 flex-shrink-0">
+                <div>
+                  <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                    <Clock className="text-primary-600" size={24} />
+                    Histórico de Importações
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    Campanha: {historyCampaign.name}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsImportHistoryModalOpen(false)}
+                  className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+                {loadingImportHistory && importHistory.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 text-primary-600 animate-spin mb-3" />
+                    <p className="text-zinc-500">Carregando histórico...</p>
+                  </div>
+                ) : importHistory.length === 0 ? (
+                  <div className="text-center py-12 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700">
+                    <Clock className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+                    <p className="text-zinc-500">Nenhuma importação realizada para esta campanha.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {importHistory.map((item) => (
+                      <div key={item.id} className="border border-zinc-100 dark:border-zinc-800 rounded-xl overflow-hidden transition-all duration-200 hover:border-zinc-200 dark:hover:border-zinc-700 bg-white dark:bg-zinc-800/30">
+                        <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                            <div className={`p-2 rounded-lg ${item.error_count > 0 ? 'bg-amber-100 dark:bg-amber-900/20 text-amber-600' : 'bg-green-100 dark:bg-green-900/20 text-green-600'}`}>
+                              <FileSpreadsheet size={20} />
+                            </div>
+                            <div>
+                              <div className="font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                                {item.filename}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-zinc-500">
+                                <span className="flex items-center gap-1">
+                                  <Clock size={12} />
+                                  {new Date(item.created_at).toLocaleString('pt-BR')}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <User size={12} />
+                                  {item.imported_by?.name || 'Sistema'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <div className="flex flex-col items-end">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
+                                  {item.success_count} sucessos
+                                </span>
+                                {item.error_count > 0 && (
+                                  <span className="text-xs font-bold text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full">
+                                    {item.error_count} erros
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-zinc-400 mt-1">Total: {item.total_rows} linhas</span>
+                            </div>
+                            
+                            {item.error_count > 0 && (
+                              <button
+                                onClick={() => toggleExpandImport(item.id)}
+                                className={`p-1.5 rounded-lg transition-all ${
+                                  expandedImportIds.has(item.id)
+                                    ? 'bg-primary-600 text-white'
+                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-primary-600'
+                                }`}
+                              >
+                                <ChevronDown 
+                                  size={18} 
+                                  className={`transition-transform duration-300 ${expandedImportIds.has(item.id) ? 'rotate-180' : ''}`} 
+                                />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Error Details */}
+                        <AnimatePresence>
+                          {expandedImportIds.has(item.id) && item.errors && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30"
+                            >
+                              <div className="p-4 overflow-x-auto">
+                                <table className="w-full text-xs text-left">
+                                  <thead>
+                                    <tr className="text-zinc-500 uppercase tracking-wider">
+                                      <th className="px-3 py-2 font-bold">ID Externo</th>
+                                      <th className="px-3 py-2 font-bold text-red-600">Erro</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                                    {item.errors.map((error, idx) => (
+                                      <tr key={idx} className="text-zinc-700 dark:text-zinc-300">
+                                        <td className="px-3 py-2 font-medium">{error.external_id}</td>
+                                        <td className="px-3 py-2 text-red-500">{error.reason}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer / Pagination */}
+              {importHistoryTotalPages > 1 && (
+                <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-800/50 flex-shrink-0">
+                  <span className="text-xs text-zinc-500">
+                    Mostrando <span className="font-bold">{importHistory.length}</span> de <span className="font-bold">{importHistoryTotal}</span> importações
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => fetchImportHistory(historyCampaign.id, importHistoryPage - 1)}
+                      disabled={importHistoryPage === 1 || loadingImportHistory}
+                      className="p-1.5 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-white dark:hover:bg-zinc-800 disabled:opacity-50 text-zinc-600 dark:text-zinc-400"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                      {importHistoryPage} / {importHistoryTotalPages}
+                    </span>
+                    <button
+                      onClick={() => fetchImportHistory(historyCampaign.id, importHistoryPage + 1)}
+                      disabled={importHistoryPage === importHistoryTotalPages || loadingImportHistory}
+                      className="p-1.5 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-white dark:hover:bg-zinc-800 disabled:opacity-50 text-zinc-600 dark:text-zinc-400"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
         )}

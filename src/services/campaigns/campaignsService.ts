@@ -93,6 +93,13 @@ export const campaignsService = {
     return handleResponse(response);
   },
 
+  getCampaignSalesImports: async (token: string, campaignId: number, page = 1, perPage = 15) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/sales/imports?page=${page}&per_page=${perPage}`, {
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
+
   getCampaignRanking: async (token: string, campaignId: number) => {
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/ranking`, {
       headers: getHeaders(token),

@@ -504,3 +504,23 @@ export interface HashtagRewardApproval {
   campaign_name: string;
   approved_by: string | null;
 }
+
+export interface CampaignSalesImportError {
+  row: number;
+  reason: string;
+  external_id: string;
+}
+
+export interface CampaignSalesImport {
+  id: number;
+  filename: string;
+  total_rows: number;
+  success_count: number;
+  error_count: number;
+  errors: CampaignSalesImportError[];
+  imported_by: {
+    id: number;
+    name: string;
+  };
+  created_at: string;
+}
