@@ -863,7 +863,8 @@ export const CampaignsPage: React.FC = () => {
 
   const handleDownloadTemplate = () => {
     const headers = ['external_id', 'barcode', 'sale_date', 'amount'];
-    const csvContent = "data:text/csv;charset=utf-8," + headers.join(',');
+    const exampleRow = ['12345', '7891234567890', '2026-04-29', '10.20'];
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), exampleRow.join(',')].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
