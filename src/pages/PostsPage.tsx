@@ -1022,8 +1022,8 @@ export const PostsPage: React.FC = () => {
                   className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col relative"
                 >
                   {/* Header */}
-                  <div className="p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                  <div className="p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div className="w-8 h-8 bg-gradient-to-tr from-primary-400 via-primary-500 to-primary-600 p-[2px] rounded-full flex-shrink-0">
                         <div className="w-full h-full bg-white dark:bg-zinc-900 rounded-full p-[2px]">
                           {post.user?.profile_image_url ? (
@@ -1035,7 +1035,7 @@ export const PostsPage: React.FC = () => {
                           )}
                         </div>
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 leading-none truncate">{post.user?.name || 'Usuário'}</h3>
                           <div className="flex items-center gap-1 flex-shrink-0">
@@ -1053,12 +1053,12 @@ export const PostsPage: React.FC = () => {
                         </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
                           {formatRelativeDate(post.created_at)}
-                          {post.is_sponsored && <span className="ml-2 text-primary-600 font-medium">• Patrocinado</span>}
-                          {post.is_boosted && <span className="ml-2 text-primary-600 font-medium">• Turbinado</span>}
+                          {post.is_sponsored && <span className="ml-1 sm:ml-2 text-primary-600 font-medium whitespace-nowrap">• Patrocinado</span>}
+                          {post.is_boosted && <span className="ml-1 sm:ml-2 text-primary-600 font-medium whitespace-nowrap">• Turbinado</span>}
                         </p>
                       </div>
                     </div>
-                    <div className="relative">
+                    <div className="relative flex-shrink-0">
                       <button
                         onClick={() => setActiveMenuPostId(activeMenuPostId === post.id ? null : post.id)}
                         className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 flex-shrink-0 p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
