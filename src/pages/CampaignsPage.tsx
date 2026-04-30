@@ -862,8 +862,8 @@ export const CampaignsPage: React.FC = () => {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ['external_id', 'barcode', 'sale_date', 'amount'];
-    const exampleRow = ['ABC123', '7896004710011', '2026-03-15', '10.00'];
+    const headers = ['external_id', 'barcode', 'sale_date', 'amount', 'id_transaction'];
+    const exampleRow = ['ABC123', '7896004710011', '2026-03-15', '10.00', 'TXN789456'];
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), exampleRow.join(',')].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -903,7 +903,7 @@ export const CampaignsPage: React.FC = () => {
           const firstRow = rows[0];
           const isHeader = firstRow.some(cell => {
             const val = String(cell || '').toLowerCase();
-            return val.includes('id') || val.includes('barcode') || val.includes('vendedor') || val.includes('ean') || val.includes('data') || val.includes('valor');
+            return val.includes('id') || val.includes('barcode') || val.includes('vendedor') || val.includes('ean') || val.includes('data') || val.includes('valor') || val.includes('transaction');
           });
 
           const dataRows = isHeader ? rows.slice(1) : rows;
@@ -911,21 +911,34 @@ export const CampaignsPage: React.FC = () => {
           const formattedData = dataRows
             .filter(row => row.length >= 2 && (row[0] || row[1]))
             .map(row => {
+              // Nova estrutura: [external_id, barcode, sale_date, amount, id_transaction]
+              let barcode = row[1];
               let saleDate = row[2];
+              let amount = row[3];
+              let idTransaction = row[4];
+
+              // Fallback para arquivos antigos (4 colunas) caso o usuário não use o novo modelo
+              if (row.length === 4) {
+                idTransaction = '';
+                barcode = row[1];
+                saleDate = row[2];
+                amount = row[3];
+              }
+
               if (saleDate instanceof Date) {
                 saleDate = saleDate.toISOString().split('T')[0];
               }
 
-              let amount = row[3];
               if (typeof amount === 'string') {
                 amount = amount.replace(',', '.').trim();
               }
 
               return {
                 external_id: String(row[0] || '').trim(),
-                barcode: String(row[1] || '').trim(),
+                barcode: String(barcode || '').trim(),
                 sale_date: saleDate || '',
-                amount: amount || '0'
+                amount: amount || '0',
+                id_transaction: String(idTransaction || '').trim()
               };
             });
 
@@ -3462,29 +3475,32 @@ export const CampaignsPage: React.FC = () => {
                               <td className="py-2 pr-4 italic">2026-03-15</td>
                               <td className="py-2">Data da venda (AAAA-MM-DD).</td>
                             </tr>
-                            <tr>
+                            <tr className="border-b border-zinc-100 dark:border-zinc-800">
                               <td className="py-2 pr-4 font-mono font-bold">amount</td>
                               <td className="py-2 pr-4 italic">10.00</td>
                               <td className="py-2 text-red-600 dark:text-red-400 font-medium">Valor com ponto (ex: 10.00). Não use vírgula.</td>
                             </tr>
+                            <tr>
+                              <td className="py-2 pr-4 font-mono font-bold">id_transaction</td>
+                              <td className="py-2 pr-4 italic">TXN789456</td>
+                              <td className="py-2">ID único da transação</td>
+                            </tr>
                           </tbody>
                         </table>
                       </div>
-                      <div className="mt-3 text-[10px] text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900/50 p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm">
-                        <strong className="text-zinc-900 dark:text-zinc-200">Dica:</strong> Se for editar no Bloco de Notas, use vírgula para separar as colunas (separado por vírgulas) e usar ponto para valores decimais.
-                      </div>
+                      
 
                       {/* Exemplo Prático */}
                       <div className="mt-4">
                         <h5 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase mb-2">Exemplo no Bloco de Notas:</h5>
                         <div className="bg-zinc-900 dark:bg-black p-3 rounded-lg border border-zinc-800 font-mono text-[10px] text-zinc-300 overflow-x-auto whitespace-pre">
-{`external_id,barcode,sale_date,amount
-ABC123,7896004710011,2026-03-15,10.00
-ABC123,7896004710011,2026-03-05,15.00
-ABC124,7891058001023,2026-03-27,10.10
-ABC124,7891058001023,2026-04-01,1.50
-ABC125,7896004710011,2026-03-04,120.72
-ABC125,7891058001023,2026-03-22,35.08`}
+{`external_id,barcode,sale_date,amount,id_transaction
+ABC123,7896004710011,2026-03-15,10.00,TXN001
+ABC123,7896004710011,2026-03-05,15.00,TXN002
+ABC124,7891058001023,2026-03-27,10.10,TXN003
+ABC124,7891058001023,2026-04-01,1.50,TXN004
+ABC125,7896004710011,2026-03-04,120.72,TXN005
+ABC125,7891058001023,2026-03-22,35.08,TXN006`}
                         </div>
                       </div>
                     </div>
