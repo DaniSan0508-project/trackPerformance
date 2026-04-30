@@ -3423,15 +3423,15 @@ export const CampaignsPage: React.FC = () => {
                 {importStep === 'upload' && (
                   <div className="space-y-6">
                     {/* Guia de Formato */}
-                    <div className="bg-primary-50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/30 rounded-xl p-4">
+                    <div className="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl p-4">
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-bold text-primary-900 dark:text-primary-400 uppercase tracking-wider flex items-center gap-2">
-                          <Info size={16} />
+                        <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider flex items-center gap-2">
+                          <Info size={16} className="text-primary-600 dark:text-primary-400" />
                           Formato do Arquivo
                         </h4>
                         <button
                           onClick={handleDownloadTemplate}
-                          className="text-xs font-bold text-primary-600 hover:text-primary-700 dark:text-primary-400 flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-primary-100 dark:border-primary-800 transition-all"
+                          className="text-xs font-bold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-700 transition-all"
                         >
                           <Download size={14} />
                           Baixar Modelo
@@ -3440,24 +3440,24 @@ export const CampaignsPage: React.FC = () => {
                       <div className="overflow-x-auto">
                         <table className="w-full text-[11px] text-left border-collapse">
                           <thead>
-                            <tr className="border-b border-primary-100 dark:border-primary-900/30 text-primary-700 dark:text-primary-300">
+                            <tr className="border-b border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400">
                               <th className="pb-2 pr-4 font-bold uppercase">Coluna</th>
                               <th className="pb-2 pr-4 font-bold uppercase">Exemplo</th>
                               <th className="pb-2 font-bold uppercase">Descrição</th>
                             </tr>
                           </thead>
-                          <tbody className="text-primary-800 dark:text-primary-400">
-                            <tr className="border-b border-primary-50 dark:border-primary-900/10">
+                          <tbody className="text-zinc-700 dark:text-zinc-300">
+                            <tr className="border-b border-zinc-100 dark:border-zinc-800">
                               <td className="py-2 pr-4 font-mono font-bold">external_id</td>
                               <td className="py-2 pr-4 italic">ABC123</td>
                               <td className="py-2">Código externo da loja/vendedor.</td>
                             </tr>
-                            <tr className="border-b border-primary-50 dark:border-primary-900/10">
+                            <tr className="border-b border-zinc-100 dark:border-zinc-800">
                               <td className="py-2 pr-4 font-mono font-bold">barcode</td>
                               <td className="py-2 pr-4 italic">7896004710011</td>
                               <td className="py-2">EAN/Código de barras do produto.</td>
                             </tr>
-                            <tr className="border-b border-primary-50 dark:border-primary-900/10">
+                            <tr className="border-b border-zinc-100 dark:border-zinc-800">
                               <td className="py-2 pr-4 font-mono font-bold">sale_date</td>
                               <td className="py-2 pr-4 italic">2026-03-15</td>
                               <td className="py-2">Data da venda (AAAA-MM-DD).</td>
@@ -3470,8 +3470,22 @@ export const CampaignsPage: React.FC = () => {
                           </tbody>
                         </table>
                       </div>
-                      <div className="mt-3 text-[10px] text-primary-700 dark:text-primary-400 bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-primary-100 dark:border-primary-800">
-                        <strong>Dica:</strong> Se for editar no Bloco de Notas, use vírgula para separar as colunas. No Excel/LibreOffice, certifique-se de salvar como CSV (separado por vírgulas) e usar ponto para decimais.
+                      <div className="mt-3 text-[10px] text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900/50 p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm">
+                        <strong className="text-zinc-900 dark:text-zinc-200">Dica:</strong> Se for editar no Bloco de Notas, use vírgula para separar as colunas (separado por vírgulas) e usar ponto para valores decimais.
+                      </div>
+
+                      {/* Exemplo Prático */}
+                      <div className="mt-4">
+                        <h5 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase mb-2">Exemplo no Bloco de Notas:</h5>
+                        <div className="bg-zinc-900 dark:bg-black p-3 rounded-lg border border-zinc-800 font-mono text-[10px] text-zinc-300 overflow-x-auto whitespace-pre">
+{`external_id,barcode,sale_date,amount
+ABC123,7896004710011,2026-03-15,10.00
+ABC123,7896004710011,2026-03-05,15.00
+ABC124,7891058001023,2026-03-27,10.10
+ABC124,7891058001023,2026-04-01,1.50
+ABC125,7896004710011,2026-03-04,120.72
+ABC125,7891058001023,2026-03-22,35.08`}
+                        </div>
                       </div>
                     </div>
 
