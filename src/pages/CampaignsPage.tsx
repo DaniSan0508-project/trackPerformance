@@ -863,7 +863,7 @@ export const CampaignsPage: React.FC = () => {
 
   const handleDownloadTemplate = () => {
     const headers = ['external_id', 'barcode', 'sale_date', 'amount'];
-    const exampleRow = ['12345', '7891234567890', '2026-04-29', '10.20'];
+    const exampleRow = ['ABC123', '7896004710011', '2026-03-15', '10.00'];
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), exampleRow.join(',')].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -3449,26 +3449,29 @@ export const CampaignsPage: React.FC = () => {
                           <tbody className="text-primary-800 dark:text-primary-400">
                             <tr className="border-b border-primary-50 dark:border-primary-900/10">
                               <td className="py-2 pr-4 font-mono font-bold">external_id</td>
-                              <td className="py-2 pr-4 italic">12345</td>
-                              <td className="py-2">Código externo da loja.</td>
+                              <td className="py-2 pr-4 italic">ABC123</td>
+                              <td className="py-2">Código externo da loja/vendedor.</td>
                             </tr>
                             <tr className="border-b border-primary-50 dark:border-primary-900/10">
                               <td className="py-2 pr-4 font-mono font-bold">barcode</td>
-                              <td className="py-2 pr-4 italic">7891234567890</td>
+                              <td className="py-2 pr-4 italic">7896004710011</td>
                               <td className="py-2">EAN/Código de barras do produto.</td>
                             </tr>
                             <tr className="border-b border-primary-50 dark:border-primary-900/10">
                               <td className="py-2 pr-4 font-mono font-bold">sale_date</td>
-                              <td className="py-2 pr-4 italic">2026-04-29</td>
+                              <td className="py-2 pr-4 italic">2026-03-15</td>
                               <td className="py-2">Data da venda (AAAA-MM-DD).</td>
                             </tr>
                             <tr>
                               <td className="py-2 pr-4 font-mono font-bold">amount</td>
-                              <td className="py-2 pr-4 italic">10,20</td>
-                              <td className="py-2">Valor da venda.</td>
+                              <td className="py-2 pr-4 italic">10.00</td>
+                              <td className="py-2 text-red-600 dark:text-red-400 font-medium">Valor com ponto (ex: 10.00). Não use vírgula.</td>
                             </tr>
                           </tbody>
                         </table>
+                      </div>
+                      <div className="mt-3 text-[10px] text-primary-700 dark:text-primary-400 bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-primary-100 dark:border-primary-800">
+                        <strong>Dica:</strong> Se for editar no Bloco de Notas, use vírgula para separar as colunas. No Excel/LibreOffice, certifique-se de salvar como CSV (separado por vírgulas) e usar ponto para decimais.
                       </div>
                     </div>
 

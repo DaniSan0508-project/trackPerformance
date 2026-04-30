@@ -514,21 +514,24 @@ export const ProductsPage: React.FC = () => {
 
     setSaving(true);
     try {
+      const payload: any = {
+        name: formData.name,
+        barcode: formData.barcode,
+      };
+
+      if (formData.manufacturer_id !== '') {
+        payload.manufacturer_id = Number(formData.manufacturer_id);
+      }
+      
+      if (formData.product_group_id !== '') {
+        payload.product_group_id = Number(formData.product_group_id);
+      }
+
       if (editingProduct) {
-        await productsService.updateProduct(token, editingProduct.barcode!, {
-          name: formData.name,
-          barcode: formData.barcode,
-          manufacturer_id: formData.manufacturer_id === '' ? null : Number(formData.manufacturer_id),
-          product_group_id: formData.product_group_id === '' ? null : Number(formData.product_group_id),
-        });
+        await productsService.updateProduct(token, editingProduct.barcode!, payload);
         addToast('success', 'Produto atualizado com sucesso!');
       } else {
-        await productsService.createProduct(token, {
-          name: formData.name,
-          barcode: formData.barcode,
-          manufacturer_id: formData.manufacturer_id === '' ? null : Number(formData.manufacturer_id),
-          product_group_id: formData.product_group_id === '' ? null : Number(formData.product_group_id),
-        });
+        await productsService.createProduct(token, payload);
         addToast('success', 'Produto criado com sucesso!');
       }
       await fetchProducts(currentPage, debouncedSearchTerm, filterType);
@@ -1171,7 +1174,7 @@ export const ProductsPage: React.FC = () => {
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Ex: Dipirona Sódica 1g 10 Comprimidos"
+                      placeholder="Nome completo do produto"
                       className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                         formErrors.name
                           ? 'border-red-500 focus:ring-red-500'
@@ -1183,10 +1186,10 @@ export const ProductsPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Código de Barras */}
+                  {/* Código */}
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                      Código de Barras *
+                      Código *
                     </label>
                     <input
                       type="text"
