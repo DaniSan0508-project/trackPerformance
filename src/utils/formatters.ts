@@ -151,10 +151,9 @@ export const formatRelativeDate = (dateString: string): string => {
 export const extractYouTubeVideoId = (url: string): string | null => {
   if (!url) return null;
   
-  // Padrões de URL do YouTube
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
-    /^([a-zA-Z0-9_-]{11})$/  // ID direto (11 caracteres)
+    /^([a-zA-Z0-9_-]{11})$/ 
   ];
   
   for (const pattern of patterns) {

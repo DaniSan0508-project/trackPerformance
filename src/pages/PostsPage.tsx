@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar, Rocket, Shield, Coins } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar, Rocket, Shield, Coins, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Post, Like, Comment, User as UserType } from '../types';
 import { postsService, usersService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { getFullImageUrl, extractYouTubeVideoId, formatRelativeDate, getYouTubeThumbnailUrl } from '../utils';
+import { getFullImageUrl, extractYouTubeVideoId, formatRelativeDate, getYouTubeThumbnailUrl, formatDateTime } from '../utils';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -499,7 +499,7 @@ export const PostsPage: React.FC = () => {
                    (Object.values(usersCache) as UserType[]).find(u => u.username?.toLowerCase() === username);
       
       const displayName = user ? (user.username || user.name) : username;
-      return `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5" contenteditable="false" data-username="${username}">@${displayName}</span>`;
+      return `<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5" contenteditable="false" data-username="${username}">@${displayName}</span>&nbsp;`;
     });
 
     // Sincronizar o DOM do editor de edição
@@ -597,29 +597,84 @@ export const PostsPage: React.FC = () => {
     return caretOffset;
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, field: 'create' | 'edit') => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+
+    if (e.key === 'Backspace') {
+      if (range.collapsed && range.startOffset === 0) {
+        // Se o cursor está no início de um text node, verifica o elemento anterior
+        const container = range.startContainer;
+        const previousSibling = container.previousSibling;
+        
+        if (previousSibling instanceof HTMLSpanElement && previousSibling.dataset.username) {
+          // Se o elemento anterior é um pill de menção, remove ele
+          e.preventDefault();
+          previousSibling.remove();
+          
+          // Atualiza o estado
+          const editor = e.currentTarget;
+          if (field === 'create') {
+            setNewPostContent(editor.innerText);
+          } else {
+            setEditContent(editor.innerText);
+          }
+        }
+      }
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && e.key !== ' ') {
+      // Bloquear digitação de caracteres normais (exceto espaço) colados após uma menção
+      if (range.collapsed && range.startOffset === 0) {
+        const previousSibling = range.startContainer.previousSibling;
+        if (previousSibling instanceof HTMLSpanElement && previousSibling.dataset.username) {
+          // Impedir se estiver tentando digitar grudado no pill
+          e.preventDefault();
+        }
+      }
+    }
+  };
+
   const handleMentionChange = (text: string, element: HTMLDivElement, field: 'create' | 'edit') => {
     const cursorPosition = getCaretCharacterOffsetWithin(element);
     const textBeforeCursor = text.slice(0, cursorPosition);
     const words = textBeforeCursor.split(/\s/);
     const lastWord = words[words.length - 1];
 
-    if (lastWord.startsWith('@')) {
-      const query = lastWord.slice(1);
-      setMentionQuery(query);
-      setShowMentionDropdown(true);
-      setMentionTargetField(field);
+    // Regex para validar o início de uma menção: @ seguido de caracteres válidos
+    const mentionMatch = lastWord.match(/^@([A-Za-z0-9_.-]*)$/);
 
+    if (mentionMatch) {
+      const query = mentionMatch[1];
+      
       // Get cursor coordinates for dropdown positioning
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0).cloneRange();
-        const rect = range.getBoundingClientRect();
-        if (rect) {
+        let rect = range.getBoundingClientRect();
+        
+        // Se o rect estiver zerado (comum em ranges colapsados ou em certas condições do DOM)
+        // tentamos obter o primeiro cliente rect disponível que costuma ser mais preciso para o caret
+        if (rect.top === 0 && rect.left === 0) {
+          const rects = range.getClientRects();
+          if (rects.length > 0) {
+            rect = rects[0];
+          }
+        }
+
+        if (rect && (rect.top !== 0 || rect.left !== 0)) {
+          setMentionQuery(query);
+          setShowMentionDropdown(true);
+          setMentionTargetField(field);
           setDropdownPos({
             top: rect.bottom + window.scrollY,
             left: rect.left + window.scrollX
           });
+        } else {
+          // Se não conseguiu coordenadas válidas, melhor não mostrar a modal
+          setShowMentionDropdown(false);
         }
+      } else {
+        setShowMentionDropdown(false);
       }
     } else {
       setShowMentionDropdown(false);
@@ -651,7 +706,7 @@ export const PostsPage: React.FC = () => {
 
       // Criar a menção como um 'pill' (span inline-block)
       const mentionSpan = document.createElement('span');
-      mentionSpan.className = 'inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5';
+      mentionSpan.className = 'inline-flex items-center px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5';
       mentionSpan.contentEditable = 'false';
       mentionSpan.dataset.username = user.username || '';
       mentionSpan.textContent = `@${user.username || user.name}`;
@@ -659,7 +714,8 @@ export const PostsPage: React.FC = () => {
       range.insertNode(mentionSpan);
       
       // Adicionar um space após a menção para facilitar a digitação contínua
-      const space = document.createTextNode(' ');
+      // Usamos um espaço inquebrável (\u00A0) seguido de um espaço normal para garantir visibilidade no contentEditable
+      const space = document.createTextNode('\u00A0');
       mentionSpan.after(space);
       
       // Mover o cursor após o espaço
@@ -672,10 +728,12 @@ export const PostsPage: React.FC = () => {
       // Trigger update to React state
       const editorElement = document.querySelector(`[data-field="${mentionTargetField}"]`) as HTMLDivElement;
       if (editorElement) {
+        // Garantimos que o innerText pegue o novo espaço
+        const updatedText = editorElement.innerText;
         if (mentionTargetField === 'create') {
-          setNewPostContent(editorElement.innerText);
+          setNewPostContent(updatedText);
         } else {
-          setEditContent(editorElement.innerText);
+          setEditContent(updatedText);
         }
       }
     }
@@ -873,8 +931,8 @@ export const PostsPage: React.FC = () => {
 
         {/* Filters */}
         <div className="bg-white dark:bg-zinc-800 p-4 md:p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-700 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="relative">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div className="lg:col-span-3 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400 dark:text-zinc-500" size={18} />
               <input 
                 type="text" 
@@ -884,7 +942,7 @@ export const PostsPage: React.FC = () => {
                 onChange={(e) => setFilterUserName(e.target.value)}
               />
             </div>
-            <div className="relative">
+            <div className="lg:col-span-4 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400 dark:text-zinc-500" size={18} />
               <input 
                 type="text" 
@@ -894,39 +952,53 @@ export const PostsPage: React.FC = () => {
                 onChange={(e) => setFilterContent(e.target.value)}
               />
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="relative">
-                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 pointer-events-none" />
+            <div className="lg:col-span-5 grid grid-cols-2 gap-2">
+              <div className="relative group cursor-pointer" onClick={(e) => {
+                const input = e.currentTarget.querySelector('input');
+                if (input && 'showPicker' in input) {
+                  try { input.showPicker(); } catch (err) { console.error(err); }
+                }
+              }}>
+                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 pointer-events-none group-hover:text-primary-600 transition-colors" />
                 <input
                   type="date"
-                  className="w-full pl-9 pr-2 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 text-sm [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  className="w-full pl-9 pr-2 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 text-sm cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                   value={filterStartDate}
                   onChange={(e) => setFilterStartDate(e.target.value)}
                   title="Início"
                 />
               </div>
-              <div className="relative">
-                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 pointer-events-none" />
+              <div className="relative group cursor-pointer" onClick={(e) => {
+                const input = e.currentTarget.querySelector('input');
+                if (input && 'showPicker' in input) {
+                  try { input.showPicker(); } catch (err) { console.error(err); }
+                }
+              }}>
+                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 pointer-events-none group-hover:text-primary-600 transition-colors" />
                 <input
                   type="date"
-                  className="w-full pl-9 pr-2 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 text-sm [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  className="w-full pl-9 pr-2 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 text-sm cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                   value={filterEndDate}
                   onChange={(e) => setFilterEndDate(e.target.value)}
                   title="Fim"
                 />
               </div>
             </div>
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 text-sm"
-            >
-              <option value="-created_at">Mais recentes</option>
-              <option value="created_at">Mais antigos</option>
-            </select>
           </div>
 
           <div className="flex flex-wrap items-center gap-y-4 gap-x-6 pt-2 border-t border-zinc-50 dark:border-zinc-700/50">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Ordenação:</span>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="px-4 py-1.5 bg-zinc-100 dark:bg-zinc-900 border-none rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 text-xs font-medium cursor-pointer shadow-sm"
+              >
+                <option value="-created_at">Mais recentes</option>
+                <option value="created_at">Mais antigos</option>
+              </select>
+            </div>
+
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Patrocinado:</span>
               <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-lg w-fit">
                 {[
@@ -1259,7 +1331,7 @@ export const PostsPage: React.FC = () => {
                         <UserListItem 
                           key={like.id} 
                           user={usersCache[like.user_id] || like.user} 
-                          subtext={new Date(like.created_at).toLocaleDateString()}
+                          subtext={formatDateTime(like.created_at)}
                         />
                       ))}
                     </div>
@@ -1328,10 +1400,9 @@ export const PostsPage: React.FC = () => {
                                   {renderPostContent(comment.text)}
                                 </p>
                               </div>
-                              <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 ml-2">
-                                {formatRelativeDate(comment.created_at)}
-                              </p>
-                            </div>
+                              <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1 ml-2">
+                                {formatRelativeDate(comment.created_at)} • {formatDateTime(comment.created_at)}
+                              </p>                            </div>
                           </div>
                         );
                       })}
@@ -1518,9 +1589,9 @@ export const PostsPage: React.FC = () => {
                       contentEditable
                       data-field="edit"
                       onInput={(e) => handleMentionChange(e.currentTarget.innerText, e.currentTarget, 'edit')}
+                      onKeyDown={(e) => handleKeyDown(e, 'edit')}
                       className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[150px] text-zinc-900 dark:text-zinc-100"
-                    >
-                    </div>
+                    >                    </div>
 
                     {/* Floating Mentions Dropdown */}
                     {showMentionDropdown && mentionTargetField === 'edit' && (
@@ -1697,10 +1768,8 @@ export const PostsPage: React.FC = () => {
                               alt="Current video"
                               className="w-full h-40 object-contain bg-black"
                             />
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center">
-                                <div className="w-0 h-0 border-t-6 border-t-transparent border-l-10 border-l-white border-b-6 border-b-transparent ml-1"></div>
-                              </div>
+                            <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">
+                              YOUTUBE
                             </div>
                           </div>
                         ) : (
@@ -1788,21 +1857,24 @@ export const PostsPage: React.FC = () => {
                               const videoId = extractYouTubeVideoId(editVideoUrl);
                               if (videoId) {
                                 return (
-                                  <div className="relative rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                                  <div className="relative rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
                                     <img
                                       src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
                                       alt="YouTube thumbnail"
-                                      className="w-full h-48 object-cover"
+                                      className="w-full h-48 object-cover opacity-90"
                                     />
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                      <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
-                                        <div className="w-0 h-0 border-t-8 border-t-transparent border-l-12 border-l-white border-b-8 border-b-transparent ml-1"></div>
-                                      </div>
+                                    <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">
+                                      YOUTUBE
                                     </div>
                                   </div>
                                 );
                               }
-                              return null;
+                              return (
+                                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 text-red-600 dark:text-red-400 text-xs">
+                                  <AlertCircle size={14} />
+                                  <span>URL inválida</span>
+                                </div>
+                              );
                             })()}
                           </div>
                         )}
@@ -1876,9 +1948,9 @@ export const PostsPage: React.FC = () => {
                         contentEditable
                         data-field="create"
                         onInput={(e) => handleMentionChange(e.currentTarget.innerText, e.currentTarget, 'create')}
+                        onKeyDown={(e) => handleKeyDown(e, 'create')}
                         className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[150px] text-zinc-900 dark:text-zinc-100"
-                      >
-                      </div>
+                      >                      </div>
                       
                       {/* Floating Mentions Dropdown */}
                       {showMentionDropdown && mentionTargetField === 'create' && (
@@ -2160,21 +2232,24 @@ export const PostsPage: React.FC = () => {
                                 const videoId = extractYouTubeVideoId(newPostVideoUrl);
                                 if (videoId) {
                                   return (
-                                    <div className="relative rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                                    <div className="relative rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
                                       <img
                                         src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
                                         alt="YouTube thumbnail"
-                                        className="w-full h-48 object-cover"
+                                        className="w-full h-48 object-cover opacity-90"
                                       />
-                                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                        <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
-                                          <div className="w-0 h-0 border-t-8 border-t-transparent border-l-12 border-l-white border-b-8 border-b-transparent ml-1"></div>
-                                        </div>
+                                      <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">
+                                        YOUTUBE
                                       </div>
                                     </div>
                                   );
                                 }
-                                return null;
+                                return (
+                                  <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 text-red-600 dark:text-red-400 text-xs">
+                                    <AlertCircle size={14} />
+                                    <span>URL inválida</span>
+                                  </div>
+                                );
                               })()}
                             </div>
                           )}
