@@ -499,9 +499,8 @@ export const PostsPage: React.FC = () => {
                    (Object.values(usersCache) as UserType[]).find(u => u.username?.toLowerCase() === username);
       
       const displayName = user ? (user.username || user.name) : username;
-      return `<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5" contenteditable="false" data-username="${username}">@${displayName}</span>&nbsp;`;
-    });
-
+      return `<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-1" contenteditable="false" data-username="${username}">@${displayName}</span>`;
+      });
     // Sincronizar o DOM do editor de edição
     setTimeout(() => {
       const editor = document.querySelector('[data-field="edit"]') as HTMLDivElement;
@@ -706,7 +705,7 @@ export const PostsPage: React.FC = () => {
 
       // Criar a menção como um 'pill' (span inline-block)
       const mentionSpan = document.createElement('span');
-      mentionSpan.className = 'inline-flex items-center px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5';
+      mentionSpan.className = 'inline-flex items-center px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-1';
       mentionSpan.contentEditable = 'false';
       mentionSpan.dataset.username = user.username || '';
       mentionSpan.textContent = `@${user.username || user.name}`;
