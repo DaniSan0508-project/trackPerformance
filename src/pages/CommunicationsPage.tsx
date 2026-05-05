@@ -1177,7 +1177,7 @@ export const CommunicationsPage: React.FC = () => {
                         key={view.id}
                         className="flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl"
                       >
-                        {view.user.profile_image_url ? (
+                        {view.user?.profile_image_url ? (
                           <img 
                             src={getFullImageUrl(view.user.profile_image_url) || ''} 
                             alt={view.user.name} 
@@ -1189,8 +1189,8 @@ export const CommunicationsPage: React.FC = () => {
                           </div>
                         )}
                         <div className="flex-1">
-                          <p className="font-medium text-zinc-900 dark:text-white">{view.user.name}</p>
-                          <p className="text-sm text-zinc-500 dark:text-zinc-400">{view.user.email}</p>
+                          <p className="font-medium text-zinc-900 dark:text-white">{view.user?.name || 'Usuário Desconhecido'}</p>
+                          <p className="text-sm text-zinc-500 dark:text-zinc-400">{view.user?.email || '-'}</p>
                         </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400">
                           {formatDate(view.viewed_at)}
