@@ -1288,12 +1288,17 @@ export const PostsPage: React.FC = () => {
                         </h4>
                       )}
                       
-                      <div className="flex-1 flex flex-col justify-start w-full min-h-[80px]">
-                        <div className="text-sm text-zinc-900 dark:text-zinc-300 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors text-left">
+                      <div className="flex-1 w-full min-h-[80px] max-h-[160px] overflow-hidden relative">
+                        <div className="text-sm text-zinc-900 dark:text-zinc-300 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors text-left pb-6">
                           {renderPostContent(post.content, true)}
                         </div>
                         {post.content.length > 300 && (
-                          <span className="text-xs text-zinc-400 dark:text-zinc-500 mt-auto pt-2 block group-hover:underline text-right">Ver mais...</span>
+                          <>
+                            <div className="absolute bottom-0 right-0 left-0 h-12 bg-gradient-to-t from-white dark:from-zinc-900 via-white/80 dark:via-zinc-900/80 to-transparent pointer-events-none" />
+                            <span className="absolute bottom-0 right-0 text-xs text-zinc-400 dark:text-zinc-500 font-bold group-hover:underline bg-white dark:bg-zinc-900 pl-2 pb-0.5 z-10">
+                              Ver mais...
+                            </span>
+                          </>
                         )}
                       </div>
                     </button>
