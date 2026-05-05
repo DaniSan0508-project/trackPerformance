@@ -1280,7 +1280,7 @@ export const PostsPage: React.FC = () => {
                     <button 
                       type="button"
                       onClick={() => setContentModalPost(post)}
-                      className="flex-1 w-full group mb-3 pt-4"
+                      className="flex-1 w-full group mb-3 pt-4 flex flex-col items-start text-left"
                     >
                       {post.title && (
                         <h4 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-2 group-hover:text-primary-700 dark:group-hover:text-primary-500 transition-colors text-left w-full">
@@ -1288,12 +1288,12 @@ export const PostsPage: React.FC = () => {
                         </h4>
                       )}
                       
-                      <div className="flex-1 flex flex-col justify-center w-full min-h-[80px]">
+                      <div className="flex-1 flex flex-col justify-start w-full min-h-[80px]">
                         <div className="text-sm text-zinc-900 dark:text-zinc-300 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors text-left">
                           {renderPostContent(post.content, true)}
                         </div>
                         {post.content.length > 300 && (
-                          <span className="text-xs text-zinc-400 dark:text-zinc-500 mt-2 block group-hover:underline text-left">Ver mais...</span>
+                          <span className="text-xs text-zinc-400 dark:text-zinc-500 mt-auto pt-2 block group-hover:underline text-right">Ver mais...</span>
                         )}
                       </div>
                     </button>
