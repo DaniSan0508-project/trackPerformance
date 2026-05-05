@@ -720,12 +720,13 @@ export const PostsPage: React.FC = () => {
         }
 
         if (rect && (rect.top !== 0 || rect.left !== 0)) {
+          const editorRect = element.getBoundingClientRect();
           setMentionQuery(query);
           setShowMentionDropdown(true);
           setMentionTargetField(field);
           setDropdownPos({
-            top: rect.bottom + window.scrollY,
-            left: rect.left + window.scrollX
+            top: rect.bottom - editorRect.top,
+            left: rect.left - editorRect.left
           });
         } else {
           // Se não conseguiu coordenadas válidas, melhor não mostrar a modal
@@ -1643,23 +1644,24 @@ export const PostsPage: React.FC = () => {
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                       Conteúdo
                     </label>
-                    <div
-                      contentEditable
-                      data-field="edit"
-                      onInput={(e) => handleMentionChange(e.currentTarget.innerText, e.currentTarget, 'edit')}
-                      onKeyDown={(e) => handleKeyDown(e, 'edit')}
-                      className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[150px] text-zinc-900 dark:text-zinc-100"
-                    >                    </div>
+                    <div className="relative">
+                      <div
+                        contentEditable
+                        data-field="edit"
+                        onInput={(e) => handleMentionChange(e.currentTarget.innerText, e.currentTarget, 'edit')}
+                        onKeyDown={(e) => handleKeyDown(e, 'edit')}
+                        className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[150px] text-zinc-900 dark:text-zinc-100"
+                      >                    </div>
 
-                    {/* Floating Mentions Dropdown */}
-                    {showMentionDropdown && mentionTargetField === 'edit' && (
-                      <div 
-                        className="fixed z-[100] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg max-h-48 overflow-y-auto w-64"
-                        style={{ 
-                          top: dropdownPos.top + 5, 
-                          left: Math.min(dropdownPos.left, window.innerWidth - 280) 
-                        }}
-                      >
+                      {/* Floating Mentions Dropdown */}
+                      {showMentionDropdown && mentionTargetField === 'edit' && (
+                        <div 
+                          className="absolute z-[100] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg max-h-48 overflow-y-auto w-64"
+                          style={{ 
+                            top: dropdownPos.top + 5, 
+                            left: Math.min(dropdownPos.left, 240) // Constrain left a bit more safely
+                          }}
+                        >
                         {mentionLoading ? (
                           <div className="p-3 flex items-center justify-center">
                             <Loader2 className="animate-spin text-primary-500" size={18} />
@@ -1698,11 +1700,11 @@ export const PostsPage: React.FC = () => {
                           </div>
                         )}
                       </div>
-                    )}
-                  </div>
+                      )}
+                      </div>
+                      </div>
 
-                  {currentUser?.user_type_id === 1 && (
-                    <div className="space-y-4 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                      {currentUser?.user_type_id === 1 && (                    <div className="space-y-4 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
                       <div className="flex items-center justify-between">
                         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                           Post Patrocinado
@@ -2006,23 +2008,24 @@ export const PostsPage: React.FC = () => {
                       <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                         Conteúdo
                       </label>
-                      <div
-                        contentEditable
-                        data-field="create"
-                        onInput={(e) => handleMentionChange(e.currentTarget.innerText, e.currentTarget, 'create')}
-                        onKeyDown={(e) => handleKeyDown(e, 'create')}
-                        className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[150px] text-zinc-900 dark:text-zinc-100"
-                      >                      </div>
-                      
-                      {/* Floating Mentions Dropdown */}
-                      {showMentionDropdown && mentionTargetField === 'create' && (
-                        <div 
-                          className="fixed z-[100] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg max-h-48 overflow-y-auto w-64"
-                          style={{ 
-                            top: dropdownPos.top + 5, 
-                            left: Math.min(dropdownPos.left, window.innerWidth - 280) 
-                          }}
-                        >
+                      <div className="relative">
+                        <div
+                          contentEditable
+                          data-field="create"
+                          onInput={(e) => handleMentionChange(e.currentTarget.innerText, e.currentTarget, 'create')}
+                          onKeyDown={(e) => handleKeyDown(e, 'create')}
+                          className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[150px] text-zinc-900 dark:text-zinc-100"
+                        >                      </div>
+                        
+                        {/* Floating Mentions Dropdown */}
+                        {showMentionDropdown && mentionTargetField === 'create' && (
+                          <div 
+                            className="absolute z-[100] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg max-h-48 overflow-y-auto w-64"
+                            style={{ 
+                              top: dropdownPos.top + 5, 
+                              left: Math.min(dropdownPos.left, 240) 
+                            }}
+                          >
                           {mentionLoading ? (
                             <div className="p-3 flex items-center justify-center">
                               <Loader2 className="animate-spin text-primary-500" size={18} />
@@ -2062,6 +2065,7 @@ export const PostsPage: React.FC = () => {
                           )}                        </div>
                       )}
                     </div>
+                  </div>
 
                     {currentUser?.user_type_id === 1 && (
                       <div className="space-y-4 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
