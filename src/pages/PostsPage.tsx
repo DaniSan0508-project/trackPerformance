@@ -121,7 +121,7 @@ export const PostsPage: React.FC = () => {
 
   const fetchPosts = useCallback(async (page = 1, filters: { 
     userName?: string; 
-    content?: string;
+    search?: string;
     createdAt?: string;
     earnsCoins?: boolean;
     isSponsored?: boolean;
@@ -270,7 +270,7 @@ export const PostsPage: React.FC = () => {
         : filterStartDate || filterEndDate || '';
       fetchPosts(1, { 
         userName: filterUserName, 
-        content: filterContent,
+        search: filterContent,
         createdAt: dateFilter,
         earnsCoins: filterEarnsCoins === 'all' ? undefined : filterEarnsCoins,
         isSponsored: filterIsSponsored === 'all' ? undefined : filterIsSponsored,
@@ -298,6 +298,15 @@ export const PostsPage: React.FC = () => {
       addToast('success', 'Post excluído com sucesso!');
     } catch (err: any) {
       console.error('Error deleting post:', err);
+      
+      // Tratar erro de "Não encontrado" (post já foi excluído)
+      if (err.response?.status === 404) {
+        addToast('info', 'Este post já foi removido anteriormente.');
+        setPosts(prev => prev.filter(p => p.id !== post.id));
+        setActiveMenuPostId(null);
+        return;
+      }
+
       addToast('error', err.message || 'Erro ao excluir post');
     } finally {
       setIsDeleting(null);
@@ -308,7 +317,7 @@ export const PostsPage: React.FC = () => {
     setConfirmModal({
       isOpen: true,
       title: 'Excluir Post',
-      message: 'Tem certeza que deseja excluir este post? Esta ação não pode ser desfeita.',
+      message: 'Tem certeza que deseja excluir essa postagem? Esta ação não pode ser desfeita.',
       onConfirm: async () => await executeDeletePost(post),
       isLoading: false,
     });
@@ -341,7 +350,7 @@ export const PostsPage: React.FC = () => {
         }
         return p;
       }));
-      
+
       // Atualiza o modal de comentários se estiver aberto
       setCommentsModalPost(prev => {
         if (!prev) return null;
@@ -350,14 +359,39 @@ export const PostsPage: React.FC = () => {
           comments: prev.comments.filter(c => c.id !== commentId)
         };
       });
-      
+
       addToast('success', 'Comentário excluído com sucesso!');
     } catch (err: any) {
       console.error('Error deleting comment:', err);
+
+      // Tratar erro de "Não encontrado" (comentário ou post já foi excluído)
+      if (err.response?.status === 404) {
+        addToast('info', 'Este comentário ou post já foi removido.');
+
+        // Remove o comentário da UI mesmo que a API diga que não existe mais
+        setPosts(prev => prev.map(p => {
+          if (p.id === postId && p.comments) {
+            return {
+              ...p,
+              comments: p.comments.filter(c => c.id !== commentId)
+            };
+          }
+          return p;
+        }));
+
+        setCommentsModalPost(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            comments: prev.comments.filter(c => c.id !== commentId)
+          };
+        });
+        return;
+      }
+
       const errorMessage = err.response?.data?.message || err.message || 'Erro ao excluir comentário';
       addToast('error', errorMessage);
-    }
-  };
+    }  };
 
   const [confirmCommentModal, setConfirmCommentModal] = useState<{
     isOpen: boolean;
@@ -376,8 +410,15 @@ export const PostsPage: React.FC = () => {
   const [mentionLoading, setMentionLoading] = useState(false);
   const [mentionTargetField, setMentionTargetField] = useState<'create' | 'edit'>('create');
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
   const editorRef = useRef<HTMLDivElement>(null);
   const debouncedMentionQuery = useDebounce(mentionQuery, 300);
+
+  useEffect(() => {
+    if (!showMentionDropdown) {
+      setSelectedMentionIndex(0);
+    }
+  }, [showMentionDropdown]);
 
   const handleDeleteCommentConfirm = async () => {
     if (confirmCommentModal.commentId && confirmCommentModal.postId) {
@@ -460,7 +501,7 @@ export const PostsPage: React.FC = () => {
         : filterStartDate || filterEndDate || '';
       await fetchPosts(currentPage, { 
         userName: filterUserName, 
-        content: filterContent,
+        search: filterContent,
         createdAt: dateFilter,
         earnsCoins: filterEarnsCoins === 'all' ? undefined : filterEarnsCoins,
         isSponsored: filterIsSponsored === 'all' ? undefined : filterIsSponsored,
@@ -597,6 +638,24 @@ export const PostsPage: React.FC = () => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, field: 'create' | 'edit') => {
+    if (showMentionDropdown && mentionTargetField === field) {
+      if (e.key === 'Enter') {
+        // Só permite selecionar com Enter se houver exatamente 1 usuário disponível
+        const availableUsers = mentionUsers.filter(u => u.username);
+        if (availableUsers.length === 1) {
+          e.preventDefault();
+          handleSelectMention(availableUsers[0]);
+          return;
+        }
+        // Se houver mais de um, o Enter segue o comportamento padrão (pode ser nova linha se permitido)
+        // ou simplesmente não seleciona a menção.
+      }
+      if (e.key === 'Escape') {
+        setShowMentionDropdown(false);
+        return;
+      }
+    }
+
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     const range = selection.getRangeAt(0);
@@ -767,7 +826,7 @@ export const PostsPage: React.FC = () => {
         return (
           <span 
             key={index} 
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5 hover:underline cursor-pointer transition-colors relative group/mention"
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5 hover:underline cursor-pointer transition-colors relative group/mention hover:z-50"
           >
             {pic && (
               <img 
@@ -778,7 +837,7 @@ export const PostsPage: React.FC = () => {
             )}
             @{displayName}
             {pic && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 z-[100] mb-2 opacity-0 invisible group-hover/mention:opacity-100 group-hover/mention:visible transition-all duration-300 pointer-events-none drop-shadow-lg">
+              <div className="absolute top-full left-1/2 -translate-x-1/2 z-[100] mt-2 opacity-0 invisible group-hover/mention:opacity-100 group-hover/mention:visible transition-all duration-300 pointer-events-none drop-shadow-lg">
                 <div className={`bg-white dark:bg-zinc-800 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700 ${isCompact ? 'w-10 h-10' : 'w-24 h-24'} overflow-hidden`}>
                   <img 
                     src={pic} 
@@ -786,7 +845,7 @@ export const PostsPage: React.FC = () => {
                     className="w-full h-full rounded-lg object-cover bg-zinc-100 dark:bg-zinc-900"
                   />
                 </div>
-                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-8 border-transparent border-t-white dark:border-t-zinc-800"></div>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-1 border-8 border-transparent border-b-white dark:border-t-transparent dark:border-b-zinc-800"></div>
               </div>
             )}
           </span>
@@ -806,7 +865,7 @@ export const PostsPage: React.FC = () => {
         return (
           <span 
             key={index} 
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5 hover:underline cursor-pointer transition-colors relative group/mention"
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[13px] font-bold italic select-none mx-0.5 hover:underline cursor-pointer transition-colors relative group/mention hover:z-50"
           >
             {mentionedUser?.profile_image_url && (
               <img 
@@ -817,7 +876,7 @@ export const PostsPage: React.FC = () => {
             )}
             @{mentionedUser ? (mentionedUser.username || mentionedUser.name) : username}
             {mentionedUser?.profile_image_url && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 z-[100] mb-2 opacity-0 invisible group-hover/mention:opacity-100 group-hover/mention:visible transition-all duration-300 pointer-events-none drop-shadow-lg">
+              <div className="absolute top-full left-1/2 -translate-x-1/2 z-[100] mt-2 opacity-0 invisible group-hover/mention:opacity-100 group-hover/mention:visible transition-all duration-300 pointer-events-none drop-shadow-lg">
                 <div className={`bg-white dark:bg-zinc-800 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700 ${isCompact ? 'w-10 h-10' : 'w-24 h-24'} overflow-hidden`}>
                   <img 
                     src={getFullImageUrl(mentionedUser.profile_image_url) || ''} 
@@ -825,7 +884,7 @@ export const PostsPage: React.FC = () => {
                     className="w-full h-full rounded-lg object-cover bg-zinc-100 dark:bg-zinc-900"
                   />
                 </div>
-                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-8 border-transparent border-t-white dark:border-t-zinc-800"></div>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-1 border-8 border-transparent border-b-white dark:border-t-transparent dark:border-b-zinc-800"></div>
               </div>
             )}
           </span>
@@ -857,7 +916,7 @@ export const PostsPage: React.FC = () => {
 
     fetchPosts(currentPage, { 
       userName: debouncedUserName, 
-      content: debouncedContent,
+      search: debouncedContent,
       createdAt: dateFilter,
       earnsCoins: filterEarnsCoins === 'all' ? undefined : filterEarnsCoins,
       isSponsored: filterIsSponsored === 'all' ? undefined : filterIsSponsored,
@@ -904,14 +963,14 @@ export const PostsPage: React.FC = () => {
       <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Posts</h1>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Postagens</h1>
             <p className="text-zinc-500 dark:text-zinc-400">Gerencie e visualize as publicações do seu time.</p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => {
                 const dateFilter = filterStartDate && filterEndDate ? `${filterStartDate},${filterEndDate}` : filterStartDate || filterEndDate || '';
-                fetchPosts(currentPage, { userName: filterUserName, createdAt: dateFilter });
+                fetchPosts(currentPage, { userName: filterUserName, search: filterContent, createdAt: dateFilter });
               }}
               className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all"
               title="Atualizar"
@@ -945,7 +1004,7 @@ export const PostsPage: React.FC = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400 dark:text-zinc-500" size={18} />
               <input 
                 type="text" 
-                placeholder="Conteúdo do post..." 
+                placeholder="Título ou conteúdo..." 
                 className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 text-sm"
                 value={filterContent}
                 onChange={(e) => setFilterContent(e.target.value)}
@@ -1072,11 +1131,11 @@ export const PostsPage: React.FC = () => {
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-center">
             {error}
-            <button 
+            <button
               onClick={() => {
                 const dateFilter = filterStartDate && filterEndDate ? `${filterStartDate},${filterEndDate}` : filterStartDate || filterEndDate || '';
-                fetchPosts(currentPage, { userName: filterUserName, createdAt: dateFilter });
-              }} 
+                fetchPosts(currentPage, { userName: filterUserName, search: filterContent, createdAt: dateFilter });
+              }}
               className="block mx-auto mt-2 text-sm font-semibold hover:underline"
             >
               Tentar novamente
@@ -1220,7 +1279,7 @@ export const PostsPage: React.FC = () => {
                     <button 
                       type="button"
                       onClick={() => setContentModalPost(post)}
-                      className="flex-1 flex flex-col w-full group mb-3"
+                      className="flex-1 w-full group mb-3 pt-4"
                     >
                       {post.title && (
                         <h4 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-2 group-hover:text-primary-700 dark:group-hover:text-primary-500 transition-colors text-left w-full">
@@ -1228,8 +1287,8 @@ export const PostsPage: React.FC = () => {
                         </h4>
                       )}
                       
-                      <div className="flex-1 flex flex-col justify-center w-full">
-                        <div className="text-sm text-zinc-900 dark:text-zinc-300 line-clamp-6 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors text-left">
+                      <div className="flex-1 flex flex-col justify-center w-full min-h-[80px]">
+                        <div className="text-sm text-zinc-900 dark:text-zinc-300 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors text-left">
                           {renderPostContent(post.content, true)}
                         </div>
                         {post.content.length > 300 && (
@@ -1356,7 +1415,7 @@ export const PostsPage: React.FC = () => {
                 className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh]"
               >
                 <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
-                  <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Comentários</h2>
+                  <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Comentar</h2>
                   <button onClick={() => setCommentsModalPost(null)} className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
                     <X size={24} />
                   </button>
@@ -1558,7 +1617,7 @@ export const PostsPage: React.FC = () => {
                 style={{maxHeight: 'calc(100vh - 4rem)'}}
               >
                 <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50 flex-shrink-0">
-                  <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Editar Post</h2>
+                  <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Editar Postagem</h2>
                   <button onClick={() => setEditPostModal(null)} className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
                     <X size={24} />
                   </button>
@@ -1608,12 +1667,16 @@ export const PostsPage: React.FC = () => {
                         ) : mentionUsers.filter(u => u.username).length > 0 ? (
                           mentionUsers
                             .filter(u => u.username)
-                            .map((u) => (
+                            .map((u, index, array) => (
                               <button
                                 key={u.id}
                                 type="button"
                                 onClick={() => handleSelectMention(u)}
-                                className="w-full flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors text-left"
+                                className={`w-full flex items-center gap-2 p-2 transition-colors text-left ${
+                                  array.length === 1 
+                                    ? 'bg-zinc-100 dark:bg-zinc-700' 
+                                    : 'hover:bg-zinc-50 dark:hover:bg-zinc-700'
+                                }`}
                               >
                                 <div className="w-6 h-6 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex-shrink-0">
                                   {u.profile_image_url ? (
@@ -1682,7 +1745,7 @@ export const PostsPage: React.FC = () => {
                         <div className="grid grid-cols-3 gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-700">
                           <div>
                             <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                              Like
+                              Curtir
                             </label>
                             <input
                               type="number"
@@ -1704,7 +1767,7 @@ export const PostsPage: React.FC = () => {
                           </div>
                           <div>
                             <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                              Coment.
+                              Comentar
                             </label>
                             <input
                               type="number"
@@ -1726,7 +1789,7 @@ export const PostsPage: React.FC = () => {
                           </div>
                           <div>
                             <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                              Compart.
+                              Compartilhar
                             </label>
                             <input
                               type="number"
@@ -1967,12 +2030,16 @@ export const PostsPage: React.FC = () => {
                           ) : mentionUsers.filter(u => u.username).length > 0 ? (
                             mentionUsers
                               .filter(u => u.username)
-                              .map((u) => (
+                              .map((u, index, array) => (
                                 <button
                                   key={u.id}
                                   type="button"
                                   onClick={() => handleSelectMention(u)}
-                                  className="w-full flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors text-left"
+                                  className={`w-full flex items-center gap-2 p-2 transition-colors text-left ${
+                                    array.length === 1 
+                                      ? 'bg-zinc-100 dark:bg-zinc-700' 
+                                      : 'hover:bg-zinc-50 dark:hover:bg-zinc-700'
+                                  }`}
                                 >
                                   <div className="w-6 h-6 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex-shrink-0">
                                     {u.profile_image_url ? (
@@ -2040,7 +2107,7 @@ export const PostsPage: React.FC = () => {
                           <div className="grid grid-cols-3 gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-700">
                             <div>
                               <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                                Like
+                                Curtir
                               </label>
                               <input
                                 type="number"
@@ -2062,7 +2129,7 @@ export const PostsPage: React.FC = () => {
                             </div>
                             <div>
                               <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                                Coment.
+                                Comentar
                               </label>
                               <input
                                 type="number"
@@ -2084,7 +2151,7 @@ export const PostsPage: React.FC = () => {
                             </div>
                             <div>
                               <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                                Compart.
+                                Compartilhar
                               </label>
                               <input
                                 type="number"

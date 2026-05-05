@@ -7,6 +7,7 @@ interface RichTextEditorProps {
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  readOnly?: boolean;
 }
 
 // Registrar handler de imagem personalizado
@@ -71,23 +72,34 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   onChange,
   placeholder = 'Digite o conteúdo aqui...',
   disabled = false,
+  readOnly = false,
 }) => {
+  const isReadOnly = disabled || readOnly;
+
   return (
-    <div className="rich-text-editor">
+    <div className={`rich-text-editor relative ${isReadOnly ? 'read-only' : ''}`}>
       <ReactQuill
         theme="snow"
         value={value}
         onChange={onChange}
-        modules={modules}
+        modules={isReadOnly ? { toolbar: false } : modules}
         formats={formats}
         placeholder={placeholder}
-        readOnly={disabled}
+        readOnly={isReadOnly}
         className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
         style={{
-          minHeight: '300px',
+          minHeight: isReadOnly ? '150px' : '300px',
         }}
       />
       <style>{`
+        .rich-text-editor {
+          position: relative;
+        }
+
+        .rich-text-editor.read-only .ql-container {
+          border-radius: 0.5rem;
+        }
+
         .rich-text-editor .ql-container {
           font-size: 14px;
           min-height: 200px;
@@ -146,6 +158,64 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         
         .rich-text-editor .ql-active .ql-picker-label {
           color: var(--color-primary-600);
+        }
+
+        /* Tradução e Ajustes do Tooltip de Link */
+        .rich-text-editor .ql-tooltip {
+          z-index: 1000;
+          border-radius: 0.5rem;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+          border: 1px solid #e5e7eb;
+          left: 50% !important;
+          transform: translateX(-50%) !important;
+          top: 10px !important;
+          white-space: nowrap;
+        }
+
+        .rich-text-editor .ql-container {
+          position: relative;
+        }
+
+        .dark .rich-text-editor .ql-tooltip {
+          background-color: #27272a;
+          border-color: #3f3f46;
+          color: #f4f4f5;
+        }
+
+        .rich-text-editor .ql-tooltip::before {
+          content: "Link:" !important;
+          font-weight: 600;
+        }
+
+        .rich-text-editor .ql-tooltip input[type=text] {
+          border-radius: 0.375rem;
+          border: 1px solid #d1d5db;
+          padding: 3px 8px;
+          margin-right: 8px;
+        }
+
+        .dark .rich-text-editor .ql-tooltip input[type=text] {
+          background-color: #18181b;
+          border-color: #3f3f46;
+          color: #f4f4f5;
+        }
+
+        .rich-text-editor .ql-tooltip.ql-editing a.ql-action::after {
+          content: 'Salvar' !important;
+          background-color: var(--color-primary-600, #2563eb);
+          color: white;
+          padding: 4px 12px;
+          border-radius: 0.375rem;
+          font-weight: 600;
+          border-right: none !important;
+        }
+
+        .rich-text-editor .ql-tooltip a.ql-action::after {
+          content: 'Editar' !important;
+        }
+
+        .rich-text-editor .ql-tooltip a.ql-remove::before {
+          content: 'Remover' !important;
         }
       `}</style>
     </div>

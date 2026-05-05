@@ -5,7 +5,7 @@ export const postsService = {
   getPosts: async (token: string, page = 1, filters: { 
     userName?: string; 
     createdAt?: string; 
-    content?: string;
+    search?: string;
     earnsCoins?: boolean;
     isSponsored?: boolean;
     isBoosted?: boolean;
@@ -17,7 +17,7 @@ export const postsService = {
     
     if (filters.userName) queryParams.append('filter[user.name]', filters.userName);
     if (filters.createdAt) queryParams.append('filter[created_at]', filters.createdAt);
-    if (filters.content) queryParams.append('filter[content]', filters.content);
+    if (filters.search) queryParams.append('filter[search]', filters.search);
     if (filters.earnsCoins !== undefined) queryParams.append('filter[earns_coins]', filters.earnsCoins.toString());
     if (filters.isSponsored !== undefined) queryParams.append('filter[is_sponsored]', filters.isSponsored.toString());
     if (filters.isBoosted !== undefined) queryParams.append('filter[is_boosted]', filters.isBoosted.toString());

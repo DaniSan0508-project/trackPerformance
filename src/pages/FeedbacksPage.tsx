@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquarePlus, User, Send, X, PenSquare, Filter, RotateCcw, Trash2, Inbox } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquarePlus, User, Send, X, PenSquare, Filter, RotateCcw, Trash2, Inbox, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { User as UserType, Feedback } from '../types';
 import { feedbacksService, usersService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { feedbackSchema } from '../validators/schemas';
-import { getFullImageUrl } from '../utils';
+import { getFullImageUrl, formatDate } from '../utils';
 import { ConfirmModal } from '../components/ConfirmModal';
 
 // Utility for debouncing
@@ -24,7 +24,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export const FeedbacksPage: React.FC = () => {
-  const { token, user: currentUser } = useAuth();
+  const { token, user: currentUser, primaryColor } = useAuth();
   const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState<'send' | 'received' | 'sent' | 'all'>('send');
   const isAdmin = currentUser?.user_type_id === 1;
@@ -114,8 +114,8 @@ export const FeedbacksPage: React.FC = () => {
     setUsersError(null);
     try {
       const data = await usersService.getUsers(token, page, search);
-      // Filter out current user from the list
-      const filteredUsers = data.data.filter(u => u.id !== currentUser?.id);
+      // Filter out current user and administrators (user_type_id === 1) from the list
+      const filteredUsers = data.data.filter(u => u.id !== currentUser?.id && u.user_type_id !== 1);
       setUsers(filteredUsers);
       setUsersPage(data.meta.current_page);
       setUsersTotalPages(data.meta.last_page);
@@ -630,11 +630,13 @@ export const FeedbacksPage: React.FC = () => {
                                 )}
                               </div>
                               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                {new Date(feedback.created_at).toLocaleDateString()} às {new Date(feedback.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {formatDate(feedback.created_at)} às {new Date(feedback.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </p>
                             </div>
                           </div>
-                          <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap mt-2">{feedback.content}</p>
+                          <div className="max-h-40 overflow-y-auto custom-scrollbar mt-2 pr-2">
+                            <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{feedback.content}</p>
+                          </div>
                         </div>
                       </motion.div>
                     );
@@ -777,11 +779,13 @@ export const FeedbacksPage: React.FC = () => {
                                 )}
                               </div>
                               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                {new Date(feedback.created_at).toLocaleDateString()} às {new Date(feedback.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {formatDate(feedback.created_at)} às {new Date(feedback.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </p>
                             </div>
                           </div>
-                          <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap mt-2">{feedback.content}</p>
+                          <div className="max-h-40 overflow-y-auto custom-scrollbar mt-2 pr-2">
+                            <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{feedback.content}</p>
+                          </div>
                         </div>
                       </motion.div>
                     );
@@ -876,23 +880,39 @@ export const FeedbacksPage: React.FC = () => {
 
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 ml-1">De</label>
-                  <input
-                    type="date"
-                    className="w-full px-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                    value={adminFilters.date_from}
-                    onChange={(e) => setAdminFilters(prev => ({ ...prev, date_from: e.target.value }))}
-                  />
+                  <div className="relative group cursor-pointer" onClick={(e) => {
+                    const input = e.currentTarget.querySelector('input');
+                    if (input && 'showPicker' in input) {
+                      try { input.showPicker(); } catch (err) { console.error(err); }
+                    }
+                  }}>
+                    <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 pointer-events-none group-hover:text-primary-600 transition-colors" />
+                    <input
+                      type="date"
+                      className="w-full pl-9 pr-2 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 text-sm cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                      value={adminFilters.date_from}
+                      onChange={(e) => setAdminFilters(prev => ({ ...prev, date_from: e.target.value }))}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 ml-1">Até</label>
                   <div className="flex gap-2">
-                    <input
-                      type="date"
-                      className="w-full px-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                      value={adminFilters.date_to}
-                      onChange={(e) => setAdminFilters(prev => ({ ...prev, date_to: e.target.value }))}
-                    />
+                    <div className="relative group cursor-pointer flex-1" onClick={(e) => {
+                      const input = e.currentTarget.querySelector('input');
+                      if (input && 'showPicker' in input) {
+                        try { input.showPicker(); } catch (err) { console.error(err); }
+                      }
+                    }}>
+                      <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 pointer-events-none group-hover:text-primary-600 transition-colors" />
+                      <input
+                        type="date"
+                        className="w-full pl-9 pr-2 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 text-sm cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                        value={adminFilters.date_to}
+                        onChange={(e) => setAdminFilters(prev => ({ ...prev, date_to: e.target.value }))}
+                      />
+                    </div>
                     <button
                       onClick={handleClearFilters}
                       className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-xl text-zinc-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
@@ -951,7 +971,7 @@ export const FeedbacksPage: React.FC = () => {
                                 </span>
                               </div>
                               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                {new Date(feedback.created_at).toLocaleDateString()} às {new Date(feedback.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {formatDate(feedback.created_at)} às {new Date(feedback.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </p>
                             </div>
                             <div className="flex items-center gap-2">
@@ -969,7 +989,9 @@ export const FeedbacksPage: React.FC = () => {
                               </button>
                             </div>
                           </div>
-                          <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap mt-2">{feedback.content}</p>
+                          <div className="max-h-40 overflow-y-auto custom-scrollbar mt-2 pr-2">
+                            <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{feedback.content}</p>
+                          </div>
                         </div>
                       </motion.div>
                     );

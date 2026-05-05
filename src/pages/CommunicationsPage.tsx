@@ -538,6 +538,8 @@ export const CommunicationsPage: React.FC = () => {
     );
   };
 
+  const isReadOnly = editingCommunication ? editingCommunication.status !== 'draft' : false;
+
   return (
     <>
       <div className="p-4 md:p-8 space-y-6">
@@ -673,6 +675,14 @@ export const CommunicationsPage: React.FC = () => {
 
                     {/* Ações */}
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleOpenModal(communication)}
+                        className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+                        title={communication.status === 'draft' ? 'Editar' : 'Visualizar'}
+                      >
+                        {communication.status === 'draft' ? <Edit2 size={18} /> : <Eye size={18} />}
+                      </button>
+
                       {communication.status === 'published' && (
                         <button
                           onClick={() => handleViewStats(communication)}
@@ -683,22 +693,13 @@ export const CommunicationsPage: React.FC = () => {
                         </button>
                       )}
                       {communication.status === 'draft' && (
-                        <>
-                          <button
-                            onClick={() => handleOpenModal(communication)}
-                            className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
-                            title="Editar"
-                          >
-                            <Edit2 size={18} />
-                          </button>
-                          <button
-                            onClick={() => handlePublish(communication)}
-                            className="p-2 text-zinc-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-                            title="Publicar"
-                          >
-                            <CheckCircle size={18} />
-                          </button>
-                        </>
+                        <button
+                          onClick={() => handlePublish(communication)}
+                          className="p-2 text-zinc-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                          title="Publicar"
+                        >
+                          <CheckCircle size={18} />
+                        </button>
                       )}
                       {communication.status === 'published' && (
                         <button
@@ -772,7 +773,9 @@ export const CommunicationsPage: React.FC = () => {
                 <div>
                   <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                     <Mail className="w-6 h-6 text-primary-500" />
-                    {editingCommunication ? 'Editar Comunicado' : 'Novo Comunicado'}
+                    {editingCommunication 
+                      ? (isReadOnly ? 'Visualizar Comunicado' : 'Editar Comunicado') 
+                      : 'Novo Comunicado'}
                   </h2>
                 </div>
                 <button onClick={handleCloseModal} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
@@ -806,7 +809,14 @@ export const CommunicationsPage: React.FC = () => {
 
               {/* Tab Content */}
               <div className="flex-1 overflow-y-auto p-6 min-h-0">
-                {/* Aba Dados Básicos */}
+                {isReadOnly && (
+                  <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl flex items-center gap-2">
+                    <Eye size={16} className="text-blue-600 dark:text-blue-400" />
+                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                      Este comunicado já foi {editingCommunication?.status === 'published' ? 'publicado' : 'arquivado'} e está em modo de visualização.
+                    </p>
+                  </div>
+                )}
                 {activeTab === 'basic' && (
                   <div className="space-y-4">
                     {/* Título */}
@@ -816,12 +826,13 @@ export const CommunicationsPage: React.FC = () => {
                       </label>
                       <input
                         type="text"
+                        disabled={isReadOnly}
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         placeholder="Ex: Comunicado Importante"
                         className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white transition-all ${
                           formErrors.title ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                        }`}
+                        } disabled:opacity-60`}
                       />
                       {formErrors.title && <p className="mt-1 text-xs text-red-500 font-medium">{formErrors.title}</p>}
                     </div>
@@ -836,6 +847,7 @@ export const CommunicationsPage: React.FC = () => {
                           value={formData.content}
                           onChange={(value) => setFormData({ ...formData, content: value })}
                           placeholder="Digite o conteúdo do comunicado..."
+                          readOnly={isReadOnly}
                         />
                       </div>
                       {formErrors.content && <p className="mt-1 text-xs text-red-500 font-medium">{formErrors.content}</p>}
@@ -848,11 +860,12 @@ export const CommunicationsPage: React.FC = () => {
                       </label>
                       <input
                         type="datetime-local"
+                        disabled={isReadOnly}
                         value={formData.scheduled_at}
                         onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
                         className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white transition-all ${
                           formErrors.scheduled_at ? 'border-red-500 ring-1 ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                        }`}
+                        } disabled:opacity-60`}
                       />
                       {formErrors.scheduled_at && <p className="mt-1 text-xs text-red-500 font-medium">{formErrors.scheduled_at}</p>}
                     </div>
@@ -870,7 +883,7 @@ export const CommunicationsPage: React.FC = () => {
                         </p>
                         <button
                           onClick={handleSelectAllUsers}
-                          disabled={loadingSelectAllUsers}
+                          disabled={loadingSelectAllUsers || isReadOnly}
                           className={`px-4 py-2 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm border ${
                             selectedUsers.length > 0
                               ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
@@ -904,7 +917,7 @@ export const CommunicationsPage: React.FC = () => {
                               <button
                                 key={role}
                                 onClick={() => handleSelectAllByRole(role)}
-                                disabled={selectByRoleLoading !== null}
+                                disabled={selectByRoleLoading !== null || isReadOnly}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
                                   isSelected
                                     ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border-primary-200 dark:border-primary-800'
@@ -953,6 +966,7 @@ export const CommunicationsPage: React.FC = () => {
                         <motion.button
                           key={user.id}
                           onClick={() => {
+                            if (isReadOnly) return;
                             setSelectedUsers(prev =>
                               prev.includes(user.id) ? prev.filter(id => id !== user.id) : [...prev, user.id]
                             );
@@ -961,7 +975,7 @@ export const CommunicationsPage: React.FC = () => {
                             selectedUsers.includes(user.id)
                               ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-900/20'
                               : 'border-zinc-200 dark:border-zinc-700 hover:border-primary-300 dark:hover:border-primary-700'
-                          }`}
+                          } ${isReadOnly ? 'cursor-default' : ''}`}
                         >
                           {/* Avatar */}
                           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-100 to-teal-100 border-2 border-primary-200 flex items-center justify-center text-primary-600 overflow-hidden flex-shrink-0">
@@ -1049,42 +1063,55 @@ export const CommunicationsPage: React.FC = () => {
                     onClick={handleCloseModal}
                     className="px-6 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all font-bold"
                   >
-                    Cancelar
+                    {isReadOnly ? 'Fechar' : 'Cancelar'}
                   </button>
                   
-                  {activeTab === 'basic' ? (
+                  {!isReadOnly && (
+                    <>
+                      {activeTab === 'basic' ? (
+                        <button
+                          onClick={() => {
+                            if (!formData.title.trim()) {
+                              addToast('error', 'Título é obrigatório.');
+                              return;
+                            }
+                            setActiveTab('recipients');
+                          }}
+                          className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all font-bold flex items-center gap-2 shadow-lg shadow-primary-500/20"
+                        >
+                          Próximo
+                          <ChevronRight size={16} />
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            onClick={handleSaveDraft}
+                            disabled={saving || !formData.title.trim()}
+                            className="px-6 py-2.5 border border-amber-500 text-amber-600 dark:text-amber-400 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                            Salvar Rascunho
+                          </button>
+                          <button
+                            onClick={handleSubmit}
+                            disabled={saving || !formData.title.trim() || !formData.content.trim() || selectedUsers.length === 0}
+                            className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold flex items-center gap-2 shadow-lg shadow-primary-500/20"
+                          >
+                            {saving ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                            {editingCommunication ? 'Atualizar' : 'Publicar'}
+                          </button>
+                        </>
+                      )}
+                    </>
+                  )}
+                  {isReadOnly && activeTab === 'basic' && (
                     <button
-                      onClick={() => {
-                        if (!formData.title.trim()) {
-                          addToast('error', 'Título é obrigatório.');
-                          return;
-                        }
-                        setActiveTab('recipients');
-                      }}
-                      className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all font-bold flex items-center gap-2 shadow-lg shadow-primary-500/20"
+                      onClick={() => setActiveTab('recipients')}
+                      className="px-6 py-2.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all font-bold flex items-center gap-2"
                     >
-                      Próximo
+                      Ver Destinatários
                       <ChevronRight size={16} />
                     </button>
-                  ) : (
-                    <>
-                      <button
-                        onClick={handleSaveDraft}
-                        disabled={saving || !formData.title.trim()}
-                        className="px-6 py-2.5 border border-amber-500 text-amber-600 dark:text-amber-400 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      >
-                        {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                        Salvar Rascunho
-                      </button>
-                      <button
-                        onClick={handleSubmit}
-                        disabled={saving || !formData.title.trim() || !formData.content.trim() || selectedUsers.length === 0}
-                        className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold flex items-center gap-2 shadow-lg shadow-primary-500/20"
-                      >
-                        {saving ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
-                        {editingCommunication ? 'Atualizar' : 'Publicar'}
-                      </button>
-                    </>
                   )}
                 </div>
               </div>
@@ -1151,7 +1178,11 @@ export const CommunicationsPage: React.FC = () => {
                         className="flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl"
                       >
                         {view.user.profile_image_url ? (
-                          <img src={view.user.profile_image_url} alt={view.user.name} className="w-10 h-10 rounded-full object-cover" />
+                          <img 
+                            src={getFullImageUrl(view.user.profile_image_url) || ''} 
+                            alt={view.user.name} 
+                            className="w-10 h-10 rounded-full object-cover" 
+                          />
                         ) : (
                           <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
                             <User size={20} className="text-primary-600 dark:text-primary-400" />

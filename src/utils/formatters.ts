@@ -33,6 +33,17 @@ export const formatCurrency = (value: number | string): string => {
  * Formata uma string de data para o formato brasileiro
  */
 export const formatDate = (dateString: string): string => {
+  if (!dateString) return '-';
+  // Para evitar problemas de fuso horário que mostram um dia a menos,
+  // extraímos os componentes da data manualmente se estiver no formato YYYY-MM-DD
+  const datePart = dateString.split('T')[0];
+  const parts = datePart.split('-');
+  
+  if (parts.length === 3) {
+    const [year, month, day] = parts;
+    return `${day}/${month}/${year}`;
+  }
+
   return new Date(dateString).toLocaleDateString('pt-BR');
 };
 
