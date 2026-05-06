@@ -726,8 +726,9 @@ export const CampaignsPage: React.FC = () => {
             loadEngagementActions();
             
             // Mapeia ações do previews.actions (que contém os coins configurados)
+            // Usamos action_id pois no pivot o 'id' é do registro da relação, não da ação global
             const campaignActions = (campaignDetails.previews?.actions || []).map((a: any) => ({
-              id: a.id,
+              id: a.action_id || a.id,
               coins: parseInt(a.coins) || 0
             }));
             setSelectedActions(campaignActions);
@@ -2749,7 +2750,8 @@ export const CampaignsPage: React.FC = () => {
                             })
                             .map((action) => {
                               const actionCampaignId = action.campaign?.id || (action as any).campaign_id;
-                              const isUsedInAnotherCampaign = (action.in_use || action.is_enabled === false || (!!actionCampaignId && Number(actionCampaignId) !== Number(editingCampaign?.id)));
+                              // Uma ação está "em uso em outra" se in_use for true E o ID da campanha vinculada for diferente da que estamos editando
+                              const isUsedInAnotherCampaign = action.in_use && (!!actionCampaignId && Number(actionCampaignId) !== Number(editingCampaign?.id));
                               const isDisabled = isUsedInAnotherCampaign && !manuallyUnselectedActions.includes(action.id);
                               const campaignName = action.campaign?.name || (action as any).campaign_name;
                               const isSelected = selectedActions.find(a => a.id === action.id);
