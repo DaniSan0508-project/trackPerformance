@@ -700,7 +700,7 @@ export const TeamPage: React.FC = () => {
                     {user.description && (
                       <div className="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                         <FileText size={14} className="text-zinc-400 flex-shrink-0 mt-0.5" />
-                        <span className="text-xs italic">{user.description}</span>
+                        <span className="text-xs italic line-clamp-2" title={user.description}>{user.description}</span>
                       </div>
                     )}
 

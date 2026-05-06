@@ -541,7 +541,7 @@ export const FeedbacksPage: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 ml-1">Status</label>
+                  <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 ml-1">Situação</label>
                   <select
                     className="w-full px-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                     value={receivedFilters.is_read}

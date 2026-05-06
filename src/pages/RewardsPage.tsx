@@ -934,7 +934,7 @@ export const RewardsPage: React.FC = () => {
             <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 flex flex-col md:flex-row gap-4 items-center transition-colors duration-200">
               <div className="flex items-center gap-2 w-full">
                 <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
-                  Status:
+                  Situação:
                 </label>
                 <select
                   value={redemptionFilterStatus}
@@ -1662,7 +1662,7 @@ export const RewardsPage: React.FC = () => {
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Status</label>
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Situação</label>
                     <select
                       value={formData.is_active}
                       onChange={(e) => setFormData({ ...formData, is_active: e.target.value })}

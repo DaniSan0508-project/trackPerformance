@@ -197,6 +197,26 @@ export const SurveysPage: React.FC = () => {
   const fetchUsers = useCallback(async (page = 1, search = '', filterType: 'name' | 'email' = 'name') => {
     if (!token) return;
     try {
+      if (isReadOnly && editingSurvey) {
+        // Se for leitura (ativa ou encerrada), busca apenas os usuários que participam
+        const response = await surveysService.getSurveyUsers(token, editingSurvey.id);
+        const surveyUsers = response.data || [];
+        
+        // Aplica filtro de busca localmente já que os participantes são poucos (comparado ao total)
+        const filteredBySearch = surveyUsers.filter((u: UserType) => {
+          if (!search) return true;
+          const searchLower = search.toLowerCase();
+          return filterType === 'name' 
+            ? u.name.toLowerCase().includes(searchLower)
+            : u.email.toLowerCase().includes(searchLower);
+        });
+
+        setUsers(filteredBySearch);
+        setUsersTotalPages(1);
+        setUsersPage(1);
+        return;
+      }
+
       const response = await usersService.getUsers(token, page, search, filterType);
       // Filtra para não mostrar administradores (user_type_id !== 1)
       const filteredUsers = (response.data || []).filter((u: UserType) => u.user_type_id !== 1);
@@ -206,7 +226,7 @@ export const SurveysPage: React.FC = () => {
     } catch (error) {
       console.error('Error fetching users:', error);
     }
-  }, [token]);
+  }, [token, isReadOnly, editingSurvey]);
 
   const lastSearchRef = useRef({ searchTerm: '', filterType: 'name' });
 
@@ -510,6 +530,10 @@ export const SurveysPage: React.FC = () => {
   };
 
   const addQuestion = () => {
+    if (questions.length >= 10) {
+      addToast('warning', 'Uma pesquisa pode ter no máximo 10 questões.');
+      return;
+    }
     const newOrder = questions.length + 1;
     setQuestions([...questions, { 
       question: '', 
@@ -557,6 +581,11 @@ export const SurveysPage: React.FC = () => {
     
     if (!question.options) {
       question.options = [];
+    }
+
+    if (question.options.length >= 10) {
+      addToast('warning', 'Cada questão pode ter no máximo 10 opções de resposta.');
+      return;
     }
     
     // Só adiciona nova opção se a última não estiver vazia
@@ -620,6 +649,11 @@ export const SurveysPage: React.FC = () => {
     }
     if (questions.length === 0) {
       addToast('error', 'É obrigatório criar pelo menos 1 questão.');
+      setActiveTab('questions');
+      return;
+    }
+    if (questions.length > 10) {
+      addToast('error', 'Uma pesquisa pode ter no máximo 10 questões.');
       setActiveTab('questions');
       return;
     }
@@ -914,8 +948,15 @@ export const SurveysPage: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
                               <Users size={16} className="text-purple-500" />
-                              <span className="text-zinc-500 dark:text-zinc-500">Respostas:</span>
-                              <span className="font-medium text-zinc-900 dark:text-white">{survey.responses_count}</span>
+                              <span className="text-zinc-500 dark:text-zinc-500">Participação:</span>
+                              <span className="font-medium text-zinc-900 dark:text-white">
+                                {survey.responses_count} / {survey.participants_count || 0}
+                              </span>
+                              {(survey.participants_count && survey.participants_count > 0) ? (
+                                <span className="text-[10px] font-bold bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-md">
+                                  {Math.round((survey.responses_count / survey.participants_count) * 100)}%
+                                </span>
+                              ) : null}
                             </div>
                             <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
                               <Eye size={16} className="text-amber-500" />
@@ -1215,66 +1256,68 @@ export const SurveysPage: React.FC = () => {
                     </div>
 
                     {/* Seleção Rápida */}
-                    <div className="border-t border-zinc-200 dark:border-zinc-700 pt-5 mb-4 space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
-                          👥 Seleção Rápida
-                        </p>
-                        <button
-                          onClick={handleSelectAllUsers}
-                          disabled={loadingSelectAllUsers || isReadOnly}
-                          className={`px-4 py-2 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm border ${
-                            selectedUsers.length > 0
-                              ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
-                              : 'bg-primary-600 text-white border-primary-500 hover:bg-primary-700 shadow-primary-500/20'
-                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {loadingSelectAllUsers ? (
-                            <>
-                              <Loader2 size={16} className="animate-spin" />
-                              <span>{selectAllUsersProgress ? `Pág ${selectAllUsersProgress.current}/${selectAllUsersProgress.total}` : 'Processando...'}</span>
-                            </>
-                          ) : (
-                            <>
-                              {selectedUsers.length > 0 ? <X size={18} /> : <Users size={18} />}
-                              {selectedUsers.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
-                            </>
-                          )}
-                        </button>
-                      </div>
+                    {!isReadOnly && (
+                      <div className="border-t border-zinc-200 dark:border-zinc-700 pt-5 mb-4 space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
+                            👥 Seleção Rápida
+                          </p>
+                          <button
+                            onClick={handleSelectAllUsers}
+                            disabled={loadingSelectAllUsers}
+                            className={`px-4 py-2 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm border ${
+                              selectedUsers.length > 0
+                                ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
+                                : 'bg-primary-600 text-white border-primary-500 hover:bg-primary-700 shadow-primary-500/20'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {loadingSelectAllUsers ? (
+                              <>
+                                <Loader2 size={16} className="animate-spin" />
+                                <span>{selectAllUsersProgress ? `Pág ${selectAllUsersProgress.current}/${selectAllUsersProgress.total}` : 'Processando...'}</span>
+                              </>
+                            ) : (
+                              <>
+                                {selectedUsers.length > 0 ? <X size={18} /> : <Users size={18} />}
+                                {selectedUsers.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                              </>
+                            )}
+                          </button>
+                        </div>
 
-                      <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                        <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 mb-3 uppercase">
-                          Filtrar por Cargo
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {roles.map((roleObj) => {
-                            const role = roleObj.description;
-                            return (
-                              <button
-                                key={role}
-                                onClick={() => handleSelectAllByRole(role)}
-                                disabled={selectByRoleLoading !== null || isReadOnly}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
-                                  areAllUsersSelectedByRole(role)
-                                    ? 'bg-primary-100 text-primary-700 border-primary-300 dark:bg-primary-900/40 dark:text-primary-300 dark:border-primary-700'
-                                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-primary-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
-                                } disabled:opacity-50 disabled:cursor-not-allowed`}
-                              >
-                                {selectByRoleLoading === role ? (
-                                  <Loader2 size={12} className="animate-spin" />
-                                ) : (
-                                  <>
-                                    {areAllUsersSelectedByRole(role) ? <Check size={12} /> : <Plus size={12} />}
-                                    {role}
-                                  </>
-                                )}
-                              </button>
-                            );
-                          })}
+                        <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                          <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 mb-3 uppercase">
+                            Filtrar por Cargo
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {roles.map((roleObj) => {
+                              const role = roleObj.description;
+                              return (
+                                <button
+                                  key={role}
+                                  onClick={() => handleSelectAllByRole(role)}
+                                  disabled={selectByRoleLoading !== null}
+                                  className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
+                                    areAllUsersSelectedByRole(role)
+                                      ? 'bg-primary-100 text-primary-700 border-primary-300 dark:bg-primary-900/40 dark:text-primary-300 dark:border-primary-700'
+                                      : 'bg-white text-zinc-600 border-zinc-200 hover:border-primary-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'
+                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
+                                  {selectByRoleLoading === role ? (
+                                    <Loader2 size={12} className="animate-spin" />
+                                  ) : (
+                                    <>
+                                      {areAllUsersSelectedByRole(role) ? <Check size={12} /> : <Plus size={12} />}
+                                      {role}
+                                    </>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Contador de selecionados */}
                     <div className="mb-3 p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl">
@@ -1483,7 +1526,12 @@ export const SurveysPage: React.FC = () => {
                                 {!isReadOnly && (
                                   <div className="flex items-center gap-1 border-l border-zinc-200 dark:border-zinc-700 pl-2 ml-1">
                                     <button
+                                      type="button"
                                       onClick={() => {
+                                        if (questions.length >= 10) {
+                                          addToast('warning', 'Uma pesquisa pode ter no máximo 10 questões.');
+                                          return;
+                                        }
                                         const { id, ...rest } = question;
                                         const newQuestion: Question = { 
                                           ...JSON.parse(JSON.stringify(rest)), 
@@ -1564,13 +1612,25 @@ export const SurveysPage: React.FC = () => {
                                   ))}
 
                                   {!isReadOnly && (
-                                    <button
-                                      onClick={() => addOption(qIndex)}
-                                      className="w-full py-2.5 border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-500 dark:text-zinc-400 hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-all flex items-center justify-center gap-2 text-sm font-medium"
-                                    >
-                                      <Plus size={16} />
-                                      Adicionar Opção
-                                    </button>
+                                    <div className="space-y-1">
+                                      <button
+                                        onClick={() => addOption(qIndex)}
+                                        disabled={question.options && question.options.length >= 10}
+                                        className={`w-full py-2.5 border-2 border-dashed rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-medium ${
+                                          question.options && question.options.length >= 10
+                                            ? 'border-zinc-200 text-zinc-300 cursor-not-allowed'
+                                            : 'border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400 hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400'
+                                        }`}
+                                      >
+                                        <Plus size={16} />
+                                        Adicionar Opção
+                                      </button>
+                                      {question.options && question.options.length >= 10 && (
+                                        <p className="text-[10px] text-amber-600 dark:text-amber-500 text-center font-medium">
+                                          Limite de 10 opções atingido para esta questão
+                                        </p>
+                                      )}
+                                    </div>
                                   )}
                                 </div>
                               )}
@@ -1649,14 +1709,26 @@ export const SurveysPage: React.FC = () => {
                     </button>
                   )}
                   {activeTab === 'questions' && !isReadOnly && (
-                    <button
-                      type="button"
-                      onClick={addQuestion}
-                      className="px-6 py-2.5 border border-primary-500 text-primary-600 dark:text-primary-400 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all font-bold flex items-center gap-2"
-                    >
-                      <PlusCircle size={18} />
-                      Nova Questão
-                    </button>
+                    <div className="flex flex-col gap-1">
+                      <button
+                        type="button"
+                        onClick={addQuestion}
+                        disabled={questions.length >= 10}
+                        className={`px-6 py-2.5 border rounded-xl transition-all font-bold flex items-center gap-2 ${
+                          questions.length >= 10
+                            ? 'border-zinc-300 text-zinc-400 bg-zinc-100 cursor-not-allowed opacity-50'
+                            : 'border-primary-500 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20'
+                        }`}
+                      >
+                        <PlusCircle size={18} />
+                        Nova Questão
+                      </button>
+                      {questions.length >= 10 && (
+                        <span className="text-[10px] text-amber-600 dark:text-amber-500 font-medium animate-pulse">
+                          Máximo de 10 questões atingido
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
 

@@ -250,9 +250,9 @@ export const campaignSchema = z.object({
     .min(1, 'Data de término é obrigatória'),
   status: z
     .string()
-    .min(1, 'Status é obrigatório')
+    .min(1, 'Situação é obrigatório')
     .refine((val) => val === 'ativa' || val === 'pausada' || val === 'finalizada', {
-      message: 'Status inválido',
+      message: 'Situação inválida',
     }),
   is_public: z.boolean().optional(),
   hashtags: z.array(z.object({

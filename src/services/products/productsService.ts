@@ -6,6 +6,7 @@ export const productsService = {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
     queryParams.append('per_page', '10');
+    queryParams.append('sort', '-created_at');
     if (search) {
       queryParams.append(`filter[${filterType}]`, search);
     }
@@ -23,6 +24,7 @@ export const productsService = {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
     queryParams.append('per_page', perPage.toString());
+    queryParams.append('sort', '-created_at');
 
     const response = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
       headers: getHeaders(token),
@@ -34,6 +36,7 @@ export const productsService = {
     const queryParams = new URLSearchParams();
     queryParams.append('page', '1');
     queryParams.append('per_page', '9999');
+    queryParams.append('sort', '-created_at');
     if (search) {
       queryParams.append(`filter[${filterType}]`, search);
     }

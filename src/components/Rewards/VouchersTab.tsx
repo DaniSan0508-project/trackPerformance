@@ -185,7 +185,7 @@ export const VouchersTab: React.FC = () => {
                 {/* Status Filter */}
                 <div>
                   <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1 uppercase tracking-wider">
-                    Status
+                    Situação
                   </label>
                   <select
                     name="status"

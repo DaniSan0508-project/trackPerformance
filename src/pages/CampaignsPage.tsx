@@ -89,6 +89,11 @@ export const CampaignsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
+  // Novos filtros de listagem
+  const [filterType, setFilterType] = useState<string>('all');
+  const [filterIsActive, setFilterIsActive] = useState<string>('all');
+  const [filterIsPublic, setFilterIsPublic] = useState<string>('all');
+
   // Estados para Aprovações de Hashtags
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [activeMainTab, setActiveMainTab] = useState<'campaigns' | 'approvals'>('campaigns');
@@ -198,6 +203,7 @@ export const CampaignsPage: React.FC = () => {
   const [importErrorDetails, setImportErrorDetails] = useState<any[]>([]);
   const [isReviewExpanded, setIsReviewExpanded] = useState(false);
   const [importBatchLogs, setImportBatchLogs] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Histórico de Importações
   const [isImportHistoryModalOpen, setIsImportHistoryModalOpen] = useState(false);
@@ -501,7 +507,12 @@ export const CampaignsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await campaignsService.getCampaigns(token, page, search);
+      const filters = {
+        type: filterType,
+        is_active: filterIsActive,
+        is_public: filterIsPublic
+      };
+      const data = await campaignsService.getCampaigns(token, page, search, filters);
       const campaignsList: Campaign[] = data.data;
       
       setCampaigns(campaignsList);
@@ -539,7 +550,7 @@ export const CampaignsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, filterType, filterIsActive, filterIsPublic]);
 
   const handleApprovePrize = async () => {
     if (!token || !prizeConfirmModal.campaign) return;
@@ -578,11 +589,11 @@ export const CampaignsPage: React.FC = () => {
 
   useEffect(() => {
     fetchCampaigns(currentPage, debouncedSearchTerm);
-  }, [fetchCampaigns, currentPage, debouncedSearchTerm]);
+  }, [fetchCampaigns, currentPage, debouncedSearchTerm, filterType, filterIsActive, filterIsPublic]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm]);
+  }, [debouncedSearchTerm, filterType, filterIsActive, filterIsPublic]);
 
   // Buscar usuários automaticamente quando a busca debounced mudar
   useEffect(() => {
@@ -862,21 +873,36 @@ export const CampaignsPage: React.FC = () => {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ['external_id', 'barcode', 'sale_date', 'amount', 'id_transaction'];
+    const headers = ['id_externo', 'cod_barras', 'data_venda', 'valor', 'id_transacao'];
     const exampleRow = ['ABC123', '7896004710011', '2026-03-15', '10.00', 'TXN789456'];
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), exampleRow.join(',')].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = "\uFEFF" + [headers.join(','), exampleRow.join(',')].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
     link.setAttribute("download", "modelo_importacao_vendas.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processImportFile = async (file: File) => {
+    // Validar tamanho (10MB)
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB em bytes
+    if (file.size > MAX_SIZE) {
+      addToast('error', 'O arquivo é muito grande. O limite máximo é 10MB.');
+      return;
+    }
+
+    // Validar extensão
+    const allowedExtensions = ['.xlsx', '.xls'];
+    const fileName = file.name.toLowerCase();
+    const isValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+    
+    if (!isValidExtension) {
+      addToast('error', 'Formato de arquivo não suportado. Use apenas .xlsx ou .xls');
+      return;
+    }
 
     setImportFile(file);
     setImporting(true);
@@ -903,7 +929,18 @@ export const CampaignsPage: React.FC = () => {
           const firstRow = rows[0];
           const isHeader = firstRow.some(cell => {
             const val = String(cell || '').toLowerCase();
-            return val.includes('id') || val.includes('barcode') || val.includes('vendedor') || val.includes('ean') || val.includes('data') || val.includes('valor') || val.includes('transaction');
+            return (
+              val.includes('id') || 
+              val.includes('barcode') || 
+              val.includes('cod_barras') || 
+              val.includes('vendedor') || 
+              val.includes('ean') || 
+              val.includes('data') || 
+              val.includes('valor') || 
+              val.includes('transaction') ||
+              val.includes('transacao') ||
+              val.includes('externo')
+            );
           });
 
           const dataRows = isHeader ? rows.slice(1) : rows;
@@ -963,6 +1000,33 @@ export const CampaignsPage: React.FC = () => {
       addToast('error', 'Erro ao carregar o arquivo.');
       setImporting(false);
     }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processImportFile(file);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processImportFile(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
   };
 
   const handleImportFile = async () => {
@@ -1410,7 +1474,7 @@ export const CampaignsPage: React.FC = () => {
         // Ao marcar, remove da lista de desmarcadas manualmente
         setManuallyUnselectedActions(prev => prev.filter(id => id !== actionId));
         const action = engagementActions.find(a => a.id === actionId);
-        const defaultCoins = action ? defaultActionCoins[action.name] || 10 : 10;
+        const defaultCoins = 0;
         return [...prev, { id: actionId, coins: defaultCoins }];
       }
     });
@@ -1737,7 +1801,7 @@ export const CampaignsPage: React.FC = () => {
         {activeMainTab === 'campaigns' ? (
           <>
             {/* Filters */}
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 flex flex-col md:flex-row gap-4 items-center transition-colors duration-200">
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 flex flex-col lg:flex-row gap-4 items-center transition-colors duration-200">
               <div className="relative flex-1 w-full">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={20} />
                 <input
@@ -1747,6 +1811,47 @@ export const CampaignsPage: React.FC = () => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-zinc-400 uppercase whitespace-nowrap">Tipo:</span>
+                  <select
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                    className="pl-3 pr-8 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2371717a%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[right_10px_center] bg-no-repeat"
+                  >
+                    <option value="all">Todos</option>
+                    <option value="sales">Vendas</option>
+                    <option value="engagement">Engajamento</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-zinc-400 uppercase whitespace-nowrap">Situação:</span>
+                  <select
+                    value={filterIsActive}
+                    onChange={(e) => setFilterIsActive(e.target.value)}
+                    className="pl-3 pr-8 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2371717a%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[right_10px_center] bg-no-repeat"
+                  >
+                    <option value="all">Todos</option>
+                    <option value="active">Ativas</option>
+                    <option value="inactive">Inativas</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-zinc-400 uppercase whitespace-nowrap">Visibilidade:</span>
+                  <select
+                    value={filterIsPublic}
+                    onChange={(e) => setFilterIsPublic(e.target.value)}
+                    className="pl-3 pr-8 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2371717a%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[right_10px_center] bg-no-repeat"
+                  >
+                    <option value="all">Todas</option>
+                    <option value="public">Públicas</option>
+                    <option value="private">Privadas</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -2271,7 +2376,7 @@ export const CampaignsPage: React.FC = () => {
                       )}
 
                       <div>
-                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Status</label>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Situação</label>
                         <select
                           value={formData.status}
                           onChange={(e) => setFormData({ ...formData, status: e.target.value as CampaignStatus })}
@@ -2644,7 +2749,7 @@ export const CampaignsPage: React.FC = () => {
                             })
                             .map((action) => {
                               const actionCampaignId = action.campaign?.id || (action as any).campaign_id;
-                              const isUsedInAnotherCampaign = (!action.is_enabled || (!!actionCampaignId && Number(actionCampaignId) !== Number(editingCampaign?.id)));
+                              const isUsedInAnotherCampaign = (action.in_use || action.is_enabled === false || (!!actionCampaignId && Number(actionCampaignId) !== Number(editingCampaign?.id)));
                               const isDisabled = isUsedInAnotherCampaign && !manuallyUnselectedActions.includes(action.id);
                               const campaignName = action.campaign?.name || (action as any).campaign_name;
                               const isSelected = selectedActions.find(a => a.id === action.id);
@@ -2697,28 +2802,43 @@ export const CampaignsPage: React.FC = () => {
                                       <input
                                         type="number"
                                         min="0"
-                                        value={actionCoinsInputs[action.id] ?? (selectedActions.find(a => a.id === action.id)?.coins ?? defaultActionCoins[action.name] ?? 10)}
+                                        max="999"
+                                        inputMode="numeric"
+                                        value={actionCoinsInputs[action.id] ?? (selectedActions.find(a => a.id === action.id)?.coins ?? 0)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E' || e.key === ',' || e.key === '.') {
+                                            e.preventDefault();
+                                          }
+                                        }}
                                         onChange={(e) => {
                                           const val = e.target.value;
-                                          if (val === '' || val === '-' || /^-?\d*$/.test(val)) {
+                                          if (val === '') {
                                             setActionCoinsInputs(prev => ({ ...prev, [action.id]: val }));
+                                            return;
+                                          }
+                                          if (/^\d*$/.test(val)) {
+                                            const numVal = parseInt(val);
+                                            if (numVal <= 999) {
+                                              setActionCoinsInputs(prev => ({ ...prev, [action.id]: val }));
+                                            }
                                           }
                                         }}
                                         onBlur={(e) => {
                                           const val = e.target.value.trim();
-                                          if (val === '' || val === '-') {
+                                          if (val === '') {
                                             setActionCoinsInputs(prev => ({ ...prev, [action.id]: '0' }));
                                             updateActionCoins(action.id, 0);
-                                            addToast('warning', 'Valor inválido. Definido como 0.');
                                             return;
                                           }
-                                          const numVal = parseInt(val);
+                                          let numVal = parseInt(val);
                                           if (isNaN(numVal) || numVal < 0) {
-                                            setActionCoinsInputs(prev => ({ ...prev, [action.id]: '0' }));
-                                            updateActionCoins(action.id, 0);
-                                            addToast('warning', 'Valores negativos não são permitidos. Definido como 0.');
-                                            return;
+                                            numVal = 0;
+                                            addToast('warning', 'Apenas valores positivos são permitidos.');
+                                          } else if (numVal > 999) {
+                                            numVal = 999;
+                                            addToast('warning', 'O valor máximo permitido é 999.');
                                           }
+                                          
                                           setActionCoinsInputs(prev => ({ ...prev, [action.id]: String(numVal) }));
                                           updateActionCoins(action.id, numVal);
                                         }}
@@ -2748,7 +2868,6 @@ export const CampaignsPage: React.FC = () => {
 
                       <div className="flex flex-col sm:flex-row gap-3 mb-6">
                         <div className="flex-1 relative">
-                          <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
                           <input
                             type="text"
                             placeholder="Ex: #vendas"
@@ -2759,7 +2878,7 @@ export const CampaignsPage: React.FC = () => {
                               // Remove espaços e caracteres especiais (permite apenas #, letras, números e _)
                               setNewHashtag(val.replace(/\s/g, '').replace(/[^\w#]/g, ''));
                             }}
-                            className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                            className="w-full px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                           />                        </div>
                         <div className="w-full sm:w-32 relative">
                           <Coins className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500" size={18} />
@@ -2767,9 +2886,37 @@ export const CampaignsPage: React.FC = () => {
                             type="number"
                             placeholder="Coins"
                             value={newHashtagCoins}
-                            onChange={(e) => setNewHashtagCoins(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E' || e.key === ',' || e.key === '.') {
+                                e.preventDefault();
+                              }
+                            }}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === '') {
+                                setNewHashtagCoins(val);
+                                return;
+                              }
+                              if (/^\d*$/.test(val)) {
+                                const numVal = parseInt(val);
+                                if (numVal <= 999) {
+                                  setNewHashtagCoins(val);
+                                }
+                              }
+                            }}
+                            onBlur={() => {
+                              if (newHashtagCoins !== '') {
+                                const numVal = parseInt(newHashtagCoins);
+                                if (numVal > 999) {
+                                  setNewHashtagCoins('999');
+                                  addToast('warning', 'O valor máximo permitido é 999.');
+                                }
+                              }
+                            }}
                             className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                            min="1"
+                            min="0"
+                            max="999"
+                            inputMode="numeric"
                           />
                         </div>
                         <button
@@ -3472,29 +3619,29 @@ export const CampaignsPage: React.FC = () => {
                           </thead>
                           <tbody className="text-zinc-700 dark:text-zinc-300">
                             <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                              <td className="py-2 pr-4 font-mono font-bold">external_id</td>
+                              <td className="py-2 pr-4 font-mono font-bold">id_externo</td>
                               <td className="py-2 pr-4 italic">ABC123</td>
-                              <td className="py-2">Código externo da loja/vendedor.</td>
+                              <td className="py-2">Código externo da loja/vendedor (Mapeia para external_id).</td>
                             </tr>
                             <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                              <td className="py-2 pr-4 font-mono font-bold">barcode</td>
+                              <td className="py-2 pr-4 font-mono font-bold">cod_barras</td>
                               <td className="py-2 pr-4 italic">7896004710011</td>
-                              <td className="py-2">EAN/Código de barras do produto.</td>
+                              <td className="py-2">EAN/Código de barras do produto (Mapeia para barcode).</td>
                             </tr>
                             <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                              <td className="py-2 pr-4 font-mono font-bold">sale_date</td>
+                              <td className="py-2 pr-4 font-mono font-bold">data_venda</td>
                               <td className="py-2 pr-4 italic">2026-03-15</td>
-                              <td className="py-2">Data da venda (AAAA-MM-DD).</td>
+                              <td className="py-2">Data da venda (AAAA-MM-DD) (Mapeia para sale_date).</td>
                             </tr>
                             <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                              <td className="py-2 pr-4 font-mono font-bold">amount</td>
+                              <td className="py-2 pr-4 font-mono font-bold">valor</td>
                               <td className="py-2 pr-4 italic">10.00</td>
                               <td className="py-2 text-red-600 dark:text-red-400 font-medium">Valor com ponto (ex: 10.00). Não use vírgula.</td>
                             </tr>
                             <tr>
-                              <td className="py-2 pr-4 font-mono font-bold">id_transaction</td>
+                              <td className="py-2 pr-4 font-mono font-bold">id_transacao</td>
                               <td className="py-2 pr-4 italic">TXN789456</td>
-                              <td className="py-2">ID único da transação</td>
+                              <td className="py-2">ID único da transação (Mapeia para id_transaction).</td>
                             </tr>
                           </tbody>
                         </table>
@@ -3505,7 +3652,7 @@ export const CampaignsPage: React.FC = () => {
                       <div className="mt-4">
                         <h5 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase mb-2">Exemplo no Bloco de Notas:</h5>
                         <div className="bg-zinc-900 dark:bg-black p-3 rounded-lg border border-zinc-800 font-mono text-[10px] text-zinc-300 overflow-x-auto whitespace-pre">
-{`external_id,barcode,sale_date,amount,id_transaction
+{`id_externo,cod_barras,data_venda,valor,id_transacao
 ABC123,7896004710011,2026-03-15,10.00,TXN001
 ABC123,7896004710011,2026-03-05,15.00,TXN002
 ABC124,7891058001023,2026-03-27,10.10,TXN003
@@ -3517,14 +3664,21 @@ ABC125,7891058001023,2026-03-22,35.08,TXN006`}
                     </div>
 
                     <div 
-                      className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl p-10 flex flex-col items-center justify-center transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer relative"
+                      className={`border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center transition-all cursor-pointer relative ${
+                        isDragging 
+                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 scale-[1.02]' 
+                          : 'border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                      }`}
                       onClick={() => document.getElementById('file-upload-input')?.click()}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
                     >
                       <input
                         id="file-upload-input"
                         type="file"
                         className="hidden"
-                        accept=".csv, .xlsx, .xls"
+                        accept=".xlsx, .xls"
                         onChange={handleFileChange}
                       />
                       {importing ? (
@@ -3534,11 +3688,17 @@ ABC125,7891058001023,2026-03-22,35.08,TXN006`}
                         </div>
                       ) : (
                         <>
-                          <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900/30 text-primary-600 rounded-full flex items-center justify-center mb-4">
+                          <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors ${
+                            isDragging 
+                              ? 'bg-primary-200 dark:bg-primary-800 text-primary-700' 
+                              : 'bg-primary-100 dark:bg-primary-900/30 text-primary-600'
+                          }`}>
                             <Upload size={32} />
                           </div>
-                          <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Clique ou arraste o arquivo</h3>
-                          <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">Formatos suportados: CSV, Excel (.xlsx, .xls)</p>
+                          <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">
+                            {isDragging ? 'Solte o arquivo para importar' : 'Clique ou arraste o arquivo'}
+                          </h3>
+                          <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">Formatos suportados: Excel (.xlsx, .xls) - Máx: 10MB</p>
                         </>
                       )}
                     </div>

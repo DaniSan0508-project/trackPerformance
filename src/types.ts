@@ -281,7 +281,8 @@ export interface ActionEngagement {
 export interface EngagementAction {
   id: number;
   name: string;
-  is_enabled: boolean;
+  is_enabled?: boolean;
+  in_use?: boolean;
   campaign: {
     id: number;
     name: string;
@@ -376,6 +377,7 @@ export interface Survey {
   views_count: number;
   questions_count: number;
   responses_count: number;
+  participants_count?: number;
   created_at: string;
   updated_at: string;
 }

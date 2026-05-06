@@ -2,13 +2,26 @@ import { API_BASE_URL, getHeaders, handleResponse } from '../core/apiClient';
 import { Campaign } from '../../types';
 
 export const campaignsService = {
-  getCampaigns: async (token: string, page = 1, search = '') => {
+  getCampaigns: async (token: string, page = 1, search = '', filters?: { type?: string; is_active?: string; is_public?: string }) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
     queryParams.append('sort', '-created_at');
     queryParams.append('include', 'reward,winner');
+    
     if (search) {
       queryParams.append('filter[name]', search);
+    }
+
+    if (filters) {
+      if (filters.type && filters.type !== 'all') {
+        queryParams.append('filter[type]', filters.type);
+      }
+      if (filters.is_active && filters.is_active !== 'all') {
+        queryParams.append('filter[is_active]', filters.is_active === 'active' ? 'true' : 'false');
+      }
+      if (filters.is_public && filters.is_public !== 'all') {
+        queryParams.append('filter[is_public]', filters.is_public === 'public' ? 'true' : 'false');
+      }
     }
 
     const response = await fetch(`${API_BASE_URL}/campaigns?${queryParams.toString()}`, {
