@@ -8,6 +8,7 @@ import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { rewardSchema } from '../validators/schemas';
 import { VouchersTab } from '../components/Rewards/VouchersTab';
+import { formatDateTime } from '../utils/formatters';
 
 const MAX_IMAGES = 3;
 
@@ -992,7 +993,7 @@ export const RewardsPage: React.FC = () => {
                                 </span>
                                 <span className="text-zinc-300 dark:text-zinc-600">•</span>
                                 <span className="text-sm text-zinc-500 dark:text-zinc-400">
-                                  {new Date(redemption.created_at).toLocaleDateString('pt-BR')}
+                                  {formatDateTime(redemption.created_at)}
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
@@ -1101,11 +1102,7 @@ export const RewardsPage: React.FC = () => {
                                       rejected:  { label: 'Cancelado', color: 'text-red-600 dark:text-red-400',           dot: 'bg-red-500' },
                                     };
                                     const meta = statusConfig[history.status] ?? { label: history.status, color: 'text-zinc-500', dot: 'bg-zinc-400' };
-                                    const dateUTC3 = new Date(new Date(history.occurred_at).getTime() - 3 * 60 * 60 * 1000);
-                                    const formatted = dateUTC3.toLocaleString('pt-BR', {
-                                      day: '2-digit', month: '2-digit', year: 'numeric',
-                                      hour: '2-digit', minute: '2-digit',
-                                    });
+                                    const formatted = formatDateTime(history.occurred_at);
                                     return (
                                       <div key={index} className="flex items-start gap-3">
                                         <div className="flex flex-col items-center">
