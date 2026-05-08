@@ -117,7 +117,22 @@ export const PostsPage: React.FC = () => {
   // Users cache
   const [usersCache, setUsersCache] = useState<Record<number, UserType>>({});
   const [allMentionUsers, setAllMentionUsers] = useState<UserType[]>([]);
+  const [allHashtags, setAllHashtags] = useState<CampaignHashtag[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+
+  const fetchHashtags = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await campaignsService.getHashtags(token);
+      setAllHashtags(response.data || []);
+    } catch (error) {
+      console.error('Error fetching hashtags:', error);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchHashtags();
+  }, [fetchHashtags]);
 
   const fetchPosts = useCallback(async (page = 1, filters: { 
     userName?: string; 
@@ -805,7 +820,7 @@ export const PostsPage: React.FC = () => {
     if (!text) return null;
 
     // Regex para capturar tags <a> de menção ou texto que pareça menção/hashtag
-    // Prioriza tags <a> vindas da API que contêm metadados (username, pic)
+    // Prioriza tags <a> vindas da API que contêm metadados (username, pic, campaignname)
     const regex = /(<a\s+[^>]*mention="true"[^>]*>.*?<\/a>|@[A-Za-z0-9_.-]+|#[A-Za-zÀ-ÖØ-öø-ÿ0-9_.-]+)/g;
     
     // Divide o texto em partes, mantendo os delimitadores (capturados pelos parênteses no regex)
@@ -814,15 +829,33 @@ export const PostsPage: React.FC = () => {
     return parts.map((part, index) => {
       if (!part) return null;
 
-      // Trata tags <a> de menção (vinda da API)
+      // Trata tags <a> de menção ou hashtag (vinda da API)
       if (part.startsWith('<a') && part.includes('mention="true"')) {
         const usernameMatch = part.match(/username="([^"]*)"/);
         const picMatch = part.match(/pic="([^"]*)"/);
+        const campaignMatch = part.match(/campaignname="([^"]*)"/);
         const contentMatch = part.match(/>(.*?)<\/a>/);
         
         const username = usernameMatch ? usernameMatch[1] : '';
         const pic = picMatch ? picMatch[1] : null;
-        const displayName = username || (contentMatch ? contentMatch[1].replace(/^@/, '') : '');
+        const campaignName = campaignMatch ? campaignMatch[1] : '';
+        const rawContent = contentMatch ? contentMatch[1] : '';
+
+        // Se o conteúdo começar com #, é uma hashtag
+        if (rawContent.startsWith('#')) {
+          return (
+            <span 
+              key={index} 
+              title={campaignName || 'Hashtag de Campanha'}
+              className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-primary-100/50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-[13px] font-bold select-none mx-0.5 hover:underline cursor-pointer transition-colors"
+            >
+              {rawContent}
+            </span>
+          );
+        }
+
+        // Caso contrário, trata como menção de usuário
+        const displayName = username || rawContent.replace(/^@/, '');
 
         return (
           <span 
@@ -894,14 +927,25 @@ export const PostsPage: React.FC = () => {
 
       // Trata Hashtags (#)
       if (part.startsWith('#')) {
-        return (
-          <span 
-            key={index}
-            className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-primary-100/50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-[13px] font-bold select-none mx-0.5 hover:underline cursor-pointer transition-colors"
-          >
-            {part}
-          </span>
-        );
+        const hashtagLower = part.toLowerCase();
+        const isValidHashtag = allHashtags.some(h => h.hashtag.toLowerCase() === hashtagLower);
+
+        // Só estiliza se a hashtag for válida no sistema
+        if (isValidHashtag) {
+          const hashtagData = allHashtags.find(h => h.hashtag.toLowerCase() === hashtagLower);
+          return (
+            <span 
+              key={index}
+              title={hashtagData?.campaign_name || 'Hashtag de Campanha'}
+              className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-primary-100/50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-[13px] font-bold select-none mx-0.5 hover:underline cursor-pointer transition-colors"
+            >
+              {part}
+            </span>
+          );
+        }
+        
+        // Se não for válida, renderiza como texto comum
+        return <span key={index}>{part}</span>;
       }
 
       // Texto normal (remove quaisquer tags HTML residuais para segurança e evitar quebras)
