@@ -660,13 +660,20 @@ export const CampaignsPage: React.FC = () => {
         currentStatus = 'ativa';
       }
 
+      // Converter data do banco (YYYY-MM-DD HH:MM:SS) para datetime-local (YYYY-MM-DDTHH:MM)
+      const formatToDatetimeLocal = (dateStr: string) => {
+        if (!dateStr) return '';
+        const [date, time] = dateStr.includes(' ') ? dateStr.split(' ') : dateStr.split('T');
+        return `${date}T${time ? time.substring(0, 5) : '00:00'}`;
+      };
+
       setFormData({
         name: campaign.name,
         type: campaign.type,
         goal: campaign.goal ? String(campaign.goal) : '',
         goal_campaign: campaign.goal_campaign ? String(campaign.goal_campaign) : '',
-        start_date: campaign.start_date,
-        end_date: campaign.end_date,
+        start_date: formatToDatetimeLocal(campaign.start_date),
+        end_date: formatToDatetimeLocal(campaign.end_date),
         status: currentStatus,
         reward_id: campaign.reward_id || '',
         is_public: campaign.is_public !== undefined ? !!campaign.is_public : true,
@@ -1246,14 +1253,12 @@ export const CampaignsPage: React.FC = () => {
         });
         setFormErrors(formattedErrors);
         
-        // Mostra mensagem específica do erro
         const errorMessages = Object.values(formattedErrors).join(', ');
         addToast('error', errorMessages || 'Verifique os campos obrigatórios.');
         return;
       }
     }
 
-    // Validação adicional: end_date deve ser maior que start_date (somente criação)
     if (!editingCampaign && formData.end_date < formData.start_date) {
       setFormErrors({ end_date: 'Data de término deve ser maior que data de início' });
       addToast('error', 'Data de término deve ser maior que data de início.');
@@ -1263,6 +1268,14 @@ export const CampaignsPage: React.FC = () => {
     setSaving(true);
     let dataToSave: any = {};
     try {
+      const formatFromDatetimeLocal = (datetime: string) => {
+        if (!datetime) return '';
+        return datetime.replace('T', ' ') + ':00';
+      };
+
+      const formattedStartDate = formatFromDatetimeLocal(formData.start_date);
+      const formattedEndDate = formatFromDatetimeLocal(formData.end_date);
+
       // Na edição, envia apenas campos alterados (NÃO envia goal)
       if (editingCampaign) {
         // Envia apenas se houver valor (não vazio)
@@ -1273,6 +1286,10 @@ export const CampaignsPage: React.FC = () => {
         // Sempre envia is_active na edição (status pode ser alterado)
         dataToSave.is_active = formData.status === 'ativa';
         dataToSave.is_public = formData.is_public;
+
+        // Sempre envia datas na edição
+        dataToSave.start_date = formattedStartDate;
+        dataToSave.end_date = formattedEndDate;
 
         // Envia users apenas se houver selecionados
         if (selectedUsers.length > 0) {
@@ -1304,6 +1321,8 @@ export const CampaignsPage: React.FC = () => {
         dataToSave.is_active = formData.status === 'ativa';
         dataToSave.is_public = formData.is_public;
         dataToSave.users = selectedUsers;
+        dataToSave.start_date = formattedStartDate;
+        dataToSave.end_date = formattedEndDate;
 
         // Goal para vendas e engajamento
         if (formData.type === 'sales') {
@@ -1312,8 +1331,6 @@ export const CampaignsPage: React.FC = () => {
             dataToSave.goal_campaign = parseFloat(formData.goal_campaign);
           }
           dataToSave.reward_id = formData.reward_id || null;
-          dataToSave.start_date = formData.start_date;
-          dataToSave.end_date = formData.end_date;
           dataToSave.products = selectedProducts;
         } else if (formData.type === 'engagement') {
           dataToSave.goal = parseFloat(formData.goal);
@@ -1321,8 +1338,6 @@ export const CampaignsPage: React.FC = () => {
             dataToSave.goal_campaign = parseFloat(formData.goal_campaign);
           }
           dataToSave.reward_id = formData.reward_id || null;
-          dataToSave.start_date = formData.start_date;
-          dataToSave.end_date = formData.end_date;
           dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
           dataToSave.hashtags = selectedHashtags;
         }
@@ -1464,13 +1479,33 @@ export const CampaignsPage: React.FC = () => {
     return parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
+  const formatDateTime = (dateString: string) => {
+    if (!dateString) return '-';
+
+    // Tratar formatos YYYY-MM-DD HH:MM:SS ou ISO
+    const [datePart, timePart] = dateString.includes(' ') ? dateString.split(' ') : dateString.split('T');
+    const dateParts = datePart.split('-');
+
+    if (dateParts.length === 3) {
+      const [year, month, day] = dateParts;
+      const formattedTime = timePart ? timePart.substring(0, 5) : '00:00';
+      return `${day}/${month}/${year} às ${formattedTime}`;
+    }
+
+    return new Date(dateString).toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
-    // Para evitar problemas de fuso horário que mostram um dia a menos,
-    // extraímos os componentes da data manualmente se estiver no formato YYYY-MM-DD
-    const datePart = dateString.split('T')[0];
+    const datePart = dateString.split(' ')[0] || dateString.split('T')[0];
     const parts = datePart.split('-');
-    
+
     if (parts.length === 3) {
       const [year, month, day] = parts;
       return `${day}/${month}/${year}`;
@@ -1478,7 +1513,6 @@ export const CampaignsPage: React.FC = () => {
 
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
-
   // Handlers para seleção
   const toggleUser = (userId: number) => {
     setSelectedUsers(prev =>
@@ -1977,10 +2011,9 @@ export const CampaignsPage: React.FC = () => {
                                   <Calendar size={16} className="text-[var(--color-primary-500)]" />
                                   <span className="text-zinc-500 dark:text-zinc-500">Período:</span>
                                   <span className="font-medium text-zinc-900 dark:text-white">
-                                    {formatDate(campaign.start_date)} até {formatDate(campaign.end_date)}
+                                    {formatDateTime(campaign.start_date)} até {formatDateTime(campaign.end_date)}
                                   </span>
-                                </div>
-                                {campaign.users && campaign.users.length > 0 && (
+                                </div>                                {campaign.users && campaign.users.length > 0 && (
                                   <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
                                     <Users size={16} className="text-purple-500" />
                                     <span className="text-zinc-500 dark:text-zinc-500">Participantes:</span>
@@ -2277,16 +2310,15 @@ export const CampaignsPage: React.FC = () => {
                             <div>
                               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Início</label>
                               <p className="text-sm font-medium text-zinc-900 dark:text-white">
-                                {formatDate(editingCampaign.start_date)}
+                                {formatDateTime(editingCampaign.start_date)}
                               </p>
                             </div>
                             <div>
                               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Término</label>
                               <p className="text-sm font-medium text-zinc-900 dark:text-white">
-                                {formatDate(editingCampaign.end_date)}
+                                {formatDateTime(editingCampaign.end_date)}
                               </p>
-                            </div>
-                          </div>
+                            </div>                          </div>
                         </div>
                       )}
 
@@ -2378,11 +2410,10 @@ export const CampaignsPage: React.FC = () => {
                               <div className="relative">
                                 <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
                                 <input
-                                  type="date"
+                                  type="datetime-local"
                                   value={formData.start_date}
                                   onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                                  min={getMinDate()}
-                                  className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
+                                  className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
                                     formErrors.start_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   }`}
                                 />
@@ -2395,19 +2426,17 @@ export const CampaignsPage: React.FC = () => {
                               <div className="relative">
                                 <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
                                 <input
-                                  type="date"
+                                  type="datetime-local"
                                   value={formData.end_date}
                                   onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                                  min={formData.start_date || getMinDate()}
-                                  className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
-                                  formErrors.end_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                                }`}
+                                  className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
+                                    formErrors.end_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                  }`}
                                 />
                               </div>
                               {formErrors.end_date && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.end_date}</p>}
                             </div>
-                          </div>
-                        </>
+                          </div>                        </>
                       )}
 
                       <div>
