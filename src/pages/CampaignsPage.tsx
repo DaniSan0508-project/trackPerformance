@@ -1160,6 +1160,53 @@ export const CampaignsPage: React.FC = () => {
       return;
     }
 
+    // Validação de Datas
+    if (!formData.start_date || !formData.end_date) {
+      addToast('error', 'As datas de início e término são obrigatórias.');
+      setFormErrors(prev => ({
+        ...prev,
+        start_date: !formData.start_date ? 'Campo obrigatório' : '',
+        end_date: !formData.end_date ? 'Campo obrigatório' : ''
+      }));
+      setActiveTab('basic');
+      return;
+    }
+
+    const now = new Date();
+    // Adicionar um pequeno buffer de 1 minuto para evitar erros de milissegundos durante o processo de salvamento
+    const nowWithBuffer = new Date(now.getTime() - 60000); 
+    
+    const startDate = new Date(formData.start_date);
+    const endDate = new Date(formData.end_date);
+
+    // 1. Data de início não pode ser no passado (com buffer de 1 min)
+    if (startDate.getTime() < nowWithBuffer.getTime()) {
+      addToast('error', 'A data de início não pode ser anterior ao horário atual.');
+      setFormErrors(prev => ({ ...prev, start_date: 'Horário já passou' }));
+      setActiveTab('basic');
+      return;
+    }
+
+    // 2. Data de término deve ser estritamente maior que data de início (comparação em milissegundos)
+    if (endDate.getTime() <= startDate.getTime()) {
+      addToast('error', 'A data de término deve ser posterior à data de início.');
+      setFormErrors(prev => ({ 
+        ...prev, 
+        start_date: 'Confira o período',
+        end_date: 'Deve ser após o início' 
+      }));
+      setActiveTab('basic');
+      return;
+    }
+
+    // 3. Se a campanha for marcada como ativa, ela não pode estar expirada (data fim no passado)
+    if (formData.status === 'ativa' && endDate.getTime() < nowWithBuffer.getTime()) {
+      addToast('error', 'Não é possível salvar uma campanha ativa com data de término no passado.');
+      setFormErrors(prev => ({ ...prev, end_date: 'Campanha já expirada' }));
+      setActiveTab('basic');
+      return;
+    }
+
     // Validações específicas para edição (apenas o essencial)
     if (editingCampaign) {
       // Validações apenas para campanhas de engajamento
@@ -1791,7 +1838,17 @@ export const CampaignsPage: React.FC = () => {
     }
   };
 
-  // Obtém data mínima (hoje) no formato YYYY-MM-DD
+  // Obtém data e hora mínima (hoje agora) no formato YYYY-MM-DDTHH:MM
+  const getMinDateTime = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const hours = String(today.getHours()).padStart(2, '0');
+    const minutes = String(today.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   const getMinDate = () => {
     const today = new Date();
     const year = today.getFullYear();
@@ -2413,6 +2470,7 @@ export const CampaignsPage: React.FC = () => {
                                   type="datetime-local"
                                   value={formData.start_date}
                                   onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                                  min={getMinDateTime()}
                                   className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
                                     formErrors.start_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   }`}
@@ -2429,6 +2487,7 @@ export const CampaignsPage: React.FC = () => {
                                   type="datetime-local"
                                   value={formData.end_date}
                                   onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                                  min={formData.start_date || getMinDateTime()}
                                   className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
                                     formErrors.end_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   }`}
