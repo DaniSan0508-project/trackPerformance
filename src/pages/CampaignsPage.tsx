@@ -118,8 +118,22 @@ export const CampaignsPage: React.FC = () => {
   // Estados para busca no modal
   const [userSearch, setUserSearch] = useState('');
   const debouncedUserSearch = useDebounce(userSearch, 500);
+  const [userFilterType, setUserFilterType] = useState<'name' | 'email'>('name');
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersTotalPages, setUsersTotalPages] = useState(1);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingSelectAllUsers, setLoadingSelectAllUsers] = useState(false);
+  const [selectByRoleLoading, setSelectByRoleLoading] = useState<string | null>(null);
+
   const [productSearch, setProductSearch] = useState('');
   const debouncedProductSearch = useDebounce(productSearch, 500);
+  const [productFilterType, setProductFilterType] = useState<'name' | 'barcode'>('name');
+  const [productManufacturerFilter, setProductManufacturerFilter] = useState<number | 'all'>('all');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsPage, setProductsPage] = useState(1);
+  const [productsTotalPages, setProductsTotalPages] = useState(1);
+
   const [rewardSearch, setRewardSearch] = useState('');
   const debouncedRewardSearch = useDebounce(rewardSearch, 500);
   const [rewards, setRewards] = useState<Reward[]>([]);
@@ -127,6 +141,17 @@ export const CampaignsPage: React.FC = () => {
   const [rewardsPage, setRewardsPage] = useState(1);
   const [rewardsTotalPages, setRewardsTotalPages] = useState(1);
   const [loadingRewards, setLoadingRewards] = useState(false);
+  
+  // Estados para controle de carregamento sob demanda
+  const [hasLoadedUsersAux, setHasLoadedUsersAux] = useState(false);
+  const [hasLoadedProductsAux, setHasLoadedProductsAux] = useState(false);
+  const [hasLoadedRewardsAux, setHasLoadedRewardsAux] = useState(false);
+  const [allUsersCache, setAllUsersCache] = useState<UserType[]>([]);
+  const [allProductsCache, setAllProductsCache] = useState<Product[]>([]);
+  
+  // Refs para evitar chamadas duplicadas simultâneas
+  const loadingUsersAuxRef = React.useRef(false);
+  const loadingProductsAuxRef = React.useRef(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -155,12 +180,10 @@ export const CampaignsPage: React.FC = () => {
   });
 
   // Dados auxiliares
-  const [users, setUsers] = useState<UserType[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [loadingAux, setLoadingAux] = useState(false);
 
   // Abas do modal
-  const [activeTab, setActiveTab] = useState<'basic' | 'users' | 'actions' | 'products'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'users' | 'actions' | 'hashtags' | 'products'>('basic');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -320,26 +343,12 @@ export const CampaignsPage: React.FC = () => {
     setSelectedHashtags(prev => prev.filter(h => h.hashtag !== hashtagToRemove));
   };
 
-  // Paginação e filtros para usuários
-  const [usersPage, setUsersPage] = useState(1);
-  const [usersTotalPages, setUsersTotalPages] = useState(1);
-  const [userFilterType, setUserFilterType] = useState<'name' | 'email'>('name');
-
-  // Paginação e filtros para produtos
-  const [productsPage, setProductsPage] = useState(1);
-  const [productsTotalPages, setProductsTotalPages] = useState(1);
-  const [productFilterType, setProductFilterType] = useState<'name' | 'barcode'>('name');
-  const [productManufacturerFilter, setProductManufacturerFilter] = useState<number | 'all'>('all');
-
   // Filtro para ações
   const [actionSearch, setActionSearch] = useState('');
 
-  // Loading para "Selecionar Todos"
-  const [loadingSelectAllUsers, setLoadingSelectAllUsers] = useState(false);
   const [loadingSelectAllProducts, setLoadingSelectAllProducts] = useState(false);
   const [selectAllUsersProgress, setSelectAllUsersProgress] = useState<{ current: number; total: number } | null>(null);
   const [selectAllProductsProgress, setSelectAllProductsProgress] = useState<{ current: number; total: number } | null>(null);
-  const [selectByRoleLoading, setSelectByRoleLoading] = useState<string | null>(null);
   const [selectByManufacturerLoading, setSelectByManufacturerLoading] = useState<string | null>(null);
   const [manufacturers, setManufacturers] = useState<Array<{ id: number; name: string }>>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -424,41 +433,6 @@ export const CampaignsPage: React.FC = () => {
     setExpandedImportIds(new Set());
     fetchImportHistory(campaign.id, 1);
   };
-
-  const fetchAuxiliaryData = useCallback(async () => {
-    if (!token) return;
-    setLoadingAux(true);
-    try {
-      // Carregar primeira página de usuários, produtos e fabricantes
-      const [usersData, productsData, manufacturersData, rolesData] = await Promise.all([
-        usersService.getAllUsers(token, 1, 10).catch(() => null),
-        productsService.getProducts(token, 1, 10).catch(() => null),
-        manufacturersService.getAllManufacturers(token).catch(() => null),
-        rolesService.getRoles(token).catch(() => null),
-      ]);
-
-      if (usersData?.data) {
-        setUsers(usersData.data);
-        setUsersTotalPages(usersData.meta?.last_page || usersData.last_page || 1);
-        setUsersPage(usersData.meta?.current_page || usersData.current_page || 1);
-      }
-      if (productsData?.data) {
-        setProducts(productsData.data);
-        setProductsTotalPages(productsData.meta?.last_page || productsData.last_page || 1);
-        setProductsPage(productsData.meta?.current_page || productsData.current_page || 1);
-      }
-      if (manufacturersData) {
-        setManufacturers(manufacturersData.map(m => ({ id: m.id, name: m.name })));
-      }
-      if (rolesData?.data) {
-        setRoles(rolesData.data);
-      }
-    } catch (error) {
-      console.error('Error fetching auxiliary data:', error);
-    } finally {
-      setLoadingAux(false);
-    }
-  }, [token]);
 
   // Buscar usuários com paginação e filtro
   const fetchUsers = useCallback(async (page = 1, search = '', filterType: 'name' | 'email' = 'name') => {
@@ -597,19 +571,27 @@ export const CampaignsPage: React.FC = () => {
 
   // Buscar usuários automaticamente quando a busca debounced mudar
   useEffect(() => {
-    if (isModalOpen) {
+    if (isModalOpen && activeTab === 'users') {
+      // Se estamos carregando os dados auxiliares e a busca está vazia, 
+      // pulamos esta chamada para evitar duplicidade com o loadUsersTabAux
+      if (!hasLoadedUsersAux && debouncedUserSearch === '') return;
+
       setUsersPage(1); // Reseta para a primeira página ao buscar
       fetchUsers(1, debouncedUserSearch, userFilterType);
     }
-  }, [debouncedUserSearch, userFilterType, isModalOpen]);
+  }, [debouncedUserSearch, userFilterType, isModalOpen, activeTab]);
 
   // Buscar produtos automaticamente quando a busca debounced mudar
   useEffect(() => {
-    if (isModalOpen) {
+    if (isModalOpen && activeTab === 'products') {
+      // Se estamos carregando os dados auxiliares e a busca está vazia, 
+      // pulamos esta chamada para evitar duplicidade com o loadProductsTabAux
+      if (!hasLoadedProductsAux && debouncedProductSearch === '') return;
+
       setProductsPage(1); // Reseta para a primeira página ao buscar
       fetchProducts(1, debouncedProductSearch, productFilterType, productManufacturerFilter);
     }
-  }, [debouncedProductSearch, productFilterType, productManufacturerFilter, isModalOpen]);
+  }, [debouncedProductSearch, productFilterType, productManufacturerFilter, isModalOpen, activeTab]);
 
   useEffect(() => {
     if (isRewardModalOpen) {
@@ -664,6 +646,11 @@ export const CampaignsPage: React.FC = () => {
     setFullySelectedManufacturers(new Set());
     setFormErrors({});
 
+    // Resetar flags de carregamento sob demanda
+    setHasLoadedUsersAux(false);
+    setHasLoadedProductsAux(false);
+    setHasLoadedRewardsAux(false);
+
     if (campaign) {
       setEditingCampaign(campaign);
       
@@ -688,45 +675,29 @@ export const CampaignsPage: React.FC = () => {
       if (token) {
         setLoadingAux(true);
         try {
-          // Busca os detalhes completos da campanha (incluindo hashtags e ações com coins)
-          const campaignDetailsRes = await campaignsService.getCampaignById(token, campaign.id);
-          const campaignDetails = campaignDetailsRes.data;
-
-          // Busca listas auxiliares em paralelo
-          const [usersRes, productsRes, allUsersList, allProductsList, manufacturersData] = await Promise.all([
+          // Busca APENAS os detalhes essenciais da campanha (incluindo hashtags e ações com coins)
+          const [campaignDetailsRes, usersRes, productsRes] = await Promise.all([
+            campaignsService.getCampaignById(token, campaign.id),
             campaignsService.getCampaignUsers(token, campaign.id).catch(() => ({ data: [] })),
             campaign.type === 'sales' ? campaignsService.getCampaignProducts(token, campaign.id).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-            usersService.getAllUsersComplete(token).catch(() => []),
-            productsService.getAllProductsComplete(token).catch(() => []),
-            manufacturersService.getAllManufacturers(token).catch(() => []),
           ]);
 
-          // Processar Fabricantes
-          if (manufacturersData) setManufacturers(manufacturersData);
+          const campaignDetails = campaignDetailsRes.data;
 
-          // Processar Usuários (IDs completos)
+          // Processar Usuários (IDs completos selecionados)
           const campaignUserIds = (usersRes.data || []).map((u: any) => u.id);
           setSelectedUsers(campaignUserIds);
-          setUsers(allUsersList.slice(0, 10));
 
-          // Processar Produtos
+          // Processar Produtos (IDs completos selecionados)
           const campaignProductIds = (productsRes.data || []).map((p: any) => p.id);
           setSelectedProducts(campaignProductIds);
 
           // Processar Hashtags do novo endpoint
           const hashtags = campaignDetails.hashtags || [];
-          console.log('Campaign Hashtags Loaded from Details:', hashtags);
           setSelectedHashtags(hashtags);
 
-          // Carregar prêmios
-          fetchRewardsPaginated(1);
-
           if (campaign.type === 'engagement') {
-            // Garante carregamento das ações globais
-            loadEngagementActions();
-            
             // Mapeia ações do previews.actions (que contém os coins configurados)
-            // Usamos action_id pois no pivot o 'id' é do registro da relação, não da ação global
             const campaignActions = (campaignDetails.previews?.actions || []).map((a: any) => ({
               id: a.action_id || a.id,
               coins: parseInt(a.coins) || 0
@@ -741,31 +712,9 @@ export const CampaignsPage: React.FC = () => {
             setActionCoinsInputs(coinsInputsMap);
           }
 
-          // CALCULAR TAGS DE SELEÇÃO
-          const newFullySelectedRoles = new Set<string>();
-          roles.forEach(roleObj => {
-            const role = roleObj.description;
-            const usersInRole = allUsersList.filter(u => u.role === role);
-            const validUsersInRole = campaign.type === 'engagement'
-              ? usersInRole.filter(u => u.user_type_id === 2)
-              : usersInRole;
-            if (validUsersInRole.length > 0 && validUsersInRole.every(u => campaignUserIds.includes(u.id))) {
-              newFullySelectedRoles.add(role);
-            }
-          });
-          setFullySelectedRoles(newFullySelectedRoles);
-          const newFullySelectedManufacturers = new Set<number>();
-          (manufacturersData || []).forEach((m: any) => {
-            const productsInManufacturer = allProductsList.filter(p => p.manufacturer_id === m.id);
-            if (productsInManufacturer.length > 0 && productsInManufacturer.every(p => campaignProductIds.includes(p.id))) {
-              newFullySelectedManufacturers.add(m.id);
-            }
-          });
-          setFullySelectedManufacturers(newFullySelectedManufacturers);
-
         } catch (error) {
           console.error('Error initializing campaign modal:', error);
-          addToast('error', 'Erro ao carregar dados completos da campanha.');
+          addToast('error', 'Erro ao carregar dados básicos da campanha.');
         } finally {
           setLoadingAux(false);
         }
@@ -788,8 +737,7 @@ export const CampaignsPage: React.FC = () => {
       setSelectedProducts([]);
       setSelectedActions([]);
       setSelectedHashtags([]);
-      fetchAuxiliaryData();
-      fetchRewardsPaginated(1);
+      // Dados auxiliares serão carregados sob demanda ao trocar de aba
     }
   };
 
@@ -810,6 +758,87 @@ export const CampaignsPage: React.FC = () => {
       setLoadingEngagementActions(false);
     }
   }, [token, loadingEngagementActions, addToast]);
+
+  // Carregamento sob demanda de dados auxiliares baseado na aba ativa
+  useEffect(() => {
+    if (!isModalOpen || !token) return;
+
+    const loadUsersTabAux = async () => {
+      if (activeTab === 'users' && !hasLoadedUsersAux && !loadingUsersAuxRef.current) {
+        loadingUsersAuxRef.current = true;
+        setLoadingAux(true);
+        try {
+          const [rolesRes, allUsersList] = await Promise.all([
+            rolesService.getRoles(token).catch(() => ({ data: [] })),
+            usersService.getAllUsersComplete(token).catch(() => []),
+          ]);
+
+          if (rolesRes.data) setRoles(rolesRes.data);
+          setAllUsersCache(allUsersList);
+          
+          // Se não tiver usuários carregados ainda (pela busca), pega os primeiros 10 do cache
+          if (users.length === 0 && debouncedUserSearch === '') {
+            setUsers(allUsersList.slice(0, 10));
+            setUsersTotalPages(Math.ceil(allUsersList.length / 10));
+          }
+          
+          setHasLoadedUsersAux(true);
+        } catch (err) {
+          console.error('Error loading users auxiliary data:', err);
+        } finally {
+          setLoadingAux(false);
+          loadingUsersAuxRef.current = false;
+        }
+      }
+    };
+
+    const loadProductsTabAux = async () => {
+      if (activeTab === 'products' && !hasLoadedProductsAux && !loadingProductsAuxRef.current) {
+        loadingProductsAuxRef.current = true;
+        setLoadingAux(true);
+        try {
+          const [manufacturersRes, allProductsList] = await Promise.all([
+            manufacturersService.getAllManufacturers(token).catch(() => []),
+            productsService.getAllProductsComplete(token).catch(() => []),
+          ]);
+
+          if (manufacturersRes) setManufacturers(manufacturersRes);
+          setAllProductsCache(allProductsList);
+
+          // Se não tiver produtos carregados ainda, pega os primeiros 10
+          if (products.length === 0 && debouncedProductSearch === '') {
+            setProducts(allProductsList.slice(0, 10));
+            setProductsTotalPages(Math.ceil(allProductsList.length / 10));
+          }
+
+          setHasLoadedProductsAux(true);
+        } catch (err) {
+          console.error('Error loading products auxiliary data:', err);
+        } finally {
+          setLoadingAux(false);
+          loadingProductsAuxRef.current = false;
+        }
+      }
+    };
+
+    loadUsersTabAux();
+    loadProductsTabAux();
+  }, [activeTab, isModalOpen, token, hasLoadedUsersAux, hasLoadedProductsAux, users.length, products.length, debouncedUserSearch, debouncedProductSearch]);
+
+  // Atualizar badges de seleção quando os dados ou seleções mudarem
+  useEffect(() => {
+    if (isModalOpen && (allUsersCache.length > 0 || allProductsCache.length > 0)) {
+      updateSelectionBadges(selectedUsers, selectedProducts, allUsersCache, allProductsCache);
+    }
+  }, [selectedUsers, selectedProducts, allUsersCache, allProductsCache, isModalOpen]);
+
+  // Buscar prêmios sob demanda
+  useEffect(() => {
+    if (isRewardModalOpen && !hasLoadedRewardsAux && token) {
+      fetchRewardsPaginated(1);
+      setHasLoadedRewardsAux(true);
+    }
+  }, [isRewardModalOpen, hasLoadedRewardsAux, fetchRewardsPaginated, token]);
 
   // Buscar ações automaticamente quando mudar para a aba Actions
   useEffect(() => {
@@ -858,6 +887,11 @@ export const CampaignsPage: React.FC = () => {
     setUsersPage(1);
     setProductsPage(1);
     setRewardsPage(1);
+    setHasLoadedUsersAux(false);
+    setHasLoadedProductsAux(false);
+    setHasLoadedRewardsAux(false);
+    setAllUsersCache([]);
+    setAllProductsCache([]);
   };
 
   const handleCloseImportModal = () => {
