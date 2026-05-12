@@ -1288,16 +1288,16 @@ export const PostsPage: React.FC = () => {
 
                   {/* Image / Video Thumbnail */}
                   {(post.image_full_url || post.video_url) && (
-                    <div className="w-full bg-zinc-50 dark:bg-zinc-900 border-y border-zinc-100 dark:border-zinc-800 aspect-square flex items-center justify-center overflow-hidden">
+                    <div className="w-full bg-black/5 dark:bg-black/20 border-y border-zinc-100 dark:border-zinc-800 flex items-center justify-center overflow-hidden min-h-[300px] max-h-[600px]">
                       {post.video_url ? (
                         <div 
-                          className="relative w-full h-full cursor-pointer group"
+                          className="relative w-full h-full cursor-pointer group flex items-center justify-center"
                           onClick={() => setVideoModalPost(post)}
                         >
                           <img
                             src={post.video_thumbnail_url || getYouTubeThumbnailUrl(post.video_url) || ''}
                             alt="YouTube video thumbnail"
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            className="max-w-full max-h-[600px] object-contain transition-transform duration-300 group-hover:scale-105"
                             loading="lazy"
                           />
                           <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
@@ -1310,7 +1310,7 @@ export const PostsPage: React.FC = () => {
                         <img
                           src={post.image_full_url}
                           alt="Post content"
-                          className="w-full h-full object-cover"
+                          className="max-w-full max-h-[600px] object-contain"
                           loading="lazy"
                         />
                       )}
@@ -1974,7 +1974,7 @@ export const PostsPage: React.FC = () => {
                                     <img
                                       src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
                                       alt="YouTube thumbnail"
-                                      className="w-full h-48 object-cover opacity-90"
+                                      className="w-full h-48 object-contain opacity-90"
                                     />
                                     <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">
                                       YOUTUBE
@@ -2355,7 +2355,7 @@ export const PostsPage: React.FC = () => {
                                       <img
                                         src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
                                         alt="YouTube thumbnail"
-                                        className="w-full h-48 object-cover opacity-90"
+                                        className="w-full h-48 object-contain opacity-90"
                                       />
                                       <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">
                                         YOUTUBE
