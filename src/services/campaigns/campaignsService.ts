@@ -121,7 +121,7 @@ export const campaignsService = {
   },
 
   getCampaignPodium: async (token: string, campaignId: number) => {
-    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/users?sort=-sales_amount&per_page=3`, {
+    const response = await fetch(`${API_BASE_URL}/app/campaigns/${campaignId}/podium`, {
       headers: getHeaders(token),
     });
     return handleResponse(response);

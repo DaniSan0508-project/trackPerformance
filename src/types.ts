@@ -308,6 +308,7 @@ export interface CampaignRanking {
   value?: number; // valor vendido (sales) ou coins acumulados (engagement)
   name: string;
   profile_image_path: string | null;
+  profile_image_url?: string | null;
   store: {
     id: number;
     name: string;

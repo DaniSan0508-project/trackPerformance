@@ -495,29 +495,6 @@ export const CampaignsPage: React.FC = () => {
       setTotalItems(data.total);
       setFromItem(data.from);
       setToItem(data.to);
-
-      // Buscar pódio para campanhas finalizadas que não possuem pódio carregado
-      const finishedCampaigns = campaignsList.filter(c => 
-        (c.status === 'finalizada' || c.is_active === false || c.is_active === 0) && 
-        (!c.podium || c.podium.length === 0)
-      );
-
-      if (finishedCampaigns.length > 0) {
-        // Busca pódios em paralelo (limitado para não sobrecarregar)
-        Promise.all(finishedCampaigns.slice(0, 5).map(async (c) => {
-          try {
-            const podiumData = await campaignsService.getCampaignPodium(token, c.id);
-            if (podiumData && (podiumData.data || Array.isArray(podiumData))) {
-              const members = Array.isArray(podiumData) ? podiumData : podiumData.data;
-              setCampaigns(prev => prev.map(cap => 
-                cap.id === c.id ? { ...cap, podium: members } : cap
-              ));
-            }
-          } catch (err) {
-            console.error(`Error fetching podium for campaign ${c.id}:`, err);
-          }
-        }));
-      }
     } catch (err: any) {
       console.error('Error fetching campaigns:', err);
       setError(err.message || 'Não foi possível carregar as campanhas.');
@@ -1336,10 +1313,6 @@ export const CampaignsPage: React.FC = () => {
         dataToSave.is_active = formData.status === 'ativa';
         dataToSave.is_public = formData.is_public;
 
-        // Sempre envia datas na edição
-        dataToSave.start_date = formattedStartDate;
-        dataToSave.end_date = formattedEndDate;
-
         // Envia users apenas se houver selecionados
         if (selectedUsers.length > 0) {
           dataToSave.users = selectedUsers;
@@ -1504,12 +1477,15 @@ export const CampaignsPage: React.FC = () => {
       if (campaign.podium && campaign.podium.length > 0) {
         setRankingModal(prev => ({ ...prev, ranking: campaign.podium, loading: false }));
       } else {
-        // Busca todas as campanhas com podium e filtra pela ID
-        const response = await campaignsService.getCampaignsWithPodium(token);
-        const campaignWithData = response.data.find(c => c.id === campaign.id);
+        // Busca o podium especificamente para esta campanha
+        const podiumData = await campaignsService.getCampaignPodium(token, campaign.id);
+        const members = Array.isArray(podiumData) ? podiumData : podiumData.data;
+        
+        // Atualiza o modal com o pódio
+        const ranking = members || [];
         setRankingModal(prev => ({ 
           ...prev, 
-          ranking: campaignWithData?.podium || [], 
+          ranking, 
           loading: false 
         }));
       }
@@ -2464,9 +2440,10 @@ export const CampaignsPage: React.FC = () => {
                                   value={formData.start_date}
                                   onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                                   min={getMinDate()}
+                                  disabled={!!editingCampaign}
                                   className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
                                     formErrors.start_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                                  }`}
+                                  } ${editingCampaign ? 'opacity-60 cursor-not-allowed' : ''}`}
                                 />
                               </div>
                               {formErrors.start_date && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.start_date}</p>}
@@ -2481,9 +2458,10 @@ export const CampaignsPage: React.FC = () => {
                                   value={formData.end_date}
                                   onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                                   min={formData.start_date || getMinDate()}
+                                  disabled={!!editingCampaign}
                                   className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
                                     formErrors.end_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                                  }`}
+                                  } ${editingCampaign ? 'opacity-60 cursor-not-allowed' : ''}`}
                                 />
                               </div>
                               {formErrors.end_date && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.end_date}</p>}
@@ -3609,9 +3587,10 @@ export const CampaignsPage: React.FC = () => {
                         ];
                         
                         const userName = item.user_name || item.name;
-                        const store = (item as any).store;
-                        const salesAmount = (item as any).sales_amount;
-                        const coinsTotal = (item as any).coins_total;
+                        const store = item.store;
+                        const displayValue = rankingModal.campaign?.type === 'sales'
+                          ? (item.sales_amount ?? item.value ?? 0)
+                          : (item.coins_total ?? item.value ?? 0);
 
                         return (
                           <motion.div
@@ -3623,14 +3602,31 @@ export const CampaignsPage: React.FC = () => {
                               isTop3 ? bgStyles[index] : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'
                             }`}
                           >
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl ${
-                              isTop3 ? '' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 border border-zinc-200 dark:border-zinc-700'
-                            }`}>
-                              {isTop3 ? (
-                                <span className="filter drop-shadow-sm">{medalEmojis[index]}</span>
-                              ) : (
-                                <span className="text-sm">{index + 1}º</span>
-                              )}
+                            <div className="relative flex-shrink-0">
+                              <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bold text-xl overflow-hidden border-2 ${
+                                isTop3 
+                                  ? (index === 0 ? 'border-amber-400' : index === 1 ? 'border-zinc-300' : 'border-orange-400')
+                                  : 'border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50'
+                              }`}>
+                                {item.profile_image_url || item.profile_image_path ? (
+                                  <img 
+                                    src={getFullImageUrl(item.profile_image_url || item.profile_image_path) || ''} 
+                                    alt={userName} 
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="bg-zinc-100 dark:bg-zinc-800 w-full h-full flex items-center justify-center text-zinc-400">
+                                    <User size={24} />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="absolute -top-1 -right-1 bg-white dark:bg-zinc-900 rounded-full w-6 h-6 flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-800">
+                                {isTop3 ? (
+                                  <span className="text-sm filter drop-shadow-sm">{medalEmojis[index]}</span>
+                                ) : (
+                                  <span className="text-[10px] font-bold text-zinc-500">{index + 1}º</span>
+                                )}
+                              </div>
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-zinc-900 dark:text-white truncate">{userName}</p>
@@ -3651,8 +3647,8 @@ export const CampaignsPage: React.FC = () => {
                                 isTop3 ? 'text-primary-600 dark:text-primary-400' : 'text-zinc-700 dark:text-zinc-300'
                               }`}>
                                 {rankingModal.campaign?.type === 'sales'
-                                  ? formatCurrency(String(salesAmount !== null ? salesAmount : item.value || 0))
-                                  : `${coinsTotal !== null ? coinsTotal : item.value || 0} ${coinName}`
+                                  ? formatCurrency(String(displayValue))
+                                  : `${displayValue} ${coinName}`
                                 }
                               </p>
                             </div>
