@@ -280,9 +280,7 @@ export const SurveysPage: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
-    // Para evitar problemas de fuso horário que mostram um dia a menos,
-    // extraímos os componentes da data manualmente se estiver no formato YYYY-MM-DD
-    const datePart = dateString.split('T')[0];
+    const [datePart] = dateString.includes(' ') ? dateString.split(' ') : dateString.split('T');
     const parts = datePart.split('-');
     
     if (parts.length === 3) {
@@ -294,6 +292,18 @@ export const SurveysPage: React.FC = () => {
   };
 
   const formatDateTime = (dateString: string) => {
+    if (!dateString) return '-';
+    
+    // Tratar formatos YYYY-MM-DD HH:MM:SS ou ISO
+    const [datePart, timePart] = dateString.includes(' ') ? dateString.split(' ') : dateString.split('T');
+    const dateParts = datePart.split('-');
+
+    if (dateParts.length === 3) {
+      const [year, month, day] = dateParts;
+      const formattedTime = timePart ? timePart.substring(0, 5) : '00:00';
+      return `${day}/${month}/${year} às ${formattedTime}`;
+    }
+
     return new Date(dateString).toLocaleString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -301,6 +311,17 @@ export const SurveysPage: React.FC = () => {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  // Obtém data e hora mínima (hoje agora) no formato YYYY-MM-DDTHH:MM
+  const getMinDateTime = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const hours = String(today.getHours()).padStart(2, '0');
+    const minutes = String(today.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   const handleRefresh = () => {
@@ -324,10 +345,17 @@ export const SurveysPage: React.FC = () => {
         const usersResponse = await surveysService.getSurveyUsers(token!, survey.id);
         const surveyUsers = usersResponse.data || [];
 
+        // Converter data do banco (YYYY-MM-DD HH:MM:SS) para datetime-local (YYYY-MM-DDTHH:MM)
+        const formatToDatetimeLocal = (dateStr: string) => {
+          if (!dateStr) return '';
+          const [date, time] = dateStr.includes(' ') ? dateStr.split(' ') : dateStr.split('T');
+          return `${date}T${time ? time.substring(0, 5) : '00:00'}`;
+        };
+
         setFormData({
           title: detail.title,
-          starts_at: detail.starts_at.split('T')[0],
-          ends_at: detail.ends_at.split('T')[0],
+          starts_at: formatToDatetimeLocal(detail.starts_at),
+          ends_at: formatToDatetimeLocal(detail.ends_at),
           is_anonymous: detail.is_anonymous,
           is_published: detail.is_published,
           status: detail.status,
@@ -637,8 +665,22 @@ export const SurveysPage: React.FC = () => {
       setActiveTab('basic');
       return;
     }
-    if (formData.ends_at < formData.starts_at) {
-      addToast('error', 'Data de término deve ser maior que data de início.');
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    // Converte as datas dos inputs (que vêm como YYYY-MM-DD ou YYYY-MM-DDTHH:MM) para objetos Date ignorando hora
+    const startDate = new Date(formData.starts_at.split('T')[0] + 'T00:00:00');
+    const endDate = new Date(formData.ends_at.split('T')[0] + 'T00:00:00');
+
+    if (startDate < now && !editingSurvey) {
+      addToast('error', 'A data de início não pode ser anterior a hoje.');
+      setActiveTab('basic');
+      return;
+    }
+
+    if (endDate < startDate) {
+      addToast('error', 'A data de término deve ser posterior ou igual à data de início.');
       setActiveTab('basic');
       return;
     }
@@ -685,6 +727,11 @@ export const SurveysPage: React.FC = () => {
 
     setSaving(true);
     try {
+      const formatFromDatetimeLocal = (datetime: string) => {
+        if (!datetime) return '';
+        return datetime.replace('T', ' ') + ':00';
+      };
+
       // Prepara as questões: remove 'options' para texto e nps
       const questionsToSave = questions.map(q => {
         const { id, order, question, type, options } = q;
@@ -700,8 +747,8 @@ export const SurveysPage: React.FC = () => {
 
       const dataToSave = {
         title: formData.title,
-        starts_at: formData.starts_at,
-        ends_at: formData.ends_at,
+        starts_at: formatFromDatetimeLocal(formData.starts_at),
+        ends_at: formatFromDatetimeLocal(formData.ends_at),
         is_anonymous: formData.is_anonymous,
         is_published: formData.is_published,
         status: formData.status,
@@ -1161,9 +1208,10 @@ export const SurveysPage: React.FC = () => {
                         <div className="relative">
                           <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 dark:text-primary-400 pointer-events-none z-10" />
                           <input
-                            type="date"
+                            type="datetime-local"
                             disabled={isReadOnly}
                             value={formData.starts_at}
+                            min={getMinDateTime()}
                             onChange={(e) => setFormData({ ...formData, starts_at: e.target.value })}
                             className="w-full pl-9 pr-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                           />
@@ -1176,9 +1224,10 @@ export const SurveysPage: React.FC = () => {
                         <div className="relative">
                           <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 dark:text-primary-400 pointer-events-none z-10" />
                           <input
-                            type="date"
+                            type="datetime-local"
                             disabled={isReadOnly}
                             value={formData.ends_at}
+                            min={formData.starts_at || getMinDateTime()}
                             onChange={(e) => setFormData({ ...formData, ends_at: e.target.value })}
                             className="w-full pl-9 pr-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:opacity-60 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                           />

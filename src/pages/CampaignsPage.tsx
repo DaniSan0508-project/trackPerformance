@@ -660,11 +660,10 @@ export const CampaignsPage: React.FC = () => {
         currentStatus = 'ativa';
       }
 
-      // Converter data do banco (YYYY-MM-DD HH:MM:SS) para datetime-local (YYYY-MM-DDTHH:MM)
-      const formatToDatetimeLocal = (dateStr: string) => {
+      // Converter data do banco (YYYY-MM-DD HH:MM:SS) para date (YYYY-MM-DD)
+      const formatToDate = (dateStr: string) => {
         if (!dateStr) return '';
-        const [date, time] = dateStr.includes(' ') ? dateStr.split(' ') : dateStr.split('T');
-        return `${date}T${time ? time.substring(0, 5) : '00:00'}`;
+        return dateStr.split(' ')[0] || dateStr.split('T')[0];
       };
 
       setFormData({
@@ -672,8 +671,8 @@ export const CampaignsPage: React.FC = () => {
         type: campaign.type,
         goal: campaign.goal ? String(campaign.goal) : '',
         goal_campaign: campaign.goal_campaign ? String(campaign.goal_campaign) : '',
-        start_date: formatToDatetimeLocal(campaign.start_date),
-        end_date: formatToDatetimeLocal(campaign.end_date),
+        start_date: formatToDate(campaign.start_date),
+        end_date: formatToDate(campaign.end_date),
         status: currentStatus,
         reward_id: campaign.reward_id || '',
         is_public: campaign.is_public !== undefined ? !!campaign.is_public : true,
@@ -1173,40 +1172,43 @@ export const CampaignsPage: React.FC = () => {
     }
 
     const now = new Date();
-    // Adicionar um pequeno buffer de 1 minuto para evitar erros de milissegundos durante o processo de salvamento
-    const nowWithBuffer = new Date(now.getTime() - 60000); 
-    
-    const startDate = new Date(formData.start_date);
-    const endDate = new Date(formData.end_date);
+    now.setHours(0, 0, 0, 0);
 
-    // 1. Data de início não pode ser no passado (com buffer de 1 min)
-    if (startDate.getTime() < nowWithBuffer.getTime()) {
-      addToast('error', 'A data de início não pode ser anterior ao horário atual.');
-      setFormErrors(prev => ({ ...prev, start_date: 'Horário já passou' }));
+    // Converte as datas dos inputs (que vêm como YYYY-MM-DD) para objetos Date
+    // Usando .split('-') e setFullYear/Month/Date para evitar problemas de timezone
+    const [startYear, startMonth, startDay] = formData.start_date.split('-').map(Number);
+    const startDate = new Date(startYear, startMonth - 1, startDay);
+
+    const [endYear, endMonth, endDay] = formData.end_date.split('-').map(Number);
+    const endDate = new Date(endYear, endMonth - 1, endDay);
+
+    // 1. Data de início não pode ser anterior a hoje
+    if (startDate < now && !editingCampaign) {
+      addToast('error', 'A data de início não pode ser anterior a hoje.');
+      setFormErrors(prev => ({ ...prev, start_date: 'Data já passou' }));
       setActiveTab('basic');
       return;
     }
 
-    // 2. Data de término deve ser estritamente maior que data de início (comparação em milissegundos)
-    if (endDate.getTime() <= startDate.getTime()) {
-      addToast('error', 'A data de término deve ser posterior à data de início.');
+    // 2. Data de término deve ser maior ou igual à data de início
+    if (endDate < startDate) {
+      addToast('error', 'A data de término deve ser posterior ou igual à data de início.');
       setFormErrors(prev => ({ 
         ...prev, 
         start_date: 'Confira o período',
-        end_date: 'Deve ser após o início' 
+        end_date: 'Deve ser após ou igual ao início' 
       }));
       setActiveTab('basic');
       return;
     }
 
-    // 3. Se a campanha for marcada como ativa, ela não pode estar expirada (data fim no passado)
-    if (formData.status === 'ativa' && endDate.getTime() < nowWithBuffer.getTime()) {
-      addToast('error', 'Não é possível salvar uma campanha ativa com data de término no passado.');
+    // 3. Se a campanha for marcada como ativa, ela não pode estar expirada (data fim anterior a hoje)
+    if (formData.status === 'ativa' && endDate < now) {
+      addToast('error', 'Não é possível salvar uma campanha ativa com data de término anterior a hoje.');
       setFormErrors(prev => ({ ...prev, end_date: 'Campanha já expirada' }));
       setActiveTab('basic');
       return;
     }
-
     // Validações específicas para edição (apenas o essencial)
     if (editingCampaign) {
       // Validações apenas para campanhas de engajamento
@@ -1315,13 +1317,13 @@ export const CampaignsPage: React.FC = () => {
     setSaving(true);
     let dataToSave: any = {};
     try {
-      const formatFromDatetimeLocal = (datetime: string) => {
-        if (!datetime) return '';
-        return datetime.replace('T', ' ') + ':00';
+      const formatToBackendDate = (date: string, isEnd: boolean) => {
+        if (!date) return '';
+        return isEnd ? `${date} 23:59:59` : `${date} 00:00:00`;
       };
 
-      const formattedStartDate = formatFromDatetimeLocal(formData.start_date);
-      const formattedEndDate = formatFromDatetimeLocal(formData.end_date);
+      const formattedStartDate = formatToBackendDate(formData.start_date, false);
+      const formattedEndDate = formatToBackendDate(formData.end_date, true);
 
       // Na edição, envia apenas campos alterados (NÃO envia goal)
       if (editingCampaign) {
@@ -1838,17 +1840,7 @@ export const CampaignsPage: React.FC = () => {
     }
   };
 
-  // Obtém data e hora mínima (hoje agora) no formato YYYY-MM-DDTHH:MM
-  const getMinDateTime = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const hours = String(today.getHours()).padStart(2, '0');
-    const minutes = String(today.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
-
+  // Obtém data mínima (hoje) no formato YYYY-MM-DD
   const getMinDate = () => {
     const today = new Date();
     const year = today.getFullYear();
@@ -2068,9 +2060,10 @@ export const CampaignsPage: React.FC = () => {
                                   <Calendar size={16} className="text-[var(--color-primary-500)]" />
                                   <span className="text-zinc-500 dark:text-zinc-500">Período:</span>
                                   <span className="font-medium text-zinc-900 dark:text-white">
-                                    {formatDateTime(campaign.start_date)} até {formatDateTime(campaign.end_date)}
+                                    {formatDate(campaign.start_date)} até {formatDate(campaign.end_date)}
                                   </span>
-                                </div>                                {campaign.users && campaign.users.length > 0 && (
+                                </div>
+                                {campaign.users && campaign.users.length > 0 && (
                                   <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
                                     <Users size={16} className="text-purple-500" />
                                     <span className="text-zinc-500 dark:text-zinc-500">Participantes:</span>
@@ -2367,13 +2360,13 @@ export const CampaignsPage: React.FC = () => {
                             <div>
                               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Início</label>
                               <p className="text-sm font-medium text-zinc-900 dark:text-white">
-                                {formatDateTime(editingCampaign.start_date)}
+                                {formatDate(editingCampaign.start_date)}
                               </p>
                             </div>
                             <div>
                               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Término</label>
                               <p className="text-sm font-medium text-zinc-900 dark:text-white">
-                                {formatDateTime(editingCampaign.end_date)}
+                                {formatDate(editingCampaign.end_date)}
                               </p>
                             </div>                          </div>
                         </div>
@@ -2467,10 +2460,10 @@ export const CampaignsPage: React.FC = () => {
                               <div className="relative">
                                 <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
                                 <input
-                                  type="datetime-local"
+                                  type="date"
                                   value={formData.start_date}
                                   onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                                  min={getMinDateTime()}
+                                  min={getMinDate()}
                                   className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
                                     formErrors.start_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   }`}
@@ -2484,10 +2477,10 @@ export const CampaignsPage: React.FC = () => {
                               <div className="relative">
                                 <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
                                 <input
-                                  type="datetime-local"
+                                  type="date"
                                   value={formData.end_date}
                                   onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                                  min={formData.start_date || getMinDateTime()}
+                                  min={formData.start_date || getMinDate()}
                                   className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
                                     formErrors.end_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   }`}
@@ -2495,7 +2488,8 @@ export const CampaignsPage: React.FC = () => {
                               </div>
                               {formErrors.end_date && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.end_date}</p>}
                             </div>
-                          </div>                        </>
+                          </div>
+                        </>
                       )}
 
                       <div>
