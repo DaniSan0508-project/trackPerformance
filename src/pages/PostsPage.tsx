@@ -3,7 +3,7 @@ import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, H
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Post, Like, Comment, User as UserType } from '../types';
-import { postsService, usersService } from '../services';
+import { postsService, usersService, campaignsService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { getFullImageUrl, extractYouTubeVideoId, formatRelativeDate, getYouTubeThumbnailUrl, formatDateTime } from '../utils';
@@ -68,13 +68,14 @@ export const PostsPage: React.FC = () => {
   const [commentsModalPost, setCommentsModalPost] = useState<Post | null>(null);
   const [shareModalPost, setShareModalPost] = useState<Post | null>(null);
   const [contentModalPost, setContentModalPost] = useState<Post | null>(null);
+  const [carouselIndex, setCarouselIndex] = useState(0);
   const [videoModalPost, setVideoModalPost] = useState<Post | null>(null);
   
   // Create Post state
   const [createPostModal, setCreatePostModal] = useState(false);
   const [newPostTitle, setNewPostTitle] = useState('');
   const [newPostContent, setNewPostContent] = useState('');
-  const [newPostImage, setNewPostImage] = useState<File | null>(null);
+  const [newPostImages, setNewPostImages] = useState<File[]>([]);
   const [newPostVideoUrl, setNewPostVideoUrl] = useState('');
   const [mediaType, setMediaType] = useState<'none' | 'image' | 'video'>('none');
   const [isCreating, setIsCreating] = useState(false);
@@ -90,7 +91,7 @@ export const PostsPage: React.FC = () => {
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editMediaType, setEditMediaType] = useState<'none' | 'image' | 'video'>('none');
-  const [editImage, setEditImage] = useState<File | null>(null);
+  const [editImages, setEditImages] = useState<File[]>([]);
   const [editVideoUrl, setEditVideoUrl] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
@@ -237,8 +238,8 @@ export const PostsPage: React.FC = () => {
       const formData = new FormData();
       formData.append('title', newPostTitle);
       formData.append('content', processedContent);
-      if (newPostImage) {
-        formData.append('image', newPostImage);
+      if (newPostImages && newPostImages.length > 0) {
+        newPostImages.forEach((img) => formData.append('images[]', img));
       }
       if (newPostVideoUrl) {
         formData.append('video_url', newPostVideoUrl);
@@ -264,7 +265,7 @@ export const PostsPage: React.FC = () => {
       setCreatePostModal(false);
       setNewPostTitle('');
       setNewPostContent('');
-      setNewPostImage(null);
+      setNewPostImages([]);
       setNewPostVideoUrl('');
       setMediaType('none');
       setNewPostIsSponsored(false);
@@ -453,10 +454,11 @@ export const PostsPage: React.FC = () => {
     setIsUpdating(true);
     console.log('=== Update Post ===');
     console.log('editMediaType:', editMediaType);
-    console.log('editImage:', editImage);
+    console.log('editImages:', editImages);
     console.log('editVideoUrl:', editVideoUrl);
     console.log('Post original:', {
       image_url: editPostModal.image_url,
+      images: editPostModal.images,
       video_url: editPostModal.video_url
     });
     
@@ -468,13 +470,13 @@ export const PostsPage: React.FC = () => {
 
       // Lógica de mídia: sempre envia os dois campos
       if (editMediaType === 'image') {
-        // Envia imagem (nova ou sinaliza manter a atual) e limpa vídeo
-        if (editImage) {
-          formData.append('image', editImage);
-          console.log('Enviando nova imagem:', editImage.name);
-        } else if (editPostModal.image_url) {
+        // Envia imagens (novas ou sinaliza manter as atuais) e limpa vídeo
+        if (editImages && editImages.length > 0) {
+          editImages.forEach((img) => formData.append('images[]', img));
+          console.log('Enviando novas imagens:', editImages.length);
+        } else if ((editPostModal.images && editPostModal.images.length > 0) || editPostModal.image_url) {
           formData.append('keep_existing_media', 'true');
-          console.log('Mantendo imagem atual');
+          console.log('Mantendo imagens atuais');
         }
         formData.append('video_url', '');
       } else if (editMediaType === 'video') {
@@ -528,7 +530,7 @@ export const PostsPage: React.FC = () => {
       setEditTitle('');
       setEditContent('');
       setEditMediaType('none');
-      setEditImage(null);
+      setEditImages([]);
       setEditVideoUrl('');
       addToast('success', 'Post atualizado com sucesso!');
     } catch (err: any) {
@@ -577,18 +579,25 @@ export const PostsPage: React.FC = () => {
     if (post.video_url) {
       setEditMediaType('video');
       setEditVideoUrl(post.video_url);
-      setEditImage(null);
-    } else if (post.image_url) {
+      setEditImages([]);
+    } else if (post.image_url || (post.images && post.images.length > 0)) {
       setEditMediaType('image');
       setEditVideoUrl('');
+      setEditImages([]);
     } else {
       setEditMediaType('none');
-      setEditImage(null);
+      setEditImages([]);
       setEditVideoUrl('');
     }
     
     setActiveMenuPostId(null);
   };
+
+  useEffect(() => {
+    if (contentModalPost) {
+      setCarouselIndex(0);
+    }
+  }, [contentModalPost]);
 
   useEffect(() => {
     if (likesModalPost?.likes) {
@@ -1242,7 +1251,7 @@ export const PostsPage: React.FC = () => {
                       </button>
 
                       {activeMenuPostId === post.id && (
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-zinc-800 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-700 py-1 z-10 overflow-hidden">
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-zinc-800 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-700 py-1 z-[60] overflow-hidden">
                           {(() => {
                             const isOwner = String(post.user_id) === String(currentUser?.id) || String(post.user?.id) === String(currentUser?.id);
                             const isAdmin = currentUser?.user_type_id === 1;
@@ -1287,30 +1296,42 @@ export const PostsPage: React.FC = () => {
                   </div>
 
                   {/* Image / Video Thumbnail */}
-                  {(post.image_full_url || post.video_url) && (
-                    <div className="w-full bg-black/5 dark:bg-black/20 border-y border-zinc-100 dark:border-zinc-800 flex items-center justify-center overflow-hidden min-h-[300px] max-h-[600px]">
+                  {(post.image_full_url || (post.images && post.images.length > 0) || post.video_url) && (
+                    <div className="w-full relative bg-zinc-100 dark:bg-zinc-800 border-y border-zinc-100 dark:border-zinc-800 flex items-center justify-center overflow-hidden h-[400px]">
+                      {/* Background blurred image for an elegant look when the aspect ratio doesn't match */}
+                      {!post.video_url && (
+                        <div 
+                          className="absolute inset-0 opacity-30 dark:opacity-20 blur-xl scale-110 pointer-events-none"
+                          style={{
+                            backgroundImage: `url(${post.images && post.images.length > 0 && post.images[0]?.url ? post.images[0].url : (post.image_full_url || '')})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center'
+                          }}
+                        />
+                      )}
+                      
                       {post.video_url ? (
                         <div 
-                          className="relative w-full h-full cursor-pointer group flex items-center justify-center"
+                          className="relative w-full h-full cursor-pointer group flex items-center justify-center bg-black"
                           onClick={() => setVideoModalPost(post)}
                         >
                           <img
                             src={post.video_thumbnail_url || getYouTubeThumbnailUrl(post.video_url) || ''}
                             alt="YouTube video thumbnail"
-                            className="max-w-full max-h-[600px] object-contain transition-transform duration-300 group-hover:scale-105"
+                            className="max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-105"
                             loading="lazy"
                           />
                           <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
-                            <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                              <div className="w-0 h-0 border-t-12 border-t-transparent border-l-20 border-l-white border-b-12 border-b-transparent ml-1"></div>
+                            <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                              <div className="w-0 h-0 border-t-10 border-t-transparent border-l-16 border-l-white border-b-10 border-b-transparent ml-1"></div>
                             </div>
                           </div>
                         </div>
                       ) : (
                         <img
-                          src={post.image_full_url}
+                          src={post.images && post.images.length > 0 && post.images[0]?.url ? post.images[0].url : (post.image_full_url || '')}
                           alt="Post content"
-                          className="max-w-full max-h-[600px] object-contain"
+                          className="relative z-10 max-w-full max-h-full object-contain transition-transform duration-500 hover:scale-105"
                           loading="lazy"
                         />
                       )}
@@ -1324,7 +1345,7 @@ export const PostsPage: React.FC = () => {
                     <button 
                       type="button"
                       onClick={() => setContentModalPost(post)}
-                      className="flex-1 w-full group mb-3 pt-4 flex flex-col items-start text-left"
+                      className="flex-1 w-full group mb-3 pt-4 flex flex-col items-start text-left cursor-pointer"
                     >
                       {post.title && (
                         <h4 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-2 group-hover:text-primary-700 dark:group-hover:text-primary-500 transition-colors text-left w-full">
@@ -1590,6 +1611,53 @@ export const PostsPage: React.FC = () => {
                   </button>
                 </div>
                 <div className="p-6 pt-16 overflow-y-auto custom-scrollbar">
+                  {/* Carrossel de Imagens */}
+                  {((contentModalPost.images && contentModalPost.images.length > 0) || contentModalPost.image_full_url) && (
+                    <div className="mb-6 relative group bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden aspect-video flex items-center justify-center">
+                      {contentModalPost.images && contentModalPost.images.length > 0 ? (
+                        <>
+                          <img
+                            src={contentModalPost.images[carouselIndex]?.url || ''}
+                            alt={`Post image ${carouselIndex + 1}`}
+                            className="max-w-full max-h-full object-contain"
+                          />
+                          
+                          {contentModalPost.images.length > 1 && (
+                            <>
+                              <button
+                                onClick={() => setCarouselIndex(prev => (prev === 0 ? contentModalPost.images!.length - 1 : prev - 1))}
+                                className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <ChevronLeft size={24} />
+                              </button>
+                              <button
+                                onClick={() => setCarouselIndex(prev => (prev === contentModalPost.images!.length - 1 ? 0 : prev + 1))}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <ChevronRight size={24} />
+                              </button>
+                              
+                              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+                                {contentModalPost.images.map((_, idx) => (
+                                  <div
+                                    key={idx}
+                                    className={`w-2 h-2 rounded-full transition-all ${idx === carouselIndex ? 'bg-white w-4' : 'bg-white/50'}`}
+                                  />
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <img
+                          src={contentModalPost.image_full_url!}
+                          alt="Post content"
+                          className="max-w-full max-h-full object-contain"
+                        />
+                      )}
+                    </div>
+                  )}
+
                   {contentModalPost.title && (
                     <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-4 break-words">
                       {contentModalPost.title}
@@ -1871,7 +1939,7 @@ export const PostsPage: React.FC = () => {
                     </label>
                     
                     {/* Mostrar mídia atual se existir */}
-                    {(editPostModal.image_url || editPostModal.video_url) && (
+                    {((editPostModal.images && editPostModal.images.length > 0) || editPostModal.image_url || editPostModal.video_url) && (
                       <div className="mb-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700">
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">Mídia atual:</p>
                         {editPostModal.video_url ? (
@@ -1886,12 +1954,31 @@ export const PostsPage: React.FC = () => {
                             </div>
                           </div>
                         ) : (
-                          <div className="relative rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center" style={{minHeight: '160px', maxHeight: '240px'}}>
-                            <img
-                              src={editPostModal.image_full_url || ''}
-                              alt="Current image"
-                              className="max-w-full max-h-60 object-contain"
-                            />
+                          <div className="grid grid-cols-4 gap-2">
+                            {editPostModal.images && editPostModal.images.length > 0 ? (
+                              editPostModal.images.map((img, idx) => (
+                                <div key={img.id || idx} className="relative aspect-square rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700">
+                                  <img
+                                    src={img.url}
+                                    alt={`Current ${idx}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  {idx === 0 && (
+                                    <div className="absolute bottom-0 left-0 right-0 bg-primary-600 text-white text-[8px] py-0.5 text-center font-bold">
+                                      Principal
+                                    </div>
+                                  )}
+                                </div>
+                              ))
+                            ) : (
+                              <div className="relative aspect-square rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700">
+                                <img
+                                  src={editPostModal.image_full_url || ''}
+                                  alt="Current"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1899,58 +1986,66 @@ export const PostsPage: React.FC = () => {
 
                     {/* Campo de Imagem */}
                     {editMediaType === 'image' && (
-                      <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-zinc-300 dark:border-zinc-700 border-dashed rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer relative">
-                        <div className="space-y-1 text-center">
-                          {editImage ? (
-                            <div className="relative">
-                              <img
-                                src={URL.createObjectURL(editImage)}
-                                alt="Preview"
-                                className="mx-auto h-48 object-contain rounded-lg"
-                              />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  e.preventDefault();
-                                  setEditImage(null);
-                                  setEditMediaType('none');
-                                }}
-                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      <div className="space-y-4">
+                        <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-zinc-300 dark:border-zinc-700 border-dashed rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer relative">
+                          <div className="space-y-1 text-center">
+                            <ImageIcon className="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-500" />
+                            <div className="flex text-sm text-zinc-600 dark:text-zinc-400 justify-center">
+                              <label
+                                htmlFor="edit-file-upload"
+                                className="relative cursor-pointer bg-white dark:bg-zinc-900 rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none"
                               >
-                                <X size={16} />
-                              </button>
-                              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">{editImage.name}</p>
+                                <span>Substituir por novas imagens (máx. 10)</span>
+                                <input
+                                  id="edit-file-upload"
+                                  name="edit-file-upload"
+                                  type="file"
+                                  multiple
+                                  className="sr-only"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    if (e.target.files) {
+                                      const filesArray = Array.from(e.target.files);
+                                      setEditImages(prev => {
+                                        const combined = [...prev, ...filesArray].slice(0, 10);
+                                        return combined;
+                                      });
+                                    }
+                                  }}
+                                />
+                              </label>
                             </div>
-                          ) : (
-                            <>
-                              <ImageIcon className="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-500" />
-                              <div className="flex text-sm text-zinc-600 dark:text-zinc-400 justify-center">
-                                <label
-                                  htmlFor="edit-file-upload"
-                                  className="relative cursor-pointer bg-white dark:bg-zinc-900 rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none"
-                                >
-                                  <span>Upload um arquivo</span>
-                                  <input
-                                    id="edit-file-upload"
-                                    name="edit-file-upload"
-                                    type="file"
-                                    className="sr-only"
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                      if (e.target.files && e.target.files[0]) {
-                                        setEditImage(e.target.files[0]);
-                                      }
-                                    }}
-                                  />
-                                </label>
-                              </div>
-                              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                PNG, JPG, GIF até 5MB
-                              </p>
-                            </>
-                          )}
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                              PNG, JPG, GIF até 5MB cada
+                            </p>
+                          </div>
                         </div>
+
+                        {editImages.length > 0 && (
+                          <div className="grid grid-cols-3 gap-2">
+                            {editImages.map((file, idx) => (
+                              <div key={idx} className="relative aspect-square bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                                <img
+                                  src={URL.createObjectURL(file)}
+                                  alt={`Preview ${idx}`}
+                                  className="w-full h-full object-cover"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setEditImages(prev => prev.filter((_, i) => i !== idx))}
+                                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow-sm hover:bg-red-600 transition-colors"
+                                >
+                                  <X size={12} />
+                                </button>
+                                {idx === 0 && (
+                                  <div className="absolute bottom-0 left-0 right-0 bg-primary-600 text-white text-[10px] py-0.5 text-center font-bold">
+                                    Principal
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -2239,7 +2334,7 @@ export const PostsPage: React.FC = () => {
                           onClick={() => {
                             if (mediaType === 'image') {
                               setMediaType('none');
-                              setNewPostImage(null);
+                              setNewPostImages([]);
                             } else {
                               setMediaType('image');
                               setNewPostVideoUrl('');
@@ -2262,7 +2357,7 @@ export const PostsPage: React.FC = () => {
                               setNewPostVideoUrl('');
                             } else {
                               setMediaType('video');
-                              setNewPostImage(null);
+                              setNewPostImages([]);
                             }
                           }}
                           className={`flex-1 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
@@ -2280,58 +2375,66 @@ export const PostsPage: React.FC = () => {
 
                       {/* Campo de Imagem */}
                       {mediaType === 'image' && (
-                        <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-zinc-300 dark:border-zinc-700 border-dashed rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer relative">
-                          <div className="space-y-1 text-center">
-                            {newPostImage ? (
-                              <div className="relative">
-                                <img
-                                  src={URL.createObjectURL(newPostImage)}
-                                  alt="Preview"
-                                  className="mx-auto h-48 object-contain rounded-lg"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    setNewPostImage(null);
-                                    setMediaType('none');
-                                  }}
-                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        <div className="space-y-4">
+                          <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-zinc-300 dark:border-zinc-700 border-dashed rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer relative">
+                            <div className="space-y-1 text-center">
+                              <ImageIcon className="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-500" />
+                              <div className="flex text-sm text-zinc-600 dark:text-zinc-400 justify-center">
+                                <label
+                                  htmlFor="file-upload"
+                                  className="relative cursor-pointer bg-white dark:bg-zinc-900 rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none"
                                 >
-                                  <X size={16} />
-                                </button>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">{newPostImage.name}</p>
+                                  <span>Upload de imagens (máx. 10)</span>
+                                  <input
+                                    id="file-upload"
+                                    name="file-upload"
+                                    type="file"
+                                    multiple
+                                    className="sr-only"
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      if (e.target.files) {
+                                        const filesArray = Array.from(e.target.files);
+                                        setNewPostImages(prev => {
+                                          const combined = [...prev, ...filesArray].slice(0, 10);
+                                          return combined;
+                                        });
+                                      }
+                                    }}
+                                  />
+                                </label>
                               </div>
-                            ) : (
-                              <>
-                                <ImageIcon className="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-500" />
-                                <div className="flex text-sm text-zinc-600 dark:text-zinc-400 justify-center">
-                                  <label
-                                    htmlFor="file-upload"
-                                    className="relative cursor-pointer bg-white dark:bg-zinc-900 rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none"
-                                  >
-                                    <span>Upload um arquivo</span>
-                                    <input
-                                      id="file-upload"
-                                      name="file-upload"
-                                      type="file"
-                                      className="sr-only"
-                                      accept="image/*"
-                                      onChange={(e) => {
-                                        if (e.target.files && e.target.files[0]) {
-                                          setNewPostImage(e.target.files[0]);
-                                        }
-                                      }}
-                                    />
-                                  </label>
-                                </div>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                  PNG, JPG, GIF até 5MB
-                                </p>
-                              </>
-                            )}
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                PNG, JPG, GIF até 5MB cada
+                              </p>
+                            </div>
                           </div>
+
+                          {newPostImages.length > 0 && (
+                            <div className="grid grid-cols-3 gap-2">
+                              {newPostImages.map((file, idx) => (
+                                <div key={idx} className="relative aspect-square bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                                  <img
+                                    src={URL.createObjectURL(file)}
+                                    alt={`Preview ${idx}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setNewPostImages(prev => prev.filter((_, i) => i !== idx))}
+                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow-sm hover:bg-red-600 transition-colors"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                  {idx === 0 && (
+                                    <div className="absolute bottom-0 left-0 right-0 bg-primary-600 text-white text-[10px] py-0.5 text-center font-bold">
+                                      Principal
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
 

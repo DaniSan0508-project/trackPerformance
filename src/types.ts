@@ -119,6 +119,16 @@ export interface Comment {
   user?: User;
 }
 
+export interface PostImage {
+  id: number | null;
+  post_id: number;
+  image_path?: string;
+  image_full_url?: string;
+  url: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Post {
   id: number;
   user_id: number;
@@ -142,6 +152,7 @@ export interface Post {
   likes_count?: number;
   comments?: Comment[];
   comments_count?: number;
+  images?: PostImage[];
 }
 
 export interface Feedback {
