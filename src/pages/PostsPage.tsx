@@ -6,6 +6,7 @@ import { Post, Like, Comment, User as UserType } from '../types';
 import { postsService, usersService, campaignsService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
+import ImageCropperModal from '../components/ImageCropperModal';
 import { getFullImageUrl, extractYouTubeVideoId, formatRelativeDate, getYouTubeThumbnailUrl, formatDateTime } from '../utils';
 
 // Utility for debouncing
@@ -114,6 +115,36 @@ export const PostsPage: React.FC = () => {
     onConfirm: async () => {},
     isLoading: false,
   });
+
+  const [cropperModal, setCropperModal] = useState<{
+    isOpen: boolean;
+    image: string;
+    index: number;
+    type: 'new' | 'edit';
+  }>({
+    isOpen: false,
+    image: '',
+    index: -1,
+    type: 'new'
+  });
+
+  const handleCropComplete = (croppedBlob: Blob) => {
+    const croppedFile = new File([croppedBlob], `cropped-image-${Date.now()}.jpg`, { type: 'image/jpeg' });
+    
+    if (cropperModal.type === 'new') {
+      setNewPostImages(prev => {
+        const newImages = [...prev];
+        newImages[cropperModal.index] = croppedFile;
+        return newImages;
+      });
+    } else {
+      setEditImages(prev => {
+        const newImages = [...prev];
+        newImages[cropperModal.index] = croppedFile;
+        return newImages;
+      });
+    }
+  };
   
   // Users cache
   const [usersCache, setUsersCache] = useState<Record<number, UserType>>({});
@@ -2033,9 +2064,28 @@ export const PostsPage: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => setEditImages(prev => prev.filter((_, i) => i !== idx))}
-                                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow-sm hover:bg-red-600 transition-colors"
+                                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow-sm hover:bg-red-600 transition-colors z-10"
                                 >
                                   <X size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const reader = new FileReader();
+                                    reader.onload = () => {
+                                      setCropperModal({
+                                        isOpen: true,
+                                        image: reader.result as string,
+                                        index: idx,
+                                        type: 'edit'
+                                      });
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }}
+                                  className="absolute top-1 right-8 bg-zinc-800/80 text-white rounded-full p-1 shadow-sm hover:bg-zinc-700 transition-colors z-10"
+                                  title="Recortar imagem"
+                                >
+                                  <Edit size={12} />
                                 </button>
                                 {idx === 0 && (
                                   <div className="absolute bottom-0 left-0 right-0 bg-primary-600 text-white text-[10px] py-0.5 text-center font-bold">
@@ -2422,9 +2472,28 @@ export const PostsPage: React.FC = () => {
                                   <button
                                     type="button"
                                     onClick={() => setNewPostImages(prev => prev.filter((_, i) => i !== idx))}
-                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow-sm hover:bg-red-600 transition-colors"
+                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow-sm hover:bg-red-600 transition-colors z-10"
                                   >
                                     <X size={12} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const reader = new FileReader();
+                                      reader.onload = () => {
+                                        setCropperModal({
+                                          isOpen: true,
+                                          image: reader.result as string,
+                                          index: idx,
+                                          type: 'new'
+                                        });
+                                      };
+                                      reader.readAsDataURL(file);
+                                    }}
+                                    className="absolute top-1 right-8 bg-zinc-800/80 text-white rounded-full p-1 shadow-sm hover:bg-zinc-700 transition-colors z-10"
+                                    title="Recortar imagem"
+                                  >
+                                    <Edit size={12} />
                                   </button>
                                   {idx === 0 && (
                                     <div className="absolute bottom-0 left-0 right-0 bg-primary-600 text-white text-[10px] py-0.5 text-center font-bold">
@@ -2508,6 +2577,14 @@ export const PostsPage: React.FC = () => {
             </div>
           )}
         </AnimatePresence>
+
+        <ImageCropperModal
+          isOpen={cropperModal.isOpen}
+          image={cropperModal.image}
+          onClose={() => setCropperModal(prev => ({ ...prev, isOpen: false }))}
+          onCropComplete={handleCropComplete}
+          aspect={16 / 9}
+        />
     </>
   );
 };
