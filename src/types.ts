@@ -119,6 +119,12 @@ export interface Comment {
   user?: User;
 }
 
+export interface QuizAlternative {
+  id?: number;
+  text: string;
+  is_correct: boolean;
+}
+
 export interface PostImage {
   id: number | null;
   post_id: number;
@@ -135,6 +141,11 @@ export interface Post {
   survey_id: number | null;
   title: string;
   content: string;
+  post_type?: 'standard' | 'quiz';
+  quiz_question?: string | null;
+  quiz_coins_participation?: number | null;
+  quiz_coins_correct?: number | null;
+  quiz_alternatives?: QuizAlternative[];
   image_url: string | null;
   video_url: string | null;
   earns_coins: boolean;

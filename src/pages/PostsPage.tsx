@@ -86,6 +86,16 @@ export const PostsPage: React.FC = () => {
   const [newPostBoostCommentCoins, setNewPostBoostCommentCoins] = useState<string>('5');
   const [newPostBoostShareCoins, setNewPostBoostShareCoins] = useState<string>('8');
 
+  // Quiz Create state
+  const [newPostType, setNewPostType] = useState<'standard' | 'quiz'>('standard');
+  const [newQuizQuestion, setNewQuizQuestion] = useState('');
+  const [newQuizCoinsParticipation, setNewQuizCoinsParticipation] = useState<string>('0');
+  const [newQuizCoinsCorrect, setNewQuizCoinsCorrect] = useState<string>('0');
+  const [newQuizAlternatives, setNewQuizAlternatives] = useState<QuizAlternative[]>([
+    { text: '', is_correct: true },
+    { text: '', is_correct: false }
+  ]);
+
   // Edit/Delete state
   const [activeMenuPostId, setActiveMenuPostId] = useState<number | null>(null);
   const [editPostModal, setEditPostModal] = useState<Post | null>(null);
@@ -101,6 +111,13 @@ export const PostsPage: React.FC = () => {
   const [editBoostLikeCoins, setEditBoostLikeCoins] = useState<string>('10');
   const [editBoostCommentCoins, setEditBoostCommentCoins] = useState<string>('5');
   const [editBoostShareCoins, setEditBoostShareCoins] = useState<string>('8');
+
+  // Quiz Edit state
+  const [editPostType, setEditPostType] = useState<'standard' | 'quiz'>('standard');
+  const [editQuizQuestion, setEditQuizQuestion] = useState('');
+  const [editQuizCoinsParticipation, setEditQuizCoinsParticipation] = useState<string>('0');
+  const [editQuizCoinsCorrect, setEditQuizCoinsCorrect] = useState<string>('0');
+  const [editQuizAlternatives, setEditQuizAlternatives] = useState<QuizAlternative[]>([]);
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -263,32 +280,63 @@ export const PostsPage: React.FC = () => {
     e.preventDefault();
     if (!token) return;
 
+    // Validação específica para Quiz
+    if (newPostType === 'quiz') {
+      if (!newQuizQuestion.trim()) {
+        addToast('error', 'A pergunta do quiz é obrigatória.');
+        return;
+      }
+      const filledAlts = newQuizAlternatives.filter(a => a.text.trim());
+      if (filledAlts.length < 2) {
+        addToast('error', 'O quiz deve ter pelo menos 2 alternativas.');
+        return;
+      }
+      if (!newQuizAlternatives.some(a => a.is_correct)) {
+        addToast('error', 'Selecione uma alternativa correta.');
+        return;
+      }
+    }
+
     setIsCreating(true);
     try {
       const processedContent = getProcessedContent('create');
       const formData = new FormData();
       formData.append('title', newPostTitle);
       formData.append('content', processedContent);
-      if (newPostImages && newPostImages.length > 0) {
-        newPostImages.forEach((img) => formData.append('images[]', img));
-      }
-      if (newPostVideoUrl) {
-        formData.append('video_url', newPostVideoUrl);
-      }
-      formData.append('survey_id', '1');
+      formData.append('post_type', newPostType);
 
-      if (currentUser?.user_type_id === 1) {
-        formData.append('is_sponsored', newPostIsSponsored ? '1' : '0');
-        if (newPostEarnsCoins) {
-          formData.append('boost_like_coins', newPostBoostLikeCoins.toString());
-          formData.append('boost_comment_coins', newPostBoostCommentCoins.toString());
-          formData.append('boost_share_coins', newPostBoostShareCoins.toString());
-        } else {
-          formData.append('boost_like_coins', '0');
-          formData.append('boost_comment_coins', '0');
-          formData.append('boost_share_coins', '0');
+      if (newPostType === 'quiz') {
+        formData.append('quiz_question', newQuizQuestion);
+        formData.append('quiz_coins_participation', newQuizCoinsParticipation || '0');
+        formData.append('quiz_coins_correct', newQuizCoinsCorrect || '0');
+        
+        newQuizAlternatives.forEach((alt, index) => {
+          formData.append(`quiz_alternatives[${index}][text]`, alt.text);
+          formData.append(`quiz_alternatives[${index}][is_correct]`, alt.is_correct ? 'true' : 'false');
+        });
+      } else {
+        if (newPostImages && newPostImages.length > 0) {
+          newPostImages.forEach((img) => formData.append('images[]', img));
+        }
+        if (newPostVideoUrl) {
+          formData.append('video_url', newPostVideoUrl);
+        }
+
+        if (currentUser?.user_type_id === 1) {
+          formData.append('is_sponsored', newPostIsSponsored ? '1' : '0');
+          if (newPostEarnsCoins) {
+            formData.append('boost_like_coins', newPostBoostLikeCoins.toString());
+            formData.append('boost_comment_coins', newPostBoostCommentCoins.toString());
+            formData.append('boost_share_coins', newPostBoostShareCoins.toString());
+          } else {
+            formData.append('boost_like_coins', '0');
+            formData.append('boost_comment_coins', '0');
+            formData.append('boost_share_coins', '0');
+          }
         }
       }
+
+      formData.append('survey_id', '1');
 
       await postsService.createPost(token, formData);
 
@@ -304,6 +352,16 @@ export const PostsPage: React.FC = () => {
       setNewPostBoostLikeCoins('10');
       setNewPostBoostCommentCoins('5');
       setNewPostBoostShareCoins('8');
+
+      // Reset Quiz
+      setNewPostType('standard');
+      setNewQuizQuestion('');
+      setNewQuizCoinsParticipation('0');
+      setNewQuizCoinsCorrect('0');
+      setNewQuizAlternatives([
+        { text: '', is_correct: true },
+        { text: '', is_correct: false }
+      ]);
 
       // Limpar o DOM do editor de criação
       const editor = document.querySelector('[data-field="create"]') as HTMLDivElement;
@@ -482,56 +540,83 @@ export const PostsPage: React.FC = () => {
     e.preventDefault();
     if (!token || !editPostModal) return;
 
+    // Validação específica para Quiz
+    if (editPostType === 'quiz') {
+      if (!editQuizQuestion.trim()) {
+        addToast('error', 'A pergunta do quiz é obrigatória.');
+        return;
+      }
+      const filledAlts = editQuizAlternatives.filter(a => a.text.trim());
+      if (filledAlts.length < 2) {
+        addToast('error', 'O quiz deve ter pelo menos 2 alternativas.');
+        return;
+      }
+      if (!editQuizAlternatives.some(a => a.is_correct)) {
+        addToast('error', 'Selecione uma alternativa correta.');
+        return;
+      }
+    }
+
     setIsUpdating(true);
     console.log('=== Update Post ===');
-    console.log('editMediaType:', editMediaType);
-    console.log('editImages:', editImages);
-    console.log('editVideoUrl:', editVideoUrl);
-    console.log('Post original:', {
-      image_url: editPostModal.image_url,
-      images: editPostModal.images,
-      video_url: editPostModal.video_url
-    });
+    console.log('editPostType:', editPostType);
     
     try {
       const processedContent = getProcessedContent('edit');
       const formData = new FormData();
       formData.append('title', editTitle);
       formData.append('content', processedContent);
+      formData.append('post_type', editPostType);
 
-      // Lógica de mídia: sempre envia os dois campos
-      if (editMediaType === 'image') {
-        // Envia imagens (novas ou sinaliza manter as atuais) e limpa vídeo
-        if (editImages && editImages.length > 0) {
-          editImages.forEach((img) => formData.append('images[]', img));
-          console.log('Enviando novas imagens:', editImages.length);
-        } else if ((editPostModal.images && editPostModal.images.length > 0) || editPostModal.image_url) {
-          formData.append('keep_existing_media', 'true');
-          console.log('Mantendo imagens atuais');
-        }
-        formData.append('video_url', '');
-      } else if (editMediaType === 'video') {
-        // Envia vídeo e limpa imagem
-        formData.append('video_url', editVideoUrl);
+      if (editPostType === 'quiz') {
+        formData.append('quiz_question', editQuizQuestion);
+        formData.append('quiz_coins_participation', editQuizCoinsParticipation || '0');
+        formData.append('quiz_coins_correct', editQuizCoinsCorrect || '0');
+        
+        editQuizAlternatives.forEach((alt, index) => {
+          if (alt.id) formData.append(`quiz_alternatives[${index}][id]`, alt.id.toString());
+          formData.append(`quiz_alternatives[${index}][text]`, alt.text);
+          formData.append(`quiz_alternatives[${index}][is_correct]`, alt.is_correct ? 'true' : 'false');
+        });
+        
+        // Limpar mídia se for quiz
         formData.append('image', '');
-        console.log('Enviando vídeo e limpando imagem');
+        formData.append('video_url', '');
       } else {
-        // Sem mídia: limpa ambos
-        formData.append('image', '');
-        formData.append('video_url', '');
-        console.log('Limpando toda mídia');
-      }
-
-      if (currentUser?.user_type_id === 1) {
-        formData.append('is_sponsored', editIsSponsored ? '1' : '0');
-        if (editEarnsCoins) {
-          formData.append('boost_like_coins', editBoostLikeCoins.toString());
-          formData.append('boost_comment_coins', editBoostCommentCoins.toString());
-          formData.append('boost_share_coins', editBoostShareCoins.toString());
+        // Lógica de mídia: sempre envia os dois campos
+        if (editMediaType === 'image') {
+          // Envia imagens (novas ou sinaliza manter as atuais) e limpa vídeo
+          if (editImages && editImages.length > 0) {
+            editImages.forEach((img) => formData.append('images[]', img));
+            console.log('Enviando novas imagens:', editImages.length);
+          } else if ((editPostModal.images && editPostModal.images.length > 0) || editPostModal.image_url) {
+            formData.append('keep_existing_media', 'true');
+            console.log('Mantendo imagens atuais');
+          }
+          formData.append('video_url', '');
+        } else if (editMediaType === 'video') {
+          // Envia vídeo e limpa imagem
+          formData.append('video_url', editVideoUrl);
+          formData.append('image', '');
+          console.log('Enviando vídeo e limpando imagem');
         } else {
-          formData.append('boost_like_coins', '0');
-          formData.append('boost_comment_coins', '0');
-          formData.append('boost_share_coins', '0');
+          // Sem mídia: limpa ambos
+          formData.append('image', '');
+          formData.append('video_url', '');
+          console.log('Limpando toda mídia');
+        }
+
+        if (currentUser?.user_type_id === 1) {
+          formData.append('is_sponsored', editIsSponsored ? '1' : '0');
+          if (editEarnsCoins) {
+            formData.append('boost_like_coins', editBoostLikeCoins.toString());
+            formData.append('boost_comment_coins', editBoostCommentCoins.toString());
+            formData.append('boost_share_coins', editBoostShareCoins.toString());
+          } else {
+            formData.append('boost_like_coins', '0');
+            formData.append('boost_comment_coins', '0');
+            formData.append('boost_share_coins', '0');
+          }
         }
       }
 
@@ -576,6 +661,16 @@ export const PostsPage: React.FC = () => {
   const openEditModal = (post: Post) => {
     setEditPostModal(post);
     setEditTitle(post.title || '');
+
+    // Quiz fields
+    setEditPostType(post.post_type || 'standard');
+    setEditQuizQuestion(post.quiz_question || '');
+    setEditQuizCoinsParticipation(String(post.quiz_coins_participation || 0));
+    setEditQuizCoinsCorrect(String(post.quiz_coins_correct || 0));
+    setEditQuizAlternatives(post.quiz_alternatives && post.quiz_alternatives.length > 0 ? post.quiz_alternatives : [
+      { text: '', is_correct: true },
+      { text: '', is_correct: false }
+    ]);
 
     // Limpar tags HTML do conteúdo antes de editar e transformar menções em pills
     const cleanContent = (post.content || '').replace(/<[^>]*>?/gm, '');
@@ -1254,6 +1349,11 @@ export const PostsPage: React.FC = () => {
                         <div className="flex items-center gap-1.5 min-w-0">
                           <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 leading-none truncate">{post.user?.name || 'Usuário'}</h3>
                           <div className="flex items-center gap-1 flex-shrink-0">
+                            {post.post_type === 'quiz' && (
+                              <div className="bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                Quiz
+                              </div>
+                            )}
                             {post.is_sponsored && (
                               <div className="text-amber-500" title="Patrocinado">
                                 <Coins size={14} className="fill-amber-500/10" />
@@ -1325,6 +1425,56 @@ export const PostsPage: React.FC = () => {
                       )}
                     </div>
                   </div>
+
+                  {/* Quiz Content */}
+                  {post.post_type === 'quiz' && (
+                    <div className="p-6 bg-primary-50/30 dark:bg-primary-900/10 border-y border-primary-100/50 dark:border-primary-900/20">
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center text-white shadow-lg shadow-primary-600/20">
+                          <AlertCircle size={24} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight">Desafio Quiz</h4>
+                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-bold tracking-widest">Responda e ganhe</p>
+                        </div>
+                      </div>
+                      
+                      <p className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-6 leading-snug">
+                        {post.quiz_question}
+                      </p>
+
+                      <div className="space-y-2">
+                        {post.quiz_alternatives?.map((alt, idx) => (
+                          <div 
+                            key={alt.id || idx}
+                            className="w-full p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-3 transition-all"
+                          >
+                            <div className="w-6 h-6 rounded-full border-2 border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-[10px] font-bold text-zinc-400">
+                              {String.fromCharCode(65 + idx)}
+                            </div>
+                            {alt.text}
+                          </div>
+                        ))}
+                      </div>
+
+                      {(Number(post.quiz_coins_participation) > 0 || Number(post.quiz_coins_correct) > 0) && (
+                        <div className="mt-6 flex flex-wrap gap-3 pt-4 border-t border-primary-100/50 dark:border-primary-900/20">
+                          {Number(post.quiz_coins_participation) > 0 && (
+                            <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-100 dark:border-zinc-700 shadow-sm">
+                              <Coins size={14} className="text-amber-500" />
+                              <span className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300">+{post.quiz_coins_participation} por participar</span>
+                            </div>
+                          )}
+                          {Number(post.quiz_coins_correct) > 0 && (
+                            <div className="flex items-center gap-1.5 bg-primary-600 px-3 py-1.5 rounded-lg shadow-sm">
+                              <Coins size={14} className="text-white" />
+                              <span className="text-[11px] font-bold text-white">+{post.quiz_coins_correct} por acerto</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Image / Video Thumbnail */}
                   {(post.image_full_url || (post.images && post.images.length > 0) || post.video_url) && (
@@ -1642,6 +1792,62 @@ export const PostsPage: React.FC = () => {
                   </button>
                 </div>
                 <div className="p-6 pt-16 overflow-y-auto custom-scrollbar">
+                  {/* Quiz Content in Modal */}
+                  {contentModalPost.post_type === 'quiz' && (
+                    <div className="mb-8 p-6 bg-primary-50/30 dark:bg-primary-900/10 rounded-2xl border border-primary-100/50 dark:border-primary-900/20">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-12 h-12 rounded-2xl bg-primary-600 flex items-center justify-center text-white shadow-lg shadow-primary-600/20">
+                          <AlertCircle size={28} />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Questão do Quiz</h4>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Responda corretamente para ganhar recompensas</p>
+                        </div>
+                      </div>
+                      
+                      <div className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-8 leading-relaxed">
+                        {contentModalPost.quiz_question}
+                      </div>
+
+                      <div className="space-y-3">
+                        {contentModalPost.quiz_alternatives?.map((alt, idx) => (
+                          <div 
+                            key={alt.id || idx}
+                            className="w-full p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm font-semibold text-zinc-700 dark:text-zinc-200 flex items-center gap-4 transition-all"
+                          >
+                            <div className="w-8 h-8 rounded-full border-2 border-zinc-100 dark:border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50">
+                              {String.fromCharCode(65 + idx)}
+                            </div>
+                            {alt.text}
+                          </div>
+                        ))}
+                      </div>
+
+                      {(Number(contentModalPost.quiz_coins_participation) > 0 || Number(contentModalPost.quiz_coins_correct) > 0) && (
+                        <div className="mt-8 flex flex-wrap gap-4 pt-6 border-t border-primary-100/50 dark:border-primary-900/20">
+                          {Number(contentModalPost.quiz_coins_participation) > 0 && (
+                            <div className="flex items-center gap-2 bg-white dark:bg-zinc-800 px-4 py-2 rounded-xl border border-zinc-100 dark:border-zinc-700 shadow-sm">
+                              <Coins size={18} className="text-amber-500" />
+                              <div className="flex flex-col">
+                                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">Participação</span>
+                                <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">+{contentModalPost.quiz_coins_participation} coins</span>
+                              </div>
+                            </div>
+                          )}
+                          {Number(contentModalPost.quiz_coins_correct) > 0 && (
+                            <div className="flex items-center gap-2 bg-primary-600 px-4 py-2 rounded-xl shadow-lg shadow-primary-600/20">
+                              <Coins size={18} className="text-white" />
+                              <div className="flex flex-col">
+                                <span className="text-[10px] text-primary-200 font-bold uppercase tracking-wider">Acerto Correto</span>
+                                <span className="text-sm font-bold text-white">+{contentModalPost.quiz_coins_correct} coins</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Carrossel de Imagens */}
                   {((contentModalPost.images && contentModalPost.images.length > 0) || contentModalPost.image_full_url) && (
                     <div className="mb-6 relative group bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden aspect-video flex items-center justify-center">
@@ -1772,8 +1978,34 @@ export const PostsPage: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="overflow-y-auto flex-1">
-                  <form onSubmit={handleUpdatePost} className="p-6 space-y-4">
+                <form onSubmit={handleUpdatePost} className="flex flex-col flex-1 overflow-hidden">
+                  <div className="overflow-y-auto flex-1 custom-scrollbar p-6 space-y-4">
+                  {/* Post Type Toggle */}
+                  <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl mb-6">
+                    <button
+                      type="button"
+                      onClick={() => setEditPostType('standard')}
+                      className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                        editPostType === 'standard'
+                          ? 'bg-white dark:bg-zinc-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                          : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                      }`}
+                    >
+                      Post Padrão
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditPostType('quiz')}
+                      className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                        editPostType === 'quiz'
+                          ? 'bg-white dark:bg-zinc-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                          : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                      }`}
+                    >
+                      Quiz
+                    </button>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                       Título *
@@ -1803,10 +2035,10 @@ export const PostsPage: React.FC = () => {
 
                       {/* Floating Mentions Dropdown */}
                       {showMentionDropdown && mentionTargetField === 'edit' && (
-                        <div 
+                        <div
                           className="absolute z-[100] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg max-h-48 overflow-y-auto w-64"
-                          style={{ 
-                            top: dropdownPos.top + 5, 
+                          style={{
+                            top: dropdownPos.top + 5,
                             left: Math.min(dropdownPos.left, 240) // Constrain left a bit more safely
                           }}
                         >
@@ -1823,8 +2055,8 @@ export const PostsPage: React.FC = () => {
                                 type="button"
                                 onClick={() => handleSelectMention(u)}
                                 className={`w-full flex items-center gap-2 p-2 transition-colors text-left ${
-                                  array.length === 1 
-                                    ? 'bg-zinc-100 dark:bg-zinc-700' 
+                                  array.length === 1
+                                    ? 'bg-zinc-100 dark:bg-zinc-700'
                                     : 'hover:bg-zinc-50 dark:hover:bg-zinc-700'
                                 }`}
                               >
@@ -1852,7 +2084,102 @@ export const PostsPage: React.FC = () => {
                       </div>
                       </div>
 
-                      {currentUser?.user_type_id === 1 && (                    <div className="space-y-4 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                      {editPostType === 'quiz' ? (
+                        <div className="space-y-4 p-4 bg-primary-50/30 dark:bg-primary-900/10 rounded-xl border border-primary-100 dark:border-primary-900/30">
+                          <div>
+                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                              Pergunta do Quiz *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={editQuizQuestion}
+                              onChange={(e) => setEditQuizQuestion(e.target.value)}
+                              className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+                              placeholder="Qual a pergunta?"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                                Coins Participação
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editQuizCoinsParticipation}
+                                onChange={(e) => setEditQuizCoinsParticipation(e.target.value)}
+                                className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                                Coins Acerto
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editQuizCoinsCorrect}
+                                onChange={(e) => setEditQuizCoinsCorrect(e.target.value)}
+                                className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                              Alternativas (Selecione a correta)
+                            </label>
+                            {editQuizAlternatives.map((alt, idx) => (
+                              <div key={idx} className="flex items-center gap-3">
+                                <input
+                                  type="radio"
+                                  name="editQuizCorrect"
+                                  checked={alt.is_correct}
+                                  onChange={() => {
+                                    const newAlts = editQuizAlternatives.map((a, i) => ({ ...a, is_correct: i === idx }));
+                                    setEditQuizAlternatives(newAlts);
+                                  }}
+                                  className="w-4 h-4 text-primary-600 border-zinc-300 focus:ring-primary-500 bg-white dark:bg-zinc-900"
+                                />
+                                <input
+                                  type="text"
+                                  value={alt.text}
+                                  onChange={(e) => {
+                                    const newAlts = [...editQuizAlternatives];
+                                    newAlts[idx].text = e.target.value;
+                                    setEditQuizAlternatives(newAlts);
+                                  }}
+                                  className="flex-1 p-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm text-zinc-900 dark:text-zinc-100"
+                                  placeholder={`Alternativa ${idx + 1}`}
+                                />
+                                {editQuizAlternatives.length > 2 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditQuizAlternatives(editQuizAlternatives.filter((_, i) => i !== idx))}
+                                    className="text-red-500 hover:text-red-600 p-1 transition-colors"
+                                  >
+                                    <Trash2 size={18} />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            {editQuizAlternatives.length < 5 && (
+                              <button
+                                type="button"
+                                onClick={() => setEditQuizAlternatives([...editQuizAlternatives, { text: '', is_correct: false }])}
+                                className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 text-sm font-bold flex items-center gap-1 mt-2 transition-colors"
+                              >
+                                <Plus size={16} /> Adicionar Alternativa
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {currentUser?.user_type_id === 1 && (                    <div className="space-y-4 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+
                       <div className="flex items-center justify-between">
                         <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                           Post Patrocinado
@@ -2138,28 +2465,32 @@ export const PostsPage: React.FC = () => {
                         )}
                       </div>
                     )}
-                  </div>
+                    </div>
+                  </>
+                )}
+              </div>
 
-                  <div className="pt-2 flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setEditPostModal(null)}
-                      className="flex-1 px-4 py-2 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors font-medium"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isUpdating || !editContent.trim() || editMediaType === 'none'}
-                      className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={editMediaType === 'none' ? 'Selecione uma imagem ou vídeo do YouTube' : ''}
-                    >
-                      {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <Edit size={18} />}
-                      Salvar Alterações
-                    </button>
+                  <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex-shrink-0">
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setEditPostModal(null)}
+                        className="flex-1 px-4 py-2 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors font-medium"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isUpdating || !editTitle.trim() || (editPostType === 'standard' && editMediaType === 'none')}
+                        className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={editPostType === 'standard' && editMediaType === 'none' ? 'Selecione uma imagem ou vídeo do YouTube' : ''}
+                      >
+                        {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <Edit size={18} />}
+                        Salvar Alterações
+                      </button>
+                    </div>
                   </div>
                 </form>
-                </div>
               </motion.div>
             </div>
           )}
@@ -2184,6 +2515,32 @@ export const PostsPage: React.FC = () => {
                 
                 <div className="overflow-y-auto flex-1 custom-scrollbar">
                   <form onSubmit={handleCreatePost} className="p-6 space-y-4">
+                    {/* Post Type Toggle */}
+                    <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl mb-6">
+                      <button
+                        type="button"
+                        onClick={() => setNewPostType('standard')}
+                        className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                          newPostType === 'standard'
+                            ? 'bg-white dark:bg-zinc-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                            : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                        }`}
+                      >
+                        Post Padrão
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewPostType('quiz')}
+                        className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                          newPostType === 'quiz'
+                            ? 'bg-white dark:bg-zinc-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                            : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                        }`}
+                      >
+                        Quiz
+                      </button>
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                         Título *
@@ -2210,14 +2567,14 @@ export const PostsPage: React.FC = () => {
                           onKeyDown={(e) => handleKeyDown(e, 'create')}
                           className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[150px] text-zinc-900 dark:text-zinc-100"
                         >                      </div>
-                        
+
                         {/* Floating Mentions Dropdown */}
                         {showMentionDropdown && mentionTargetField === 'create' && (
-                          <div 
+                          <div
                             className="absolute z-[100] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg max-h-48 overflow-y-auto w-64"
-                            style={{ 
-                              top: dropdownPos.top + 5, 
-                              left: Math.min(dropdownPos.left, 240) 
+                            style={{
+                              top: dropdownPos.top + 5,
+                              left: Math.min(dropdownPos.left, 240)
                             }}
                           >
                           {mentionLoading ? (
@@ -2233,8 +2590,8 @@ export const PostsPage: React.FC = () => {
                                   type="button"
                                   onClick={() => handleSelectMention(u)}
                                   className={`w-full flex items-center gap-2 p-2 transition-colors text-left ${
-                                    array.length === 1 
-                                      ? 'bg-zinc-100 dark:bg-zinc-700' 
+                                    array.length === 1
+                                      ? 'bg-zinc-100 dark:bg-zinc-700'
                                       : 'hover:bg-zinc-50 dark:hover:bg-zinc-700'
                                   }`}
                                 >
@@ -2257,12 +2614,106 @@ export const PostsPage: React.FC = () => {
                               <span>Nenhum usuário localizado</span>
                             </div>
                           )}                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                    {currentUser?.user_type_id === 1 && (
-                      <div className="space-y-4 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                    {newPostType === 'quiz' ? (
+                      <div className="space-y-4 p-4 bg-primary-50/30 dark:bg-primary-900/10 rounded-xl border border-primary-100 dark:border-primary-900/30">
+                        <div>
+                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                            Pergunta do Quiz *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={newQuizQuestion}
+                            onChange={(e) => setNewQuizQuestion(e.target.value)}
+                            className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+                            placeholder="Qual a pergunta?"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                              Coins Participação
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={newQuizCoinsParticipation}
+                              onChange={(e) => setNewQuizCoinsParticipation(e.target.value)}
+                              className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                              Coins Acerto
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={newQuizCoinsCorrect}
+                              onChange={(e) => setNewQuizCoinsCorrect(e.target.value)}
+                              className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                            Alternativas (Selecione a correta)
+                          </label>
+                          {newQuizAlternatives.map((alt, idx) => (
+                            <div key={idx} className="flex items-center gap-3">
+                              <input
+                                type="radio"
+                                name="newQuizCorrect"
+                                checked={alt.is_correct}
+                                onChange={() => {
+                                  const newAlts = newQuizAlternatives.map((a, i) => ({ ...a, is_correct: i === idx }));
+                                  setNewQuizAlternatives(newAlts);
+                                }}
+                                className="w-4 h-4 text-primary-600 border-zinc-300 focus:ring-primary-500 bg-white dark:bg-zinc-900"
+                              />
+                              <input
+                                type="text"
+                                value={alt.text}
+                                onChange={(e) => {
+                                  const newAlts = [...newQuizAlternatives];
+                                  newAlts[idx].text = e.target.value;
+                                  setNewQuizAlternatives(newAlts);
+                                }}
+                                className="flex-1 p-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm text-zinc-900 dark:text-zinc-100"
+                                placeholder={`Alternativa ${idx + 1}`}
+                              />
+                              {newQuizAlternatives.length > 2 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setNewQuizAlternatives(newQuizAlternatives.filter((_, i) => i !== idx))}
+                                  className="text-red-500 hover:text-red-600 p-1 transition-colors"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          {newQuizAlternatives.length < 5 && (
+                            <button
+                              type="button"
+                              onClick={() => setNewQuizAlternatives([...newQuizAlternatives, { text: '', is_correct: false }])}
+                              className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 text-sm font-bold flex items-center gap-1 mt-2 transition-colors"
+                            >
+                              <Plus size={16} /> Adicionar Alternativa
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {currentUser?.user_type_id === 1 && (
+                          <div className="space-y-4 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
                         <div className="flex items-center justify-between">
                           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                             Post Patrocinado
@@ -2547,6 +2998,8 @@ export const PostsPage: React.FC = () => {
                         </div>
                       )}
                     </div>
+                    </>
+                    )}
                   </form>
                 </div>
 
@@ -2564,9 +3017,9 @@ export const PostsPage: React.FC = () => {
                         const form = document.querySelector('form');
                         if (form) form.requestSubmit();
                       }}
-                      disabled={isCreating || !newPostContent.trim() || (mediaType === 'none')}
+                      disabled={isCreating || !newPostTitle.trim() || (newPostType === 'standard' && mediaType === 'none')}
                       className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={mediaType === 'none' ? 'Selecione uma imagem ou vídeo do YouTube' : ''}
+                      title={newPostType === 'standard' && mediaType === 'none' ? 'Selecione uma imagem ou vídeo do YouTube' : ''}
                     >
                       {isCreating ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
                       Publicar Post
