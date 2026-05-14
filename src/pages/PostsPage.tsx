@@ -312,7 +312,7 @@ export const PostsPage: React.FC = () => {
         
         newQuizAlternatives.forEach((alt, index) => {
           formData.append(`quiz_alternatives[${index}][text]`, alt.text);
-          formData.append(`quiz_alternatives[${index}][is_correct]`, alt.is_correct ? 'true' : 'false');
+          formData.append(`quiz_alternatives[${index}][is_correct]`, alt.is_correct ? '1' : '0');
         });
       } else {
         if (newPostImages && newPostImages.length > 0) {
@@ -576,7 +576,7 @@ export const PostsPage: React.FC = () => {
         editQuizAlternatives.forEach((alt, index) => {
           if (alt.id) formData.append(`quiz_alternatives[${index}][id]`, alt.id.toString());
           formData.append(`quiz_alternatives[${index}][text]`, alt.text);
-          formData.append(`quiz_alternatives[${index}][is_correct]`, alt.is_correct ? 'true' : 'false');
+          formData.append(`quiz_alternatives[${index}][is_correct]`, alt.is_correct ? '1' : '0');
         });
         
         // Limpar mídia se for quiz
