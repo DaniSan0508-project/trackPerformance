@@ -123,6 +123,20 @@ export interface QuizAlternative {
   id?: number;
   text: string;
   is_correct: boolean;
+  order?: number;
+}
+
+export interface QuizAnswer {
+  id: number;
+  user_id: number;
+  alternative_id: number;
+  is_correct: boolean;
+  created_at: string;
+  user: {
+    id: number;
+    name: string;
+    profile_image_url: string | null;
+  };
 }
 
 export interface PostImage {
@@ -146,6 +160,8 @@ export interface Post {
   quiz_coins_participation?: number | null;
   quiz_coins_correct?: number | null;
   quiz_alternatives?: QuizAlternative[];
+  quiz_answers?: QuizAnswer[];
+  quiz_answers_count?: number;
   image_url: string | null;
   video_url: string | null;
   earns_coins: boolean;
@@ -524,10 +540,29 @@ export interface HashtagRewardApproval {
   user: {
     id: number;
     name: string;
+    profile_image_url?: string | null;
   };
   hashtag: string;
   campaign_name: string;
   approved_by: string | null;
+}
+
+export interface RewardApproval {
+  id: number;
+  user_id: number;
+  approval_type: 'hashtag' | 'post_share';
+  coins: number;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  updated_at: string;
+  hashtag?: string;
+  campaign_name?: string;
+  post_title?: string; // Título do post para post_share
+  user: {
+    id: number;
+    name: string;
+    profile_image_url: string | null;
+  };
 }
 
 export interface CampaignSalesImportError {

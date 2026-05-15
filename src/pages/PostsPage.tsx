@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar, Rocket, Shield, Coins, AlertCircle } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar, Rocket, Shield, Coins, AlertCircle, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Post, Like, Comment, User as UserType } from '../types';
@@ -71,7 +71,12 @@ export const PostsPage: React.FC = () => {
   const [contentModalPost, setContentModalPost] = useState<Post | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [videoModalPost, setVideoModalPost] = useState<Post | null>(null);
-  
+  const [quizAnswersModal, setQuizAnswersModal] = useState<{
+    alternative: QuizAlternative;
+    answers: QuizAnswer[];
+  } | null>(null);
+  const [quizAnswersSearch, setQuizAnswersSearch] = useState('');
+
   // Create Post state
   const [createPostModal, setCreatePostModal] = useState(false);
   const [newPostTitle, setNewPostTitle] = useState('');
@@ -1443,18 +1448,61 @@ export const PostsPage: React.FC = () => {
                         {post.quiz_question}
                       </p>
 
-                      <div className="space-y-2">
-                        {post.quiz_alternatives?.map((alt, idx) => (
-                          <div 
-                            key={alt.id || idx}
-                            className="w-full p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-3 transition-all"
-                          >
-                            <div className="w-6 h-6 rounded-full border-2 border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-[10px] font-bold text-zinc-400">
-                              {String.fromCharCode(65 + idx)}
-                            </div>
-                            {alt.text}
-                          </div>
-                        ))}
+                      <div className="space-y-3">
+                        {post.quiz_alternatives?.map((alt, idx) => {
+                          const answers = post.quiz_answers?.filter(a => a.alternative_id === alt.id) || [];
+                          return (
+                            <button 
+                              key={alt.id || idx}
+                              onClick={() => setQuizAnswersModal({ alternative: alt, answers })}
+                              className={`w-full p-3 rounded-xl border flex items-center gap-3 transition-all group/alt ${
+                                alt.is_correct 
+                                  ? 'border-emerald-200 dark:border-emerald-900/30 bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/20' 
+                                  : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-750'
+                              } text-sm font-medium relative overflow-hidden`}
+                            >
+                              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+                                alt.is_correct 
+                                  ? 'border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400' 
+                                  : 'border-zinc-200 dark:border-zinc-700 text-zinc-400'
+                              }`}>
+                                {String.fromCharCode(65 + idx)}
+                              </div>
+                              <span className="flex-1 text-left truncate">{alt.text}</span>
+                              
+                              <div className="flex items-center gap-2">
+                                {answers.length > 0 && (
+                                  <div className="flex -space-x-1.5 overflow-hidden group-hover/alt:mr-1 transition-all">
+                                    {answers.slice(0, 3).map((ans, i) => (
+                                      <div key={ans.id} className="w-5 h-5 rounded-full border-2 border-white dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-700 overflow-hidden">
+                                        {ans.user.profile_image_url ? (
+                                          <img src={getFullImageUrl(ans.user.profile_image_url) || ''} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                          <User size={10} className="w-full h-full p-1" />
+                                        )}
+                                      </div>
+                                    ))}
+                                    {answers.length > 3 && (
+                                      <div className="w-5 h-5 rounded-full border-2 border-white dark:border-zinc-800 bg-primary-600 flex items-center justify-center text-[8px] text-white font-bold">
+                                        +{answers.length - 3}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                                  alt.is_correct ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300' : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400'
+                                }`}>
+                                  {answers.length}
+                                </span>
+
+                                {alt.is_correct && (
+                                  <Shield size={14} className="text-emerald-500" />
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
 
                       {(Number(post.quiz_coins_participation) > 0 || Number(post.quiz_coins_correct) > 0) && (
@@ -1765,6 +1813,87 @@ export const PostsPage: React.FC = () => {
             </div>
           )}
         </AnimatePresence>
+
+        {/* Quiz Answers Modal */}
+        <AnimatePresence>
+          {quizAnswersModal && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[70vh]"
+              >
+                <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
+                  <div className="min-w-0 pr-4">
+                    <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Respostas</h2>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">Opção: <span className="font-bold text-primary-600">"{quizAnswersModal.alternative.text}"</span></p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setQuizAnswersModal(null);
+                      setQuizAnswersSearch('');
+                    }} 
+                    className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors flex-shrink-0"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="p-4 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={16} />
+                    <input 
+                      type="text" 
+                      placeholder="Filtrar por nome..." 
+                      className="w-full pl-10 pr-4 py-2 bg-zinc-100 dark:bg-zinc-800 border-none rounded-xl focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100 text-sm"
+                      value={quizAnswersSearch}
+                      onChange={(e) => setQuizAnswersSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="p-4 overflow-y-auto flex-1 custom-scrollbar">
+                  {(() => {
+                    const filteredAnswers = quizAnswersModal.answers.filter(a => 
+                      a.user.name.toLowerCase().includes(quizAnswersSearch.toLowerCase())
+                    );
+
+                    if (filteredAnswers.length > 0) {
+                      return (
+                        <div className="space-y-2">
+                          {filteredAnswers.map((answer) => (
+                            <div key={answer.id} className="flex items-center gap-3 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-xl transition-colors">
+                              <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex-shrink-0">
+                                {answer.user.profile_image_url ? (
+                                  <img src={getFullImageUrl(answer.user.profile_image_url) || ''} alt={answer.user.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-zinc-400">
+                                    <User size={20} />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">{answer.user.name}</p>
+                                <p className="text-[10px] text-zinc-500 dark:text-zinc-400">{formatDateTime(answer.created_at)}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="text-center py-12 text-zinc-500 dark:text-zinc-400">
+                        {quizAnswersSearch ? 'Nenhum usuário encontrado com este nome.' : 'Ninguém escolheu esta opção ainda.'}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
         {/* Content Modal */}
         <AnimatePresence>
           {contentModalPost && (
@@ -1809,18 +1938,63 @@ export const PostsPage: React.FC = () => {
                         {contentModalPost.quiz_question}
                       </div>
 
-                      <div className="space-y-3">
-                        {contentModalPost.quiz_alternatives?.map((alt, idx) => (
-                          <div 
-                            key={alt.id || idx}
-                            className="w-full p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm font-semibold text-zinc-700 dark:text-zinc-200 flex items-center gap-4 transition-all"
-                          >
-                            <div className="w-8 h-8 rounded-full border-2 border-zinc-100 dark:border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50">
-                              {String.fromCharCode(65 + idx)}
-                            </div>
-                            {alt.text}
-                          </div>
-                        ))}
+                      <div className="space-y-4">
+                        {contentModalPost.quiz_alternatives?.map((alt, idx) => {
+                          const answers = contentModalPost.quiz_answers?.filter(a => a.alternative_id === alt.id) || [];
+                          return (
+                            <button 
+                              key={alt.id || idx}
+                              onClick={() => setQuizAnswersModal({ alternative: alt, answers })}
+                              className={`w-full p-4 rounded-xl border flex items-center gap-4 transition-all group/alt ${
+                                alt.is_correct 
+                                  ? 'border-emerald-200 dark:border-emerald-900/30 bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/20' 
+                                  : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-750'
+                              } text-sm font-semibold relative overflow-hidden`}
+                            >
+                              <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                                alt.is_correct 
+                                  ? 'border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-900/20' 
+                                  : 'border-zinc-100 dark:border-zinc-700 text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50'
+                              }`}>
+                                {String.fromCharCode(65 + idx)}
+                              </div>
+                              
+                              <span className="flex-1 text-left">{alt.text}</span>
+
+                              <div className="flex items-center gap-3">
+                                {answers.length > 0 && (
+                                  <div className="flex -space-x-2 overflow-hidden group-hover/alt:mr-2 transition-all">
+                                    {answers.slice(0, 4).map((ans, i) => (
+                                      <div key={ans.id} className="w-7 h-7 rounded-full border-2 border-white dark:border-zinc-900 bg-zinc-100 dark:bg-zinc-700 overflow-hidden shadow-sm">
+                                        {ans.user.profile_image_url ? (
+                                          <img src={getFullImageUrl(ans.user.profile_image_url) || ''} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                          <User size={12} className="w-full h-full p-1.5" />
+                                        )}
+                                      </div>
+                                    ))}
+                                    {answers.length > 4 && (
+                                      <div className="w-7 h-7 rounded-full border-2 border-white dark:border-zinc-900 bg-primary-600 flex items-center justify-center text-[10px] text-white font-bold shadow-sm">
+                                        +{answers.length - 4}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${
+                                  alt.is_correct ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300' : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400'
+                                }`}>
+                                  <span className="text-xs font-bold">{answers.length}</span>
+                                  <span className="text-[10px] uppercase tracking-wider font-black opacity-60">votos</span>
+                                </div>
+
+                                {alt.is_correct && (
+                                  <Shield size={20} className="text-emerald-500" />
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
 
                       {(Number(contentModalPost.quiz_coins_participation) > 0 || Number(contentModalPost.quiz_coins_correct) > 0) && (

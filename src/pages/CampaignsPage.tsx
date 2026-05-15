@@ -7,7 +7,7 @@ import { Campaign, User as UserType, Product, CampaignRanking, CampaignType, Cam
 import { authService, dashboardService, usersService, campaignsService, productsService, manufacturersService, rolesService, rewardsService, feedbacksService, postsService, redemptionsService, tenantConfigsService, surveysService, storesService, coinsService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { PendingHashtagApprovals } from '../components/Campaigns/PendingHashtagApprovals';
+import { PendingRewardApprovals } from '../components/Campaigns/PendingRewardApprovals';
 import { campaignSchema } from '../validators/schemas';
 import { getFullImageUrl } from '../utils';
 
@@ -2185,7 +2185,7 @@ export const CampaignsPage: React.FC = () => {
             )}
           </>
         ) : (
-          <PendingHashtagApprovals />
+          <PendingRewardApprovals />
         )}
 
         {/* Create/Edit Modal */}
