@@ -56,6 +56,7 @@ export interface User {
   store_id?: number | null;
   store?: Store | null;
   last_login_at?: string | null;
+  journey_level?: JourneyLevelBadge | null;
 }
 
 export interface Tenant {
@@ -136,10 +137,8 @@ export interface QuizAnswer {
     id: number;
     name: string;
     profile_image_url: string | null;
+    journey_level?: JourneyLevelBadge | null;
   };
-}
-
-export interface PostImage {
   id: number | null;
   post_id: number;
   image_path?: string;
@@ -431,6 +430,7 @@ export interface SurveyResultTextOption {
     profile_image_path?: string | null;
     profile_image_url?: string | null;
     answered_at?: string;
+    journey_level?: JourneyLevelBadge | null;
   };
 }
 
@@ -444,6 +444,7 @@ export interface SurveyResultChoiceOption {
     profile_image_path?: string | null;
     profile_image_url?: string | null;
     answered_at?: string;
+    journey_level?: JourneyLevelBadge | null;
   }>;
 }
 
@@ -541,6 +542,7 @@ export interface HashtagRewardApproval {
     id: number;
     name: string;
     profile_image_url?: string | null;
+    journey_level?: JourneyLevelBadge | null;
   };
   hashtag: string;
   campaign_name: string;
@@ -562,6 +564,7 @@ export interface RewardApproval {
     id: number;
     name: string;
     profile_image_url: string | null;
+    journey_level?: JourneyLevelBadge | null;
   };
 }
 
@@ -583,4 +586,102 @@ export interface CampaignSalesImport {
     name: string;
   };
   created_at: string;
+}
+
+export interface JourneyLevelBadge {
+  journey_id: number;
+  journey_name: string;
+  level_name: string;
+  level_icon: string;
+  level_color: string | null;
+  level_position: number;
+  xp: number;
+}
+
+// ─── Journey (Jornadas) ───────────────────────────────────────────────────────
+
+export type JourneyStatus = 'draft' | 'active' | 'ended';
+
+export interface JourneyLevel {
+  id: number;
+  position: number;
+  name: string;
+  icon: string;
+  color?: string | null;
+  xp_threshold: number;
+}
+
+export interface Journey {
+  id: number;
+  name: string;
+  description: string | null;
+  status: JourneyStatus;
+  start_date: string;
+  end_date: string;
+  coins_factor: number;
+  audience_ids: number[] | null;
+  prize_reward_id: number | null;
+  published_at: string | null;
+  created_by: { id: number; name: string } | null;
+  campaigns: { id: number; name: string }[];
+  levels: JourneyLevel[];
+  stats?: {
+    participants_count: number;
+    average_xp: number;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JourneyLevelPayload {
+  position: number;
+  name: string;
+  icon: string;
+  color?: string | null;
+  xp_threshold: number;
+}
+
+export interface JourneyPayload {
+  name: string;
+  description?: string | null;
+  start_date: string;
+  end_date: string;
+  coins_factor: number;
+  audience_ids?: number[] | null;
+  prize_reward_id?: number | null;
+  campaign_ids?: number[];
+  levels: JourneyLevelPayload[];
+}
+
+export interface JourneyParticipantRank {
+  position: number;
+  user: { id: number; name: string };
+  xp: number;
+  level: JourneyLevel | null;
+  joined_at?: string;
+}
+
+export interface JourneyStats {
+  participants_count: number;
+  average_xp: number;
+  top_10: JourneyParticipantRank[];
+  level_distribution: {
+    level: JourneyLevel;
+    count: number;
+  }[];
+}
+
+export interface JourneyMe {
+  journey_id: number;
+  user_id: number;
+  xp: number;
+  rank_position: number;
+  joined_at: string;
+  level: JourneyLevel | null;
+  next_level: {
+    id: number;
+    name: string;
+    xp_threshold: number;
+    xp_remaining: number;
+  } | null;
 }

@@ -25,6 +25,7 @@ import {
   LucidePackage,
   Mail,
   User,
+  Map,
 } from 'lucide-react';
 import { UserProfileModal } from './UserProfileModal';
 import { NotificationsSidebar } from './NotificationsSidebar';
@@ -102,6 +103,12 @@ export const Layout: React.FC = () => {
             icon={<Flag size={20} />}
             label="Campanhas"
             active={location.pathname === '/campaigns'}
+          />
+          <NavItem
+            to="/journeys"
+            icon={<Map size={20} />}
+            label="Jornadas"
+            active={location.pathname === '/journeys'}
           />
           <NavItem
             to="/feedbacks"
@@ -287,6 +294,11 @@ export const Layout: React.FC = () => {
             to="/campaigns"
             icon={<Flag size={24} />}
             active={location.pathname === '/campaigns'}
+          />
+          <MobileNavItem
+            to="/journeys"
+            icon={<Map size={24} />}
+            active={location.pathname === '/journeys'}
           />
           <MobileNavItem
             to="/surveys"
