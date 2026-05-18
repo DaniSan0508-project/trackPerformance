@@ -27,6 +27,7 @@ import {
   User,
   ChevronLeft,
   ChevronRight,
+  Map,
 } from 'lucide-react';
 import { UserProfileModal } from './UserProfileModal';
 import { NotificationsSidebar } from './NotificationsSidebar';
@@ -68,23 +69,13 @@ export const Layout: React.FC = () => {
 
   const logoContent = (
     logoUrl ? (
-      <div className={`flex items-center justify-center transition-all duration-300 ${isCollapsed ? 'w-10 h-10' : 'w-auto'}`}>
-        <img 
-          src={logoUrl} 
-          alt="Logo" 
-          className={`object-contain transition-all duration-300 ${
-            isCollapsed 
-              ? 'h-8 w-8 rounded-lg' 
-              : 'h-10 w-auto max-w-[180px]'
-          }`} 
-        />
-      </div>
+      <img src={logoUrl} alt="Logo" className="h-10 w-auto object-contain max-w-[180px]" />
     ) : (
-      <div className="flex items-center gap-3 overflow-hidden">
-        <div className="bg-primary-600 p-2 rounded-lg flex-shrink-0">
+      <div className="flex items-center gap-3">
+        <div className="bg-primary-600 p-2 rounded-lg">
           <Trophy className="w-5 h-5 text-white" />
         </div>
-        {!isCollapsed && <span className="font-bold text-xl text-zinc-900 dark:text-white truncate">TrackPerf</span>}
+        <span className="font-bold text-xl text-zinc-900 dark:text-white">TrackPerf</span>
       </div>
     )
   );
@@ -92,27 +83,17 @@ export const Layout: React.FC = () => {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col md:flex-row transition-colors duration-200">
       {/* Sidebar - Desktop */}
-      <aside className={`hidden md:flex flex-col ${isCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 h-screen sticky top-0 transition-all duration-300 ease-in-out z-30`}>
-        <div className={`p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} min-h-[88px] relative`}>
-          <div className="flex items-center gap-3 overflow-hidden">
-            {logoContent}
-          </div>
-          <button 
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-all duration-300 ${isCollapsed ? 'absolute -right-3 top-1/2 -translate-y-1/2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm' : ''}`}
-            title={isCollapsed ? "Expandir" : "Recolher"}
-          >
-            {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          </button>
+      <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 h-screen sticky top-0 transition-colors duration-200">
+        <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-center md:justify-start min-h-[88px]">
+          {logoContent}
         </div>
         
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 p-4 space-y-1">
           <NavItem
             to="/dashboard"
             icon={<TrendingUp size={20} />}
             label="Indicadores"
             active={location.pathname === '/dashboard'}
-            isCollapsed={isCollapsed}
           />
           <NavItem
             to="/posts"
@@ -185,17 +166,6 @@ export const Layout: React.FC = () => {
             isCollapsed={isCollapsed}
           />
         </nav>
-
-        <div className="p-4 border-t border-zinc-100 dark:border-zinc-800">
-          <button 
-            onClick={handleLogout}
-            className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} w-full p-3 text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 rounded-xl transition-all`}
-            title={isCollapsed ? "Sair" : ""}
-          >
-            <LogOut size={20} />
-            {!isCollapsed && <span className="font-medium">Sair</span>}
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -323,6 +293,11 @@ export const Layout: React.FC = () => {
             active={location.pathname === '/campaigns'}
           />
           <MobileNavItem
+            to="/journeys"
+            icon={<Map size={24} />}
+            active={location.pathname === '/journeys'}
+          />
+          <MobileNavItem
             to="/surveys"
             icon={<FileText size={24} />}
             active={location.pathname === '/surveys'}
@@ -354,8 +329,8 @@ export const Layout: React.FC = () => {
 };
 
 const NavItem: React.FC<{ icon: React.ReactNode; label: string; active?: boolean; to: string; isCollapsed?: boolean }> = ({ icon, label, active, to, isCollapsed }) => (
-  <Link 
-    to={to} 
+  <Link
+    to={to}
     className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} p-3 rounded-xl transition-all ${
       active 
         ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 font-semibold' 

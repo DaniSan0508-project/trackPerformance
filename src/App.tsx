@@ -17,6 +17,7 @@ import { SurveysPage } from './pages/SurveysPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { CommunicationsPage } from './pages/CommunicationsPage';
 import { CommunicationsFeedPage } from './pages/CommunicationsFeedPage';
+import { JourneysPage } from './pages/JourneysPage';
 import { Layout } from './components/Layout';
 
 // Componente interno para sincronizar cor primária
@@ -55,6 +56,7 @@ export default function App() {
                   <Route path="/team" element={<TeamPage />} />
                   <Route path="/rewards" element={<RewardsPage />} />
                   <Route path="/campaigns" element={<CampaignsPage />} />
+                  <Route path="/journeys" element={<JourneysPage />} />
                   <Route path="/surveys" element={<SurveysPage />} />
                   <Route path="/products" element={<ProductsPage />} />
                   <Route path="/communications" element={<CommunicationsPage />} />
