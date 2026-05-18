@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar, Rocket, Shield, Coins, AlertCircle, CheckCircle } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar, Rocket, Shield, Coins, AlertCircle, CheckCircle, Megaphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Post, Like, Comment, User as UserType } from '../types';
@@ -281,6 +281,35 @@ export const PostsPage: React.FC = () => {
     setShareModalPost(null);
   };
 
+  const resetCreatePostState = () => {
+    setNewPostTitle('');
+    setNewPostContent('');
+    setNewPostImages([]);
+    setNewPostVideoUrl('');
+    setMediaType('none');
+    setNewPostIsSponsored(false);
+    setNewPostEarnsCoins(false);
+    setNewPostBoostLikeCoins('10');
+    setNewPostBoostCommentCoins('5');
+    setNewPostBoostShareCoins('8');
+    setNewPostType('standard');
+    setNewQuizQuestion('');
+    setNewQuizCoinsParticipation('0');
+    setNewQuizCoinsCorrect('0');
+    setNewQuizAlternatives([
+      { text: '', is_correct: true },
+      { text: '', is_correct: false }
+    ]);
+    
+    // Limpar o editor contentEditable
+    const editor = document.querySelector('[data-field="create"]') as HTMLDivElement;
+    if (editor) {
+      editor.innerText = '';
+    }
+    
+    setCreatePostModal(false);
+  };
+
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
@@ -291,6 +320,12 @@ export const PostsPage: React.FC = () => {
         addToast('error', 'A pergunta do quiz é obrigatória.');
         return;
       }
+      
+      if (newQuizAlternatives.some(alt => !alt.text.trim())) {
+        addToast('error', 'Todas as alternativas do quiz precisam ser preenchidas.');
+        return;
+      }
+
       const filledAlts = newQuizAlternatives.filter(a => a.text.trim());
       if (filledAlts.length < 2) {
         addToast('error', 'O quiz deve ter pelo menos 2 alternativas.');
@@ -541,6 +576,31 @@ export const PostsPage: React.FC = () => {
     setConfirmCommentModal({ isOpen: true, commentId, postId });
   };
 
+  const resetEditPostState = () => {
+    setEditPostModal(null);
+    setEditTitle('');
+    setEditContent('');
+    setEditMediaType('none');
+    setEditImages([]);
+    setEditVideoUrl('');
+    setEditIsSponsored(false);
+    setEditEarnsCoins(false);
+    setEditBoostLikeCoins('10');
+    setEditBoostCommentCoins('5');
+    setEditBoostShareCoins('8');
+    setEditPostType('standard');
+    setEditQuizQuestion('');
+    setEditQuizCoinsParticipation('0');
+    setEditQuizCoinsCorrect('0');
+    setEditQuizAlternatives([]);
+    
+    // Limpar o editor contentEditable
+    const editor = document.querySelector('[data-field="edit"]') as HTMLDivElement;
+    if (editor) {
+      editor.innerText = '';
+    }
+  };
+
   const handleUpdatePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !editPostModal) return;
@@ -551,6 +611,12 @@ export const PostsPage: React.FC = () => {
         addToast('error', 'A pergunta do quiz é obrigatória.');
         return;
       }
+
+      if (editQuizAlternatives.some(alt => !alt.text.trim())) {
+        addToast('error', 'Todas as alternativas do quiz precisam ser preenchidas.');
+        return;
+      }
+
       const filledAlts = editQuizAlternatives.filter(a => a.text.trim());
       if (filledAlts.length < 2) {
         addToast('error', 'O quiz deve ter pelo menos 2 alternativas.');
@@ -1373,8 +1439,6 @@ export const PostsPage: React.FC = () => {
                         </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
                           {formatRelativeDate(post.created_at)}
-                          {post.is_sponsored && <span className="ml-1 sm:ml-2 text-primary-600 font-medium whitespace-nowrap">• Patrocinado</span>}
-                          {post.is_boosted && <span className="ml-1 sm:ml-2 text-primary-600 font-medium whitespace-nowrap">• Turbinado</span>}
                         </p>
                       </div>
                     </div>
@@ -1431,6 +1495,49 @@ export const PostsPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Standard Post Indicator */}
+                  {post.post_type !== 'quiz' && (
+                    <div className={`px-6 py-3 border-y transition-colors ${
+                      post.is_boosted 
+                        ? 'bg-primary-50/50 dark:bg-primary-900/10 border-primary-100/50 dark:border-primary-900/20' 
+                        : post.is_sponsored
+                          ? 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-100/50 dark:border-amber-900/20'
+                          : 'bg-zinc-50/50 dark:bg-zinc-800/30 border-zinc-100 dark:border-zinc-800/50'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm border transition-all ${
+                            post.is_boosted
+                              ? 'bg-primary-600 text-white border-primary-700'
+                              : post.is_sponsored
+                                ? 'bg-amber-500 text-white border-amber-600'
+                                : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
+                          }`}>
+                            {post.is_boosted ? <Rocket size={16} /> : post.is_sponsored ? <Coins size={16} /> : <Megaphone size={16} />}
+                          </div>
+                          <div>
+                            <h4 className={`text-[11px] font-bold leading-tight ${
+                              post.is_boosted ? 'text-primary-700 dark:text-primary-400' : post.is_sponsored ? 'text-amber-700 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-100'
+                            }`}>
+                              {post.is_boosted ? 'Post Turbinado' : post.is_sponsored ? 'Post Patrocinado' : 'Conteúdo'}
+                            </h4>
+                            <p className="text-[9px] text-zinc-500 dark:text-zinc-400 uppercase font-bold tracking-widest">
+                              {post.is_boosted ? 'Ganha moedas por interação' : post.is_sponsored ? 'Destaque prioritário' : 'Postagem Padrão'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* If it's both, show Sponsored as a small tag since Boosted is the main visual */}
+                        {post.is_boosted && post.is_sponsored && (
+                          <div className="flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-md border border-amber-200/50 dark:border-amber-800/50">
+                            <Coins size={10} className="text-amber-600 dark:text-amber-400" />
+                            <span className="text-[9px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-tighter">Patrocinado</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Quiz Content */}
                   {post.post_type === 'quiz' && (
                     <div className="p-6 bg-primary-50/30 dark:bg-primary-900/10 border-y border-primary-100/50 dark:border-primary-900/20">
@@ -1455,7 +1562,7 @@ export const PostsPage: React.FC = () => {
                             <button 
                               key={alt.id || idx}
                               onClick={() => setQuizAnswersModal({ alternative: alt, answers })}
-                              className={`w-full p-3 rounded-xl border flex items-center gap-3 transition-all group/alt ${
+                              className={`w-full p-3 rounded-xl border flex items-center gap-3 transition-all group/alt cursor-pointer ${
                                 alt.is_correct 
                                   ? 'border-emerald-200 dark:border-emerald-900/30 bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/20' 
                                   : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-750'
@@ -1497,7 +1604,7 @@ export const PostsPage: React.FC = () => {
                                 </span>
 
                                 {alt.is_correct && (
-                                  <Shield size={14} className="text-emerald-500" />
+                                  <CheckCircle size={14} className="text-emerald-500" />
                                 )}
                               </div>
                             </button>
@@ -1573,8 +1680,12 @@ export const PostsPage: React.FC = () => {
                     {/* Content Wrapper */}
                     <button 
                       type="button"
-                      onClick={() => setContentModalPost(post)}
-                      className="flex-1 w-full group mb-3 pt-4 flex flex-col items-start text-left cursor-pointer"
+                      onClick={() => {
+                        if (post.post_type !== 'quiz') {
+                          setContentModalPost(post);
+                        }
+                      }}
+                      className={`flex-1 w-full group mb-3 pt-4 flex flex-col items-start text-left ${post.post_type !== 'quiz' ? 'cursor-pointer' : 'cursor-default'}`}
                     >
                       {post.title && (
                         <h4 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-2 group-hover:text-primary-700 dark:group-hover:text-primary-500 transition-colors text-left w-full">
@@ -1945,7 +2056,7 @@ export const PostsPage: React.FC = () => {
                             <button 
                               key={alt.id || idx}
                               onClick={() => setQuizAnswersModal({ alternative: alt, answers })}
-                              className={`w-full p-4 rounded-xl border flex items-center gap-4 transition-all group/alt ${
+                              className={`w-full p-4 rounded-xl border flex items-center gap-4 transition-all group/alt cursor-pointer ${
                                 alt.is_correct 
                                   ? 'border-emerald-200 dark:border-emerald-900/30 bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/20' 
                                   : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-750'
@@ -1989,7 +2100,7 @@ export const PostsPage: React.FC = () => {
                                 </div>
 
                                 {alt.is_correct && (
-                                  <Shield size={20} className="text-emerald-500" />
+                                  <CheckCircle size={20} className="text-emerald-500" />
                                 )}
                               </div>
                             </button>
@@ -2147,38 +2258,14 @@ export const PostsPage: React.FC = () => {
               >
                 <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50 flex-shrink-0">
                   <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Editar Postagem</h2>
-                  <button onClick={() => setEditPostModal(null)} className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
+                  <button onClick={resetEditPostState} className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
                     <X size={24} />
                   </button>
                 </div>
 
                 <form onSubmit={handleUpdatePost} className="flex flex-col flex-1 overflow-hidden">
                   <div className="overflow-y-auto flex-1 custom-scrollbar p-6 space-y-4">
-                  {/* Post Type Toggle */}
-                  <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl mb-6">
-                    <button
-                      type="button"
-                      onClick={() => setEditPostType('standard')}
-                      className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-                        editPostType === 'standard'
-                          ? 'bg-white dark:bg-zinc-700 text-primary-600 dark:text-primary-400 shadow-sm'
-                          : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-                      }`}
-                    >
-                      Post Padrão
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditPostType('quiz')}
-                      className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-                        editPostType === 'quiz'
-                          ? 'bg-white dark:bg-zinc-700 text-primary-600 dark:text-primary-400 shadow-sm'
-                          : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-                      }`}
-                    >
-                      Quiz
-                    </button>
-                  </div>
+                  {/* Post Type Toggle - Removido conforme solicitado para manter a interface limpa */}
 
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
@@ -2648,16 +2735,27 @@ export const PostsPage: React.FC = () => {
                     <div className="flex gap-3">
                       <button
                         type="button"
-                        onClick={() => setEditPostModal(null)}
+                        onClick={resetEditPostState}
                         className="flex-1 px-4 py-2 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors font-medium"
                       >
                         Cancelar
                       </button>
                       <button
                         type="submit"
-                        disabled={isUpdating || !editTitle.trim() || (editPostType === 'standard' && editMediaType === 'none')}
+                        disabled={
+                          isUpdating || 
+                          !editTitle.trim() || 
+                          (editPostType === 'standard' && editMediaType === 'none') ||
+                          (editPostType === 'quiz' && (!editQuizQuestion.trim() || editQuizAlternatives.some(alt => !alt.text.trim())))
+                        }
                         className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        title={editPostType === 'standard' && editMediaType === 'none' ? 'Selecione uma imagem ou vídeo do YouTube' : ''}
+                        title={
+                          editPostType === 'standard' && editMediaType === 'none' 
+                            ? 'Selecione uma imagem ou vídeo do YouTube' 
+                            : editPostType === 'quiz' && editQuizAlternatives.some(alt => !alt.text.trim())
+                            ? 'Preencha todas as alternativas do quiz'
+                            : ''
+                        }
                       >
                         {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <Edit size={18} />}
                         Salvar Alterações
@@ -2682,7 +2780,7 @@ export const PostsPage: React.FC = () => {
               >
                 <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50 flex-shrink-0">
                   <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Criar Novo Post</h2>
-                  <button onClick={() => setCreatePostModal(false)} className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
+                  <button onClick={resetCreatePostState} className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
                     <X size={24} />
                   </button>
                 </div>
@@ -3181,7 +3279,7 @@ export const PostsPage: React.FC = () => {
                   <div className="flex gap-3">
                     <button
                       type="button"
-                      onClick={() => setCreatePostModal(false)}
+                      onClick={resetCreatePostState}
                       className="flex-1 px-4 py-2 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors font-medium"
                     >
                       Cancelar
@@ -3191,9 +3289,20 @@ export const PostsPage: React.FC = () => {
                         const form = document.querySelector('form');
                         if (form) form.requestSubmit();
                       }}
-                      disabled={isCreating || !newPostTitle.trim() || (newPostType === 'standard' && mediaType === 'none')}
+                      disabled={
+                        isCreating || 
+                        !newPostTitle.trim() || 
+                        (newPostType === 'standard' && mediaType === 'none') ||
+                        (newPostType === 'quiz' && (!newQuizQuestion.trim() || newQuizAlternatives.some(alt => !alt.text.trim())))
+                      }
                       className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={newPostType === 'standard' && mediaType === 'none' ? 'Selecione uma imagem ou vídeo do YouTube' : ''}
+                      title={
+                        newPostType === 'standard' && mediaType === 'none' 
+                          ? 'Selecione uma imagem ou vídeo do YouTube' 
+                          : newPostType === 'quiz' && newQuizAlternatives.some(alt => !alt.text.trim())
+                          ? 'Preencha todas as alternativas do quiz'
+                          : ''
+                      }
                     >
                       {isCreating ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
                       Publicar Post
