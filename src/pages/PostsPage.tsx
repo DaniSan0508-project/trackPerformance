@@ -1564,9 +1564,8 @@ export const PostsPage: React.FC = () => {
                               onClick={() => setQuizAnswersModal({ alternative: alt, answers })}
                               className={`w-full p-3 rounded-xl border flex items-center gap-3 transition-all group/alt cursor-pointer ${
                                 alt.is_correct 
-                                  ? 'border-emerald-200 dark:border-emerald-900/30 bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/20' 
-                                  : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-750'
-                              } text-sm font-medium relative overflow-hidden`}
+                                  ? 'border-emerald-200 dark:border-emerald-900/30 bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-100/30 dark:hover:bg-emerald-900/20'
+                                  : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100/50 dark:hover:bg-zinc-700/40'                              } text-sm font-medium relative overflow-hidden`}
                             >
                               <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
                                 alt.is_correct 
@@ -2058,9 +2057,8 @@ export const PostsPage: React.FC = () => {
                               onClick={() => setQuizAnswersModal({ alternative: alt, answers })}
                               className={`w-full p-4 rounded-xl border flex items-center gap-4 transition-all group/alt cursor-pointer ${
                                 alt.is_correct 
-                                  ? 'border-emerald-200 dark:border-emerald-900/30 bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/20' 
-                                  : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-750'
-                              } text-sm font-semibold relative overflow-hidden`}
+                                  ? 'border-emerald-200 dark:border-emerald-900/30 bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-100/30 dark:hover:bg-emerald-900/20'
+                                  : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100/50 dark:hover:bg-zinc-700/40'                              } text-sm font-semibold relative overflow-hidden`}
                             >
                               <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                                 alt.is_correct 
