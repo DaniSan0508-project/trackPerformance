@@ -9,6 +9,7 @@ export const postsService = {
     earnsCoins?: boolean;
     isSponsored?: boolean;
     isBoosted?: boolean;
+    postType?: string;
     sort?: string;
   } = {}) => {
     const queryParams = new URLSearchParams();
@@ -21,6 +22,7 @@ export const postsService = {
     if (filters.earnsCoins !== undefined) queryParams.append('filter[earns_coins]', filters.earnsCoins.toString());
     if (filters.isSponsored !== undefined) queryParams.append('filter[is_sponsored]', filters.isSponsored.toString());
     if (filters.isBoosted !== undefined) queryParams.append('filter[is_boosted]', filters.isBoosted.toString());
+    if (filters.postType) queryParams.append('filter[post_type]', filters.postType);
     if (filters.sort) queryParams.append('sort', filters.sort);
 
     const response = await fetch(`${API_BASE_URL}/posts?${queryParams.toString()}`, {

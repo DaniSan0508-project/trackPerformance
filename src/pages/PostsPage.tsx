@@ -52,6 +52,7 @@ export const PostsPage: React.FC = () => {
   const [filterEarnsCoins, setFilterEarnsCoins] = useState<boolean | 'all'>('all');
   const [filterIsSponsored, setFilterIsSponsored] = useState<boolean | 'all'>('all');
   const [filterIsBoosted, setFilterIsBoosted] = useState<boolean | 'all'>('all');
+  const [filterPostType, setFilterPostType] = useState<'all' | 'standard' | 'quiz'>('all');
   const [sortOrder, setSortOrder] = useState('-created_at');
 
   const debouncedUserName = useDebounce(filterUserName, 500);
@@ -195,6 +196,7 @@ export const PostsPage: React.FC = () => {
     earnsCoins?: boolean;
     isSponsored?: boolean;
     isBoosted?: boolean;
+    postType?: string;
     sort?: string;
   } = {}) => {
     if (!token) return;
@@ -420,6 +422,7 @@ export const PostsPage: React.FC = () => {
         earnsCoins: filterEarnsCoins === 'all' ? undefined : filterEarnsCoins,
         isSponsored: filterIsSponsored === 'all' ? undefined : filterIsSponsored,
         isBoosted: filterIsBoosted === 'all' ? undefined : filterIsBoosted,
+        postType: filterPostType === 'all' ? undefined : filterPostType,
         sort: sortOrder
       });
       addToast('success', 'Post criado com sucesso!');
@@ -710,6 +713,7 @@ export const PostsPage: React.FC = () => {
         earnsCoins: filterEarnsCoins === 'all' ? undefined : filterEarnsCoins,
         isSponsored: filterIsSponsored === 'all' ? undefined : filterIsSponsored,
         isBoosted: filterIsBoosted === 'all' ? undefined : filterIsBoosted,
+        postType: filterPostType === 'all' ? undefined : filterPostType,
         sort: sortOrder
       });
 
@@ -1172,13 +1176,14 @@ export const PostsPage: React.FC = () => {
       earnsCoins: filterEarnsCoins === 'all' ? undefined : filterEarnsCoins,
       isSponsored: filterIsSponsored === 'all' ? undefined : filterIsSponsored,
       isBoosted: filterIsBoosted === 'all' ? undefined : filterIsBoosted,
+      postType: filterPostType === 'all' ? undefined : filterPostType,
       sort: sortOrder
     });
-  }, [fetchPosts, currentPage, debouncedUserName, debouncedContent, filterStartDate, filterEndDate, filterEarnsCoins, filterIsSponsored, filterIsBoosted, sortOrder]);
+  }, [fetchPosts, currentPage, debouncedUserName, debouncedContent, filterStartDate, filterEndDate, filterEarnsCoins, filterIsSponsored, filterIsBoosted, filterPostType, sortOrder]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedUserName, debouncedContent, filterStartDate, filterEndDate, filterEarnsCoins, filterIsSponsored, filterIsBoosted, sortOrder]);
+  }, [debouncedUserName, debouncedContent, filterStartDate, filterEndDate, filterEarnsCoins, filterIsSponsored, filterIsBoosted, filterPostType, sortOrder]);
 
   return (
     <>
@@ -1353,7 +1358,30 @@ export const PostsPage: React.FC = () => {
               </div>
             </div>
 
-            {(filterUserName || filterContent || filterStartDate || filterEndDate || filterEarnsCoins !== 'all' || filterIsSponsored !== 'all' || filterIsBoosted !== 'all') && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Tipo:</span>
+              <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-lg w-fit">
+                {[
+                  { label: 'Todos', value: 'all' },
+                  { label: 'Padrão', value: 'standard' },
+                  { label: 'Quiz', value: 'quiz' }
+                ].map((opt) => (
+                  <button
+                    key={opt.label}
+                    onClick={() => setFilterPostType(opt.value as any)}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                      filterPostType === opt.value
+                        ? 'bg-white dark:bg-zinc-800 text-primary-600 dark:text-primary-400 shadow-sm'
+                        : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {(filterUserName || filterContent || filterStartDate || filterEndDate || filterEarnsCoins !== 'all' || filterIsSponsored !== 'all' || filterIsBoosted !== 'all' || filterPostType !== 'all') && (
               <button
                 onClick={() => {
                   setFilterUserName('');
@@ -1363,6 +1391,7 @@ export const PostsPage: React.FC = () => {
                   setFilterEarnsCoins('all');
                   setFilterIsSponsored('all');
                   setFilterIsBoosted('all');
+                  setFilterPostType('all');
                   setSortOrder('-created_at');
                 }}
                 className="ml-auto text-xs text-red-500 hover:text-red-600 font-bold uppercase tracking-wider flex items-center gap-1.5 px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-all"
