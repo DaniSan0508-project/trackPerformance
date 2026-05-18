@@ -37,8 +37,8 @@ const translateConfigKey = (key: string): string => {
         path_logo: 'Logo',
         coin_name: 'Nome da Moeda',
         post_quantity: 'Quantidade de posts exibidos na tela inicial do aplicativo',
-        hashtag_reward_requires_approval: 'Exigir aprovação para recompensas por hashtag',
-        post_share_reward_requires_approval: 'Exigir aprovação para recompensas por compartilhamento',
+        hashtag_reward_requires_approval: 'Exigir aprovação para recompensas por hashtag (em campanhas de engajamento)',
+        post_share_reward_requires_approval: 'Exigir aprovação para recompensas por compartilhamento (em campanhas de engajamento)',
     };
     return translations[key] || key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 };
