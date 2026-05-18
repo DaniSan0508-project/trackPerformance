@@ -1371,7 +1371,7 @@ export const RewardsPage: React.FC = () => {
                       </div>
 
                       {/* Data de Validade */}
-                      {selectedReward.valid_until && (
+                      {selectedReward.valid_until && selectedReward.reward_type !== 'campaign' && (
                         <div className={`p-3 rounded-lg border ${
                           selectedReward.is_expired
                             ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
@@ -1599,7 +1599,15 @@ export const RewardsPage: React.FC = () => {
                     </label>
                     <select
                       value={formData.reward_type}
-                      onChange={(e) => setFormData({ ...formData, reward_type: e.target.value as 'standard' | 'campaign' })}
+                      onChange={(e) => {
+                        const newType = e.target.value as 'standard' | 'campaign';
+                        setFormData({ 
+                          ...formData, 
+                          reward_type: newType,
+                          // Limpar valid_until se for campanha
+                          valid_until: newType === 'campaign' ? '' : formData.valid_until
+                        });
+                      }}
                       className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                     >
                       <option value="standard">🛒 Catálogo</option>
@@ -1626,21 +1634,23 @@ export const RewardsPage: React.FC = () => {
                   </div>
 
                   {/* Data de Validade */}
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                      Data e hora limite para resgate
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={formData.valid_until}
-                      min={new Date().toISOString().slice(0, 16)}
-                      onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
-                      className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                    />
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 italic">
-                      Define até quando a recompensa estará disponível no catálogo para resgate.
-                    </p>
-                  </div>
+                  {formData.reward_type !== 'campaign' && (
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Data e hora limite para resgate
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={formData.valid_until}
+                        min={new Date().toISOString().slice(0, 16)}
+                        onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
+                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                      />
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 italic">
+                        Define até quando a recompensa estará disponível no catálogo para resgate.
+                      </p>
+                    </div>
+                  )}
 
                   {/* Instruções do Voucher (apenas se voucher) */}
                   {formData.fulfillment_type === 'voucher' && (
