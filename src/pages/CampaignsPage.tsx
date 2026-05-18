@@ -104,8 +104,11 @@ export const CampaignsPage: React.FC = () => {
       try {
         const response = await tenantConfigsService.getTenantConfigs(token);
         const configs = response.data || [];
-        const config = configs.find((c: any) => c.config_key === 'hashtag_reward_requires_approval');
-        if (config && config.config_value === 'true') {
+        const hashtagApproval = configs.find((c: any) => c.config_key === 'hashtag_reward_requires_approval');
+        const postShareApproval = configs.find((c: any) => c.config_key === 'post_share_reward_requires_approval');
+        
+        if ((hashtagApproval && hashtagApproval.config_value === 'true') || 
+            (postShareApproval && postShareApproval.config_value === 'true')) {
           setRequiresApproval(true);
         }
       } catch (err) {

@@ -164,6 +164,7 @@ export const tenantConfigValidations = {
   api_integration_enabled: z.enum(['true', 'false']),
   allow_user_post: z.enum(['true', 'false']),
   hashtag_reward_requires_approval: z.enum(['true', 'false']),
+  post_share_reward_requires_approval: z.enum(['true', 'false']),
 };
 
 // Schema para Recompensa (criação)

@@ -19,6 +19,7 @@ function useDebounce<T>(value: T, delay: number): T {
 const BOOLEAN_KEYS = [
     'allow_user_post',
     'hashtag_reward_requires_approval',
+    'post_share_reward_requires_approval',
     'email_notifications_enabled',
     'api_integration_enabled',
 ];
@@ -37,6 +38,7 @@ const translateConfigKey = (key: string): string => {
         coin_name: 'Nome da Moeda',
         post_quantity: 'Quantidade de posts exibidos na tela inicial do aplicativo',
         hashtag_reward_requires_approval: 'Exigir aprovação para recompensas por hashtag',
+        post_share_reward_requires_approval: 'Exigir aprovação para recompensas por compartilhamento',
     };
     return translations[key] || key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 };
