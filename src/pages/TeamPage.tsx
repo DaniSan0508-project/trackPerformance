@@ -636,6 +636,20 @@ export const TeamPage: React.FC = () => {
                               {user.role}
                             </span>
                           )}
+                          {user.journey_level && (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border cursor-default"
+                              style={{
+                                borderColor: user.journey_level.level_color ?? '#a3a3a3',
+                                color: user.journey_level.level_color ?? '#a3a3a3',
+                                backgroundColor: `${user.journey_level.level_color ?? '#a3a3a3'}18`,
+                              }}
+                              title={`Jornada: ${user.journey_level.journey_name}`}
+                            >
+                              <span>{user.journey_level.level_icon}</span>
+                              <span>{user.journey_level.level_name}</span>
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -73,10 +73,12 @@ export const journeysService = {
     return handleResponse(response);
   },
 
-  getJourneyUsers: async (token: string, page = 1, perPage = 15) => {
+  getJourneyUsers: async (token: string, page = 1, perPage = 9999) => {
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('per_page', perPage.toString());
+    // Inclui usuários de jornadas em qualquer status (ativo, rascunho, etc.)
+    params.append('include_drafts', 'true');
 
     const response = await fetch(`${API_BASE_URL}/journeys/users?${params.toString()}`, {
       headers: getHeaders(token),

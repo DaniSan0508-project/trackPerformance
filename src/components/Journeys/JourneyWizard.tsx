@@ -141,6 +141,9 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
   const [fullySelectedRoles, setFullySelectedRoles] = useState<Set<string>>(new Set());
   const [roleFilterLoading, setRoleFilterLoading] = useState<string | null>(null);
 
+  // ── Usuários já em outras jornadas ──────────────────────────────────────────
+  const [enrolledUserIds, setEnrolledUserIds] = useState<Set<number>>(new Set());
+
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [rewardSearch, setRewardSearch] = useState('');
   const debouncedRewardSearch = useDebounce(rewardSearch, 500);
@@ -163,6 +166,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
     setAllUsersCache([]);
     setRoles([]);
     setFullySelectedRoles(new Set());
+    setEnrolledUserIds(new Set());
 
     if (editingJourney) {
       const levels: LevelPayloadWithColor[] = editingJourney.levels.map(l => ({
@@ -216,15 +220,27 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
     if (!token) return;
     setLoadingUsers(true);
     try {
-      const [rolesRes, allList] = await Promise.all([
+      const [rolesRes, allList, enrolledRes] = await Promise.all([
         rolesService.getAllRoles(token).catch(() => ({ data: [] })),
         usersService.getAllUsersComplete(token).catch(() => []),
+        journeysService.getJourneyUsers(token).catch(() => ({ data: [] })),
       ]);
       if (rolesRes.data) setRoles(rolesRes.data);
       const collaborators: User[] = (allList as User[]).filter((u: User) => u.user_type_id !== 1);
       setAllUsersCache(collaborators);
+
+      // Construir set de IDs de usuários já em outras jornadas
+      const enrolledItems: any[] = enrolledRes.data ?? [];
+      const ownIds = new Set<number>(editingJourney?.audience_ids ?? []);
+      const enrolled = new Set<number>(
+        enrolledItems
+          .map((item: any) => item.id ?? item.user_id ?? item.user?.id)
+          .filter((id: any): id is number => typeof id === 'number' && !ownIds.has(id))
+      );
+      setEnrolledUserIds(enrolled);
+
       // Calcular quais cargos já estão todos selecionados
-      setFullySelectedRoles(prev => {
+      setFullySelectedRoles(() => {
         const next = new Set<string>();
         rolesRes.data?.forEach((r: Role) => {
           const inRole = collaborators.filter(u => u.role === r.description);
@@ -245,7 +261,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
     } finally {
       setLoadingUsers(false);
     }
-  }, [token, formData.audience_ids]);
+  }, [token, formData.audience_ids, editingJourney]);
 
   useEffect(() => {
     if (isOpen && currentStep === 1) {
@@ -265,7 +281,8 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
 
   // ── Selecionar / desselecionar todos de um cargo ─────────────────────────────
   const handleSelectAllByRole = (role: string) => {
-    const roleUsers = allUsersCache.filter(u => u.role === role);
+    // Apenas usuários disponíveis (não enrolled em outra jornada)
+    const roleUsers = allUsersCache.filter(u => u.role === role && !enrolledUserIds.has(u.id));
     if (roleUsers.length === 0) return;
     const allSelected = fullySelectedRoles.has(role);
     setFormData(f => {
@@ -281,6 +298,24 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
       else next.add(role);
       return next;
     });
+  };
+
+  // ── Selecionar / desselecionar todos os colaboradores ────────────────────────
+  const availableIds = allUsersCache
+    .filter(u => !enrolledUserIds.has(u.id))
+    .map(u => u.id);
+  const allSelected = availableIds.length > 0 && availableIds.every(id => formData.audience_ids.includes(id));
+
+  const handleSelectAll = () => {
+    if (allSelected) {
+      // Desmarcar todos
+      setFormData(f => ({ ...f, audience_ids: f.audience_ids.filter(id => !availableIds.includes(id)) }));
+      setFullySelectedRoles(new Set());
+    } else {
+      // Selecionar todos disponíveis
+      setFormData(f => ({ ...f, audience_ids: [...new Set([...f.audience_ids, ...availableIds])] }));
+      setFullySelectedRoles(new Set(roles.map(r => r.description)));
+    }
   };
 
   // ── Buscar recompensas e campanhas na etapa 3 ────────────────────────────────
@@ -656,15 +691,27 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Selecionar Participantes</h3>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                      Deixe em branco para incluir todos os colaboradores.
-                    </p>
                   </div>
-                  {formData.audience_ids.length > 0 && (
-                    <span className="text-xs font-semibold bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 px-2.5 py-1 rounded-full">
-                      {formData.audience_ids.length} selecionados
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {formData.audience_ids.length > 0 && (
+                      <span className="text-xs font-semibold bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 px-2.5 py-1 rounded-full">
+                        {formData.audience_ids.length} selecionados
+                      </span>
+                    )}
+                    {isParticipantsEditable && availableIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleSelectAll}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
+                          allSelected
+                            ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/30'
+                            : 'bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:border-primary-400 dark:hover:border-primary-600 hover:text-primary-700 dark:hover:text-primary-400'
+                        }`}
+                      >
+                        {allSelected ? 'Desmarcar todos' : 'Selecionar todos'}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="relative">
@@ -717,21 +764,26 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                     {users.length === 0 ? (
                       <p className="text-sm text-zinc-500 dark:text-zinc-400 p-4 text-center">Nenhum colaborador encontrado.</p>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {users.map(user => {
                           const selected = formData.audience_ids.includes(user.id);
+                          const isEnrolled = enrolledUserIds.has(user.id);
+                          const isDisabled = !isParticipantsEditable || isEnrolled;
                           return (
                             <motion.button
                               key={user.id}
-                              onClick={() => isParticipantsEditable && toggleUser(user.id)}
+                              onClick={() => !isDisabled && toggleUser(user.id)}
                               initial={{ opacity: 0, scale: 0.95 }}
                               animate={{ opacity: 1, scale: 1 }}
-                              disabled={!isParticipantsEditable}
+                              disabled={isDisabled}
+                              title={isEnrolled ? 'Usuário já participa de outra jornada' : undefined}
                               className={`p-3 rounded-xl border-2 transition-all duration-200 text-left group ${
-                                selected
+                                isEnrolled
+                                  ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-300 dark:border-amber-800 opacity-70 cursor-not-allowed'
+                                  : selected
                                   ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 shadow-md'
                                   : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-sm'
-                              } disabled:cursor-not-allowed disabled:opacity-70`}
+                              } disabled:cursor-not-allowed`}
                             >
                               <div className="flex items-start gap-2.5">
                                 {/* Avatar */}
@@ -752,6 +804,12 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                                 {/* Info */}
                                 <div className="flex-1 min-w-0">
                                   <p className="font-bold text-sm text-zinc-900 dark:text-white truncate">{user.name}</p>
+                                  {/* Badge de enrolled logo abaixo do nome */}
+                                  {isEnrolled && (
+                                    <span className="inline-block mt-0.5 mb-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 border border-amber-300 dark:border-amber-700 leading-tight">
+                                      Participa de outra jornada
+                                    </span>
+                                  )}
                                   {user.role && (
                                     <p className="text-[10px] font-semibold text-primary-600 dark:text-primary-400 uppercase tracking-wider">
                                       {user.role}
@@ -769,14 +827,16 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                                   )}
                                 </div>
 
-                                {/* Check */}
-                                <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                                  selected
-                                    ? 'bg-primary-500 border-primary-500'
-                                    : 'border-zinc-300 dark:border-zinc-600 group-hover:border-primary-400'
-                                }`}>
-                                  {selected && <Check size={12} className="text-white" />}
-                                </div>
+                                {/* Checkbox (só quando não enrolled) */}
+                                {!isEnrolled && (
+                                  <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                                    selected
+                                      ? 'bg-primary-500 border-primary-500'
+                                      : 'border-zinc-300 dark:border-zinc-600 group-hover:border-primary-400'
+                                  }`}>
+                                    {selected && <Check size={12} className="text-white" />}
+                                  </div>
+                                )}
                               </div>
                             </motion.button>
                           );
