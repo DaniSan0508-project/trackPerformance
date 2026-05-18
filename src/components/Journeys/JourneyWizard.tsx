@@ -3,8 +3,9 @@ import { X, ChevronRight, ChevronLeft, Plus, Trash2, Check, Search, Loader2, Tro
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { Journey, JourneyPayload, JourneyLevelPayload, User, Reward, Campaign } from '../../types';
-import { journeysService, usersService, rewardsService, campaignsService } from '../../services';
+import { Journey, JourneyPayload, JourneyLevelPayload, User, Reward, Campaign, Role } from '../../types';
+import { journeysService, usersService, rewardsService, campaignsService, rolesService } from '../../services';
+import { getFullImageUrl } from '../../utils';
 
 // ─── Biblioteca de ícones disponíveis para os níveis ─────────────────────────
 
@@ -87,13 +88,27 @@ function useDebounce<T>(value: T, delay: number): T {
   return dv;
 }
 
+function formatDateBR(isoDate: string): string {
+  if (!isoDate) return '—';
+  const [y, m, d] = isoDate.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function countDays(start: string, end: string): number | null {
+  if (!start || !end) return null;
+  const diff = new Date(end).getTime() - new Date(start).getTime();
+  return Math.round(diff / (1000 * 60 * 60 * 24)) + 1;
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJourney, onClose, onSaved }) => {
   const { token, coinName } = useAuth();
   const { addToast } = useToast();
 
+  // Jornadas ativas e draft permitem editar participantes
   const isReadOnly = !!editingJourney && editingJourney.status !== 'draft';
+  const isParticipantsEditable = !editingJourney || editingJourney.status === 'draft' || editingJourney.status === 'active';
 
   const [currentStep, setCurrentStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -113,12 +128,18 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
   });
 
   // ── Dados auxiliares ─────────────────────────────────────────────────────────
+  const [allUsersCache, setAllUsersCache] = useState<User[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const debouncedUserSearch = useDebounce(userSearch, 500);
   const [usersPage, setUsersPage] = useState(1);
   const [usersTotalPages, setUsersTotalPages] = useState(1);
   const [loadingUsers, setLoadingUsers] = useState(false);
+
+  // ── Filtro por cargo ─────────────────────────────────────────────────────────
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [fullySelectedRoles, setFullySelectedRoles] = useState<Set<string>>(new Set());
+  const [roleFilterLoading, setRoleFilterLoading] = useState<string | null>(null);
 
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [rewardSearch, setRewardSearch] = useState('');
@@ -139,6 +160,9 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
     setErrors({});
     setUserSearch('');
     setRewardSearch('');
+    setAllUsersCache([]);
+    setRoles([]);
+    setFullySelectedRoles(new Set());
 
     if (editingJourney) {
       const levels: LevelPayloadWithColor[] = editingJourney.levels.map(l => ({
@@ -174,35 +198,90 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
     }
   }, [isOpen, editingJourney]);
 
-  // ── Buscar usuários ──────────────────────────────────────────────────────────
-  const fetchUsers = useCallback(async (page = 1, search = '') => {
+  // ── Buscar usuários e roles ─────────────────────────────────────────────────
+  const fetchUsers = useCallback(async (page = 1, search = '', cache?: User[]) => {
+    const source = cache ?? allUsersCache;
+    const filtered = source
+      .filter((u: User) => u.user_type_id !== 1)
+      .filter((u: User) => !search || u.name.toLowerCase().includes(search.toLowerCase()));
+    const perPage = 10;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+    const safePage = Math.min(page, totalPages);
+    setUsers(filtered.slice((safePage - 1) * perPage, safePage * perPage));
+    setUsersTotalPages(totalPages);
+    setUsersPage(safePage);
+  }, [allUsersCache]);
+
+  const loadUsersAndRoles = useCallback(async () => {
     if (!token) return;
     setLoadingUsers(true);
     try {
-      // Filtra apenas colaboradores (user_type_id !== 1 = não admin)
-      const params = new URLSearchParams();
-      params.append('page', page.toString());
-      params.append('per_page', '10');
-      params.append('filter[user_type_id]', '2');
-      if (search) params.append('filter[name]', search);
-      const resp = await usersService.getUsers(token, page, search);
-      // Filtra admins no client-side também
-      const filtered = (resp.data || []).filter((u: User) => u.user_type_id !== 1);
-      setUsers(filtered);
-      setUsersTotalPages(resp.meta?.last_page || resp.last_page || 1);
-      setUsersPage(resp.meta?.current_page || resp.current_page || 1);
+      const [rolesRes, allList] = await Promise.all([
+        rolesService.getAllRoles(token).catch(() => ({ data: [] })),
+        usersService.getAllUsersComplete(token).catch(() => []),
+      ]);
+      if (rolesRes.data) setRoles(rolesRes.data);
+      const collaborators: User[] = (allList as User[]).filter((u: User) => u.user_type_id !== 1);
+      setAllUsersCache(collaborators);
+      // Calcular quais cargos já estão todos selecionados
+      setFullySelectedRoles(prev => {
+        const next = new Set<string>();
+        rolesRes.data?.forEach((r: Role) => {
+          const inRole = collaborators.filter(u => u.role === r.description);
+          if (inRole.length > 0 && inRole.every(u => formData.audience_ids.includes(u.id))) {
+            next.add(r.description);
+          }
+        });
+        return next;
+      });
+      // paginar localmente
+      const perPage = 10;
+      const totalPages = Math.max(1, Math.ceil(collaborators.length / perPage));
+      setUsers(collaborators.slice(0, perPage));
+      setUsersTotalPages(totalPages);
+      setUsersPage(1);
     } catch (err) {
-      console.error('Error fetching users', err);
+      console.error('Error fetching users/roles', err);
     } finally {
       setLoadingUsers(false);
     }
-  }, [token]);
+  }, [token, formData.audience_ids]);
 
   useEffect(() => {
     if (isOpen && currentStep === 1) {
+      if (allUsersCache.length === 0) {
+        loadUsersAndRoles();
+      } else {
+        fetchUsers(1, debouncedUserSearch);
+      }
+    }
+  }, [isOpen, currentStep]);
+
+  useEffect(() => {
+    if (isOpen && currentStep === 1 && allUsersCache.length > 0) {
       fetchUsers(1, debouncedUserSearch);
     }
-  }, [isOpen, currentStep, debouncedUserSearch, fetchUsers]);
+  }, [debouncedUserSearch]);
+
+  // ── Selecionar / desselecionar todos de um cargo ─────────────────────────────
+  const handleSelectAllByRole = (role: string) => {
+    const roleUsers = allUsersCache.filter(u => u.role === role);
+    if (roleUsers.length === 0) return;
+    const allSelected = fullySelectedRoles.has(role);
+    setFormData(f => {
+      const roleIds = roleUsers.map(u => u.id);
+      const newIds = allSelected
+        ? f.audience_ids.filter(id => !roleIds.includes(id))
+        : [...new Set([...f.audience_ids, ...roleIds])];
+      return { ...f, audience_ids: newIds };
+    });
+    setFullySelectedRoles(prev => {
+      const next = new Set(prev);
+      if (allSelected) next.delete(role);
+      else next.add(role);
+      return next;
+    });
+  };
 
   // ── Buscar recompensas e campanhas na etapa 3 ────────────────────────────────
   const fetchRewards = useCallback(async (search = '') => {
@@ -285,6 +364,14 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
     if (!validateStep(currentStep) || !token) return;
     setSaving(true);
     try {
+      // Jornada ativa: apenas sincroniza participantes via rota dedicada
+      if (editingJourney && editingJourney.status === 'active') {
+        await journeysService.addParticipants(token, editingJourney.id, formData.audience_ids);
+        addToast('success', 'Participantes atualizados com sucesso!');
+        onSaved();
+        return;
+      }
+
       const payload: JourneyPayload = {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
@@ -419,7 +506,9 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
             </h2>
             {isReadOnly && (
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                Jornada publicada — somente leitura
+                {editingJourney?.status === 'active'
+                  ? 'Jornada ativa — apenas participantes podem ser editados'
+                  : 'Jornada publicada — somente leitura'}
               </p>
             )}
           </div>
@@ -589,41 +678,111 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                   />
                 </div>
 
+                {/* Filtro por Cargo */}
+                {roles.length > 0 && (
+                  <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                    <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 mb-3 uppercase">
+                      Filtrar por Cargo
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {roles.map(roleObj => {
+                        const role = roleObj.description;
+                        const isAll = fullySelectedRoles.has(role);
+                        return (
+                          <button
+                            key={role}
+                            onClick={() => handleSelectAllByRole(role)}
+                            disabled={!isParticipantsEditable}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 border ${
+                              isAll
+                                ? 'bg-primary-100 text-primary-700 border-primary-300 dark:bg-primary-900/40 dark:text-primary-300 dark:border-primary-700'
+                                : 'bg-white text-zinc-600 border-zinc-200 hover:border-primary-300 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {isAll ? <Check size={12} /> : <Plus size={12} />}
+                            {role}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {loadingUsers ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 size={24} className="animate-spin text-primary-600" />
                   </div>
                 ) : (
                   <>
-                    <div className="space-y-1 max-h-64 overflow-y-auto border border-zinc-200 dark:border-zinc-700 rounded-lg divide-y divide-zinc-100 dark:divide-zinc-800">
-                      {users.length === 0 ? (
-                        <p className="text-sm text-zinc-500 p-4 text-center">Nenhum colaborador encontrado.</p>
-                      ) : (
-                        users.map(user => (
-                          <label
-                            key={user.id}
-                            className="flex items-center gap-3 px-3 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={formData.audience_ids.includes(user.id)}
-                              onChange={() => toggleUser(user.id)}
-                              disabled={isReadOnly}
-                              className="rounded accent-primary-600"
-                            />
-                            <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-bold text-sm shrink-0">
-                              {user.profile_image_url ? (
-                                <img src={user.profile_image_url} className="w-full h-full rounded-full object-cover" alt={user.name} />
-                              ) : user.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-zinc-900 dark:text-white">{user.name}</p>
-                              <p className="text-xs text-zinc-500 dark:text-zinc-400">{user.email}</p>
-                            </div>
-                          </label>
-                        ))
-                      )}
-                    </div>
+                    {users.length === 0 ? (
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400 p-4 text-center">Nenhum colaborador encontrado.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {users.map(user => {
+                          const selected = formData.audience_ids.includes(user.id);
+                          return (
+                            <motion.button
+                              key={user.id}
+                              onClick={() => isParticipantsEditable && toggleUser(user.id)}
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              disabled={!isParticipantsEditable}
+                              className={`p-3 rounded-xl border-2 transition-all duration-200 text-left group ${
+                                selected
+                                  ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 shadow-md'
+                                  : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-sm'
+                              } disabled:cursor-not-allowed disabled:opacity-70`}
+                            >
+                              <div className="flex items-start gap-2.5">
+                                {/* Avatar */}
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-100 to-teal-100 dark:from-primary-900/30 dark:to-teal-900/30 border-2 border-primary-200 dark:border-primary-800 flex items-center justify-center text-primary-600 dark:text-primary-400 overflow-hidden flex-shrink-0">
+                                  {user.profile_image_url ? (
+                                    <img
+                                      src={getFullImageUrl(user.profile_image_url) || ''}
+                                      alt={user.name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-base font-bold">
+                                      {user.name.charAt(0).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-sm text-zinc-900 dark:text-white truncate">{user.name}</p>
+                                  {user.role && (
+                                    <p className="text-[10px] font-semibold text-primary-600 dark:text-primary-400 uppercase tracking-wider">
+                                      {user.role}
+                                    </p>
+                                  )}
+                                  {user.store && (
+                                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">
+                                      🏪 {user.store.name}
+                                    </p>
+                                  )}
+                                  {user.coin_balance !== undefined && user.coin_balance > 0 && (
+                                    <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                                      🪙 {user.coin_balance.toLocaleString('pt-BR')} {coinName || 'coins'}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Check */}
+                                <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                                  selected
+                                    ? 'bg-primary-500 border-primary-500'
+                                    : 'border-zinc-300 dark:border-zinc-600 group-hover:border-primary-400'
+                                }`}>
+                                  {selected && <Check size={12} className="text-white" />}
+                                </div>
+                              </div>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     {/* Paginação */}
                     {usersTotalPages > 1 && (
@@ -631,17 +790,17 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                         <button
                           onClick={() => fetchUsers(usersPage - 1, debouncedUserSearch)}
                           disabled={usersPage <= 1}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 disabled:opacity-40 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-600 text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-800 disabled:opacity-40 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors font-medium"
                         >
                           <ChevronLeft size={14} /> Anterior
                         </button>
-                        <span className="text-zinc-500 dark:text-zinc-400">
+                        <span className="text-zinc-600 dark:text-zinc-300 font-medium">
                           Página {usersPage} de {usersTotalPages}
                         </span>
                         <button
                           onClick={() => fetchUsers(usersPage + 1, debouncedUserSearch)}
                           disabled={usersPage >= usersTotalPages}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 disabled:opacity-40 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-600 text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-800 disabled:opacity-40 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors font-medium"
                         >
                           Próxima <ChevronRight size={14} />
                         </button>
@@ -907,7 +1066,10 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                   <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">📋 Resumo da Jornada</h4>
                   <div className="space-y-1.5 text-sm text-zinc-600 dark:text-zinc-400">
                     <div><span className="font-medium text-zinc-900 dark:text-white">Nome:</span> {formData.name || '—'}</div>
-                    <div><span className="font-medium text-zinc-900 dark:text-white">Período:</span> {formData.start_date || '—'} até {formData.end_date || '—'}</div>
+                    <div><span className="font-medium text-zinc-900 dark:text-white">Período:</span>{' '}
+                      {formData.start_date && formData.end_date
+                        ? `${formatDateBR(formData.start_date)} até ${formatDateBR(formData.end_date)} (${countDays(formData.start_date, formData.end_date)} dias)`
+                        : '—'}</div>
                     <div><span className="font-medium text-zinc-900 dark:text-white">Fator de conversão:</span> {formData.coins_factor} coins = 1 XP</div>
                     <div><span className="font-medium text-zinc-900 dark:text-white">Participantes:</span> {formData.audience_ids.length > 0 ? `${formData.audience_ids.length} selecionados` : 'Todos os colaboradores'}</div>
                     <div><span className="font-medium text-zinc-900 dark:text-white">Níveis:</span> {formData.levels.length} níveis configurados</div>
@@ -962,7 +1124,19 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                 className="flex items-center gap-2 px-4 py-2 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg transition-colors text-sm font-medium disabled:opacity-60"
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                Salvar rascunho
+                {editingJourney?.status === 'active' ? 'Salvar Participantes' : 'Salvar rascunho'}
+              </button>
+            )}
+
+            {/* Jornada ativa na etapa de participantes: botão de salvar participantes */}
+            {editingJourney?.status === 'active' && currentStep === 1 && isReadOnly && (
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center gap-2 px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors text-sm font-medium disabled:opacity-60"
+              >
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                Salvar Participantes
               </button>
             )}
 

@@ -159,16 +159,6 @@ export const Layout: React.FC = () => {
             active={location.pathname === '/settings'}
           />
         </nav>
-
-        <div className="p-4 border-t border-zinc-100 dark:border-zinc-800">
-          <button 
-            onClick={handleLogout}
-            className="flex items-center gap-3 w-full p-3 text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 rounded-xl transition-all"
-          >
-            <LogOut size={20} />
-            <span className="font-medium">Sair</span>
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}

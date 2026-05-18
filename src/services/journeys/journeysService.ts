@@ -83,4 +83,13 @@ export const journeysService = {
     });
     return handleResponse(response);
   },
+
+  addParticipants: async (token: string, id: number, userIds: number[]) => {
+    const response = await fetch(`${API_BASE_URL}/journeys/${id}/participants`, {
+      method: 'POST',
+      headers: getHeaders(token),
+      body: JSON.stringify({ user_ids: userIds }),
+    });
+    return handleResponse(response);
+  },
 };
