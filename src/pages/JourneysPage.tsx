@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Map, Calendar, Users, Trophy, Send, TrendingUp, BarChart3, AlertCircle } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Map, Calendar, Users, Trophy, Send, TrendingUp, BarChart3, AlertCircle, Flag } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -33,7 +33,7 @@ const statusLabels: Record<JourneyStatus, string> = {
 
 const statusColors: Record<JourneyStatus, string> = {
   draft: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400',
-  active: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+  active: 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400',
   ended: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-500',
 };
 
@@ -508,9 +508,16 @@ const JourneyCard: React.FC<JourneyCardProps> = ({
   const isActive = journey.status === 'active';
   const isEnded = journey.status === 'ended';
 
+  const statusLabel = statusLabels[journey.status];
+  const statusColor = statusColors[journey.status];
+
   const topLevel = journey.levels.length > 0
     ? journey.levels[journey.levels.length - 1]
     : null;
+
+  // Calculando quantidade de participantes
+  const participantsCount = journey.stats?.participants_count ?? journey.audience_ids?.length ?? 0;
+  const isPublic = !journey.audience_ids || journey.audience_ids.length === 0;
 
   return (
     <motion.div
@@ -521,9 +528,8 @@ const JourneyCard: React.FC<JourneyCardProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Left: Icon + Info */}
         <div className="flex items-start gap-4 flex-1 min-w-0">
-          {/* Ícone do nível mais alto com a cor */}
           <div
-            className="p-3 rounded-xl shrink-0 flex items-center justify-center text-2xl w-14 h-14 border-2"
+            className="p-3 rounded-xl shrink-0 flex items-center justify-center text-2xl w-14 h-14 border-2 shadow-sm"
             style={topLevel?.color ? {
               backgroundColor: `${topLevel.color}20`,
               borderColor: topLevel.color,
@@ -543,112 +549,121 @@ const JourneyCard: React.FC<JourneyCardProps> = ({
               >
                 {journey.name}
               </button>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${statusColors[journey.status]}`}>
-                {statusLabels[journey.status].toUpperCase()}
+              <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusColor}`}>
+                {statusLabel}
               </span>
             </div>
 
             {journey.description && (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">{journey.description}</p>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-1">{journey.description}</p>
             )}
 
-            <div className="flex flex-wrap gap-4 mt-2 text-sm">
+            <div className="flex flex-wrap gap-4 mt-3 text-sm">
               <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                <Calendar size={14} className="text-primary-500" />
-                <span>{formatDate(journey.start_date)} — {formatDate(journey.end_date)}</span>
+                <Calendar size={15} className="text-primary-500" />
+                <span className="text-zinc-500 dark:text-zinc-500">Período:</span>
+                <span className="font-medium text-zinc-900 dark:text-white">
+                  {formatDate(journey.start_date)} até {formatDate(journey.end_date)}
+                </span>
               </div>
 
-              {(journey.stats?.participants_count ?? 0) > 0 && (
+              <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                <Users size={15} className="text-purple-500" />
+                <span className="text-zinc-500 dark:text-zinc-500">Participantes:</span>
+                <span className="font-medium text-zinc-900 dark:text-white">{participantsCount}</span>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                <BarChart3 size={15} className="text-amber-500" />
+                <span className="text-zinc-500 dark:text-zinc-500">Níveis:</span>
+                <span className="font-medium text-zinc-900 dark:text-white">{journey.levels.length}</span>
+              </div>
+
+              {journey.campaigns && journey.campaigns.length > 0 && (
                 <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                  <Users size={14} className="text-purple-500" />
-                  <span>{journey.stats!.participants_count} participantes</span>
+                  <Flag size={15} className="text-blue-500" />
+                  <span className="text-zinc-500 dark:text-zinc-500">Campanhas:</span>
+                  <span className="font-medium text-zinc-900 dark:text-white">{journey.campaigns.length}</span>
                 </div>
               )}
 
-              {(journey.stats?.average_xp ?? 0) > 0 && (
+              {journey.stats && journey.stats.average_xp > 0 && (
                 <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                  <TrendingUp size={14} className="text-green-500" />
-                  <span>XP médio: {Math.round(journey.stats!.average_xp)}</span>
+                  <TrendingUp size={15} className="text-green-500" />
+                  <span className="text-zinc-500 dark:text-zinc-500">XP médio:</span>
+                  <span className="font-medium text-zinc-900 dark:text-white">{Math.round(journey.stats.average_xp)}</span>
                 </div>
               )}
-
-              <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                <BarChart3 size={14} className="text-amber-500" />
-                <span>{journey.levels.length} níveis</span>
-              </div>
             </div>
 
-            {/* Níveis como badges */}
+            {/* Níveis como badges simplificados */}
             {journey.levels.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {journey.levels.map(l => (
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {journey.levels.slice(0, 5).map(l => (
                   <span
                     key={l.id}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border"
                     style={{
-                      backgroundColor: l.color ? `${l.color}18` : '#f4f4f5',
-                      borderColor: l.color ?? '#e4e4e7',
+                      backgroundColor: l.color ? `${l.color}15` : '#f4f4f5',
+                      borderColor: l.color ? `${l.color}40` : '#e4e4e7',
                       color: l.color ?? '#71717a',
                     }}
                   >
                     {l.icon} {l.name}
                   </span>
                 ))}
+                {journey.levels.length > 5 && (
+                  <span className="text-[10px] text-zinc-400 font-medium">+{journey.levels.length - 5} mais</span>
+                )}
               </div>
             )}
           </div>
         </div>
 
         {/* Right: Actions */}
-        {isAdmin && (
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={onDetail}
-              className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
-              title="Ver detalhes"
-            >
-              <BarChart3 size={18} />
-            </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={onDetail}
+            className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+            title="Ver detalhes"
+          >
+            <BarChart3 size={20} />
+          </button>
 
-            {isDraft && (
-              <>
+          {isAdmin && (
+            <>
+              {isDraft && (
                 <button
                   onClick={onPublish}
                   disabled={publishingId === journey.id}
                   className="p-2 text-zinc-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors disabled:opacity-50"
                   title="Publicar jornada"
                 >
-                  {publishingId === journey.id ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                  {publishingId === journey.id ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
                 </button>
-                <button
-                  onClick={onEdit}
-                  className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
-                  title="Editar"
-                >
-                  <Edit2 size={18} />
-                </button>
+              )}
+              
+              <button
+                onClick={onEdit}
+                className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+                title={isDraft ? "Editar" : "Visualizar"}
+              >
+                <Edit2 size={20} />
+              </button>
+
+              {isDraft && (
                 <button
                   onClick={onDelete}
                   disabled={deletingId === journey.id}
                   className="p-2 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                   title="Excluir"
                 >
-                  {deletingId === journey.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                  {deletingId === journey.id ? <Loader2 size={20} className="animate-spin" /> : <Trash2 size={20} />}
                 </button>
-              </>
-            )}
-
-            {(isActive || isEnded) && (
-              <button
-                onClick={onEdit}
-                className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-                title="Visualizar (somente leitura)"
-              >
-                <Edit2 size={18} />
-              </button>
-            )}
-          </div>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </div>
     </motion.div>
   );

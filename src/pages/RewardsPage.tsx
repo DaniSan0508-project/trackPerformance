@@ -1351,7 +1351,7 @@ export const RewardsPage: React.FC = () => {
                       <div className="flex items-center gap-2 flex-wrap">
                         {selectedReward.reward_type === 'campaign' && (
                           <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-sm font-bold rounded-lg">
-                            🏆 Prêmio de Campanha
+                            🏆 Prêmio de Campanha/Jornada
                           </span>
                         )}
                         {selectedReward.fulfillment_type === 'voucher' ? (
@@ -1611,12 +1611,12 @@ export const RewardsPage: React.FC = () => {
                       className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                     >
                       <option value="standard">🛒 Catálogo</option>
-                      <option value="campaign">🏆 Prêmio de Campanha</option>
+                      <option value="campaign">🏆 Prêmio de Campanha/Jornada</option>
                     </select>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                       {formData.reward_type === 'standard'
                         ? 'Recompensa aparece no catálogo para todos os usuários resgatarem'
-                        : 'Recompensa vinculada a uma campanha'}
+                        : 'Recompensa vinculada a uma campanha ou jornada'}
                     </p>
                   </div>
 

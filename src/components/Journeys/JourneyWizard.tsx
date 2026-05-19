@@ -1060,29 +1060,68 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                   {loadingRewards ? (
                     <div className="flex justify-center py-4"><Loader2 size={20} className="animate-spin text-primary-600" /></div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-zinc-200 dark:border-zinc-700 rounded-lg p-2">
-                      <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer col-span-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-64 overflow-y-auto border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50/50 dark:bg-zinc-900/30">
+                      <label 
+                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all cursor-pointer text-center min-h-[120px] ${
+                          formData.prize_reward_id === null 
+                            ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 shadow-sm' 
+                            : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-primary-300'
+                        }`}
+                      >
                         <input
                           type="radio"
                           name="reward"
                           checked={formData.prize_reward_id === null}
                           onChange={() => setFormData(f => ({ ...f, prize_reward_id: null }))}
                           disabled={isReadOnly}
-                          className="accent-primary-600"
+                          className="sr-only"
                         />
-                        <span className="text-sm text-zinc-500 italic">Sem prêmio vinculado</span>
+                        <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-700 rounded-full flex items-center justify-center mb-2 text-zinc-400">
+                          <X size={20} />
+                        </div>
+                        <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-tight">Sem prêmio</span>
                       </label>
+
                       {rewards.map(r => (
-                        <label key={r.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer">
+                        <label 
+                          key={r.id} 
+                          className={`group relative flex flex-col p-2 rounded-xl border-2 transition-all cursor-pointer ${
+                            formData.prize_reward_id === r.id 
+                              ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 shadow-sm' 
+                              : 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-800 hover:border-primary-300'
+                          }`}
+                        >
                           <input
                             type="radio"
                             name="reward"
                             checked={formData.prize_reward_id === r.id}
                             onChange={() => setFormData(f => ({ ...f, prize_reward_id: r.id }))}
                             disabled={isReadOnly}
-                            className="accent-primary-600"
+                            className="sr-only"
                           />
-                          <span className="text-sm text-zinc-900 dark:text-white">{r.name}</span>
+                          
+                          {/* Badge de Tipo */}
+                          <div className="absolute top-1 right-1 z-10">
+                            {r.fulfillment_type === 'voucher' ? (
+                              <span className="bg-blue-500 text-white text-[8px] font-black px-1 py-0.5 rounded shadow-sm">VOUCHER</span>
+                            ) : (
+                              <span className="bg-green-500 text-white text-[8px] font-black px-1 py-0.5 rounded shadow-sm">FÍSICO</span>
+                            )}
+                          </div>
+
+                          <div className="aspect-square rounded-lg overflow-hidden border border-zinc-100 dark:border-zinc-700 bg-white dark:bg-zinc-900 mb-2">
+                            {r.images?.[0]?.image_full_url ? (
+                              <img src={r.images[0].image_full_url} alt={r.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-zinc-200 dark:text-zinc-700">
+                                <GiftIcon size={24} />
+                              </div>
+                            )}
+                          </div>
+                          
+                          <p className="text-[10px] font-bold text-zinc-900 dark:text-white line-clamp-2 text-center leading-tight min-h-[2.5em] flex items-center justify-center">
+                            {r.name}
+                          </p>
                         </label>
                       ))}
                     </div>
@@ -1148,9 +1187,25 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                       ))}
                     </div>
                     {formData.prize_reward_id && (
-                      <div>
-                        <span className="font-medium text-zinc-900 dark:text-white">Prêmio:</span>{' '}
-                        {rewards.find(r => r.id === formData.prize_reward_id)?.name ?? `ID ${formData.prize_reward_id}`}
+                      <div className="flex items-center gap-3 mt-1 p-2 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-100 dark:border-zinc-700">
+                        <div className="w-10 h-10 rounded-md overflow-hidden flex-shrink-0 border border-zinc-100 dark:border-zinc-800">
+                          {(() => {
+                            const r = rewards.find(r => r.id === formData.prize_reward_id);
+                            return r?.images?.[0]?.image_full_url ? (
+                              <img src={r.images[0].image_full_url} alt={r.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-zinc-300">
+                                <GiftIcon size={16} />
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-zinc-500 uppercase font-bold leading-none mb-1">Prêmio da Jornada</p>
+                          <p className="font-medium text-zinc-900 dark:text-white leading-tight">
+                            {rewards.find(r => r.id === formData.prize_reward_id)?.name ?? `ID ${formData.prize_reward_id}`}
+                          </p>
+                        </div>
                       </div>
                     )}
                     {formData.campaign_ids.length > 0 && (

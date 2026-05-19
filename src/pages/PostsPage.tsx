@@ -23,6 +23,17 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+// Utility to sanitize coin inputs
+const sanitizeCoinValue = (value: string): string => {
+  // Remove tudo que não for dígito
+  const numericValue = value.replace(/\D/g, '');
+  // Remove zeros à esquerda
+  const noZeros = numericValue.replace(/^0+(?=\d)/, '') || '0';
+  // Limita o valor máximo a 999
+  if (parseInt(noZeros) > 999) return '999';
+  return noZeros;
+};
+
 const UserListItem: React.FC<{ user?: UserType | { name: string; profile_image_url?: string | null }; subtext?: string }> = ({ user, subtext }) => (
   <div className="flex items-center gap-3 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg transition-colors">
     <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-500 dark:text-zinc-400 flex-shrink-0 overflow-hidden">
@@ -2397,7 +2408,12 @@ export const PostsPage: React.FC = () => {
                                 type="number"
                                 min="0"
                                 value={editQuizCoinsParticipation}
-                                onChange={(e) => setEditQuizCoinsParticipation(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                onChange={(e) => setEditQuizCoinsParticipation(sanitizeCoinValue(e.target.value))}
                                 className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
                               />
                             </div>
@@ -2409,7 +2425,12 @@ export const PostsPage: React.FC = () => {
                                 type="number"
                                 min="0"
                                 value={editQuizCoinsCorrect}
-                                onChange={(e) => setEditQuizCoinsCorrect(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                onChange={(e) => setEditQuizCoinsCorrect(sanitizeCoinValue(e.target.value))}
                                 className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
                               />
                             </div>
@@ -2521,12 +2542,7 @@ export const PostsPage: React.FC = () => {
                                   e.preventDefault();
                                 }
                               }}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val === "" || /^\d+$/.test(val)) {
-                                  setEditBoostLikeCoins(val);
-                                }
-                              }}
+                              onChange={(e) => setEditBoostLikeCoins(sanitizeCoinValue(e.target.value))}
                               className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
                             />
                           </div>
@@ -2543,12 +2559,7 @@ export const PostsPage: React.FC = () => {
                                   e.preventDefault();
                                 }
                               }}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val === "" || /^\d+$/.test(val)) {
-                                  setEditBoostCommentCoins(val);
-                                }
-                              }}
+                              onChange={(e) => setEditBoostCommentCoins(sanitizeCoinValue(e.target.value))}
                               className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
                             />
                           </div>
@@ -2565,12 +2576,7 @@ export const PostsPage: React.FC = () => {
                                   e.preventDefault();
                                 }
                               }}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val === "" || /^\d+$/.test(val)) {
-                                  setEditBoostShareCoins(val);
-                                }
-                              }}
+                              onChange={(e) => setEditBoostShareCoins(sanitizeCoinValue(e.target.value))}
                               className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
                             />
                           </div>
@@ -2633,40 +2639,39 @@ export const PostsPage: React.FC = () => {
                     {/* Campo de Imagem */}
                     {editMediaType === 'image' && (
                       <div className="space-y-4">
-                        <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-zinc-300 dark:border-zinc-700 border-dashed rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer relative">
+                        <label
+                          htmlFor="edit-file-upload"
+                          className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-zinc-300 dark:border-zinc-700 border-dashed rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer relative"
+                        >
                           <div className="space-y-1 text-center">
                             <ImageIcon className="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-500" />
                             <div className="flex text-sm text-zinc-600 dark:text-zinc-400 justify-center">
-                              <label
-                                htmlFor="edit-file-upload"
-                                className="relative cursor-pointer bg-white dark:bg-zinc-900 rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none"
-                              >
-                                <span>Substituir por novas imagens (máx. 10)</span>
-                                <input
-                                  id="edit-file-upload"
-                                  name="edit-file-upload"
-                                  type="file"
-                                  multiple
-                                  className="sr-only"
-                                  accept="image/*"
-                                  onChange={(e) => {
-                                    if (e.target.files) {
-                                      const filesArray = Array.from(e.target.files);
-                                      setEditImages(prev => {
-                                        const combined = [...prev, ...filesArray].slice(0, 10);
-                                        return combined;
-                                      });
-                                    }
-                                  }}
-                                />
-                              </label>
+                              <span className="relative font-medium text-primary-600 hover:text-primary-500">
+                                Substituir por novas imagens (máx. 10)
+                              </span>
+                              <input
+                                id="edit-file-upload"
+                                name="edit-file-upload"
+                                type="file"
+                                multiple
+                                className="sr-only"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  if (e.target.files) {
+                                    const filesArray = Array.from(e.target.files);
+                                    setEditImages(prev => {
+                                      const combined = [...prev, ...filesArray].slice(0, 10);
+                                      return combined;
+                                    });
+                                  }
+                                }}
+                              />
                             </div>
                             <p className="text-xs text-zinc-500 dark:text-zinc-400">
                               PNG, JPG, GIF até 5MB cada
                             </p>
                           </div>
-                        </div>
-
+                        </label>
                         {editImages.length > 0 && (
                           <div className="grid grid-cols-3 gap-2">
                             {editImages.map((file, idx) => (
@@ -2942,7 +2947,12 @@ export const PostsPage: React.FC = () => {
                               type="number"
                               min="0"
                               value={newQuizCoinsParticipation}
-                              onChange={(e) => setNewQuizCoinsParticipation(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onChange={(e) => setNewQuizCoinsParticipation(sanitizeCoinValue(e.target.value))}
                               className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
                             />
                           </div>
@@ -2954,7 +2964,12 @@ export const PostsPage: React.FC = () => {
                               type="number"
                               min="0"
                               value={newQuizCoinsCorrect}
-                              onChange={(e) => setNewQuizCoinsCorrect(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E") {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onChange={(e) => setNewQuizCoinsCorrect(sanitizeCoinValue(e.target.value))}
                               className="w-full p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
                             />
                           </div>
@@ -3066,12 +3081,7 @@ export const PostsPage: React.FC = () => {
                                     e.preventDefault();
                                   }
                                 }}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (val === "" || /^\d+$/.test(val)) {
-                                    setNewPostBoostLikeCoins(val);
-                                  }
-                                }}
+                                onChange={(e) => setNewPostBoostLikeCoins(sanitizeCoinValue(e.target.value))}
                                 className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
                               />
                             </div>
@@ -3088,12 +3098,7 @@ export const PostsPage: React.FC = () => {
                                     e.preventDefault();
                                   }
                                 }}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (val === "" || /^\d+$/.test(val)) {
-                                    setNewPostBoostCommentCoins(val);
-                                  }
-                                }}
+                                onChange={(e) => setNewPostBoostCommentCoins(sanitizeCoinValue(e.target.value))}
                                 className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
                               />
                             </div>
@@ -3110,12 +3115,7 @@ export const PostsPage: React.FC = () => {
                                     e.preventDefault();
                                   }
                                 }}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (val === "" || /^\d+$/.test(val)) {
-                                    setNewPostBoostShareCoins(val);
-                                  }
-                                }}
+                                onChange={(e) => setNewPostBoostShareCoins(sanitizeCoinValue(e.target.value))}
                                 className="w-full p-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-zinc-900 dark:text-zinc-100"
                               />
                             </div>
@@ -3176,40 +3176,39 @@ export const PostsPage: React.FC = () => {
                       {/* Campo de Imagem */}
                       {mediaType === 'image' && (
                         <div className="space-y-4">
-                          <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-zinc-300 dark:border-zinc-700 border-dashed rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer relative">
+                          <label
+                            htmlFor="file-upload"
+                            className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-zinc-300 dark:border-zinc-700 border-dashed rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer relative"
+                          >
                             <div className="space-y-1 text-center">
                               <ImageIcon className="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-500" />
                               <div className="flex text-sm text-zinc-600 dark:text-zinc-400 justify-center">
-                                <label
-                                  htmlFor="file-upload"
-                                  className="relative cursor-pointer bg-white dark:bg-zinc-900 rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none"
-                                >
-                                  <span>Upload de imagens (máx. 10)</span>
-                                  <input
-                                    id="file-upload"
-                                    name="file-upload"
-                                    type="file"
-                                    multiple
-                                    className="sr-only"
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                      if (e.target.files) {
-                                        const filesArray = Array.from(e.target.files);
-                                        setNewPostImages(prev => {
-                                          const combined = [...prev, ...filesArray].slice(0, 10);
-                                          return combined;
-                                        });
-                                      }
-                                    }}
-                                  />
-                                </label>
+                                <span className="relative font-medium text-primary-600 hover:text-primary-500">
+                                  Upload de imagens (máx. 10)
+                                </span>
+                                <input
+                                  id="file-upload"
+                                  name="file-upload"
+                                  type="file"
+                                  multiple
+                                  className="sr-only"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    if (e.target.files) {
+                                      const filesArray = Array.from(e.target.files);
+                                      setNewPostImages(prev => {
+                                        const combined = [...prev, ...filesArray].slice(0, 10);
+                                        return combined;
+                                      });
+                                    }
+                                  }}
+                                />
                               </div>
                               <p className="text-xs text-zinc-500 dark:text-zinc-400">
                                 PNG, JPG, GIF até 5MB cada
                               </p>
                             </div>
-                          </div>
-
+                          </label>
                           {newPostImages.length > 0 && (
                             <div className="grid grid-cols-3 gap-2">
                               {newPostImages.map((file, idx) => (

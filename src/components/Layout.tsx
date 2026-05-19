@@ -181,7 +181,7 @@ export const Layout: React.FC = () => {
             <main className="flex-1 flex flex-col min-w-0 transition-colors duration-200">
                 {/* Header */}
                 <header
-                    className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 px-4 py-3 md:px-8 flex items-center justify-between sticky top-0 z-10 transition-colors duration-200 h-[88px]">
+                    className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 px-4 py-3 md:px-8 flex items-center justify-between sticky top-0 z-40 transition-colors duration-200 h-[88px]">
                     <div className="flex items-center gap-4 md:hidden">
                         {logoContent}
                     </div>
@@ -236,7 +236,7 @@ export const Layout: React.FC = () => {
 
                                 {showUserMenu && (
                                     <div
-                                        className="absolute right-0 mt-2 w-44 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg py-1 z-50">
+                                        className="absolute right-0 mt-2 w-44 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg py-1 z-[60]">
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -270,7 +270,7 @@ export const Layout: React.FC = () => {
 
                 {/* Mobile Nav */}
                 <nav
-                    className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 px-6 py-3 flex justify-between items-center z-20 transition-colors duration-200">
+                    className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 px-6 py-3 flex justify-between items-center z-50 transition-colors duration-200">
                     <MobileNavItem
                         to="/dashboard"
                         icon={<Gamepad2 size={24}/>}
