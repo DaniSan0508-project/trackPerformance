@@ -41,8 +41,15 @@ export const Layout: React.FC = () => {
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [showNotificationsSidebar, setShowNotificationsSidebar] = useState(false);
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(() => {
+        const saved = localStorage.getItem('sidebar-collapsed');
+        return saved === 'true';
+    });
     const userMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        localStorage.setItem('sidebar-collapsed', String(isCollapsed));
+    }, [isCollapsed]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -69,13 +76,13 @@ export const Layout: React.FC = () => {
 
     const logoContent = (
         logoUrl ? (
-            <img src={logoUrl} alt="Logo" className="h-10 w-auto object-contain max-w-[180px]"/>
+            <img src={logoUrl} alt="Logo" className={`h-10 w-auto object-contain transition-all duration-300 ${isCollapsed ? 'max-w-[40px]' : 'max-w-[180px]'}`}/>
         ) : (
             <div className="flex items-center gap-3">
-                <div className="bg-primary-600 p-2 rounded-lg">
+                <div className="bg-primary-600 p-2 rounded-lg shrink-0">
                     <Trophy className="w-5 h-5 text-white"/>
                 </div>
-                <span className="font-bold text-xl text-zinc-900 dark:text-white">TrackPerf</span>
+                {!isCollapsed && <span className="font-bold text-xl text-zinc-900 dark:text-white truncate">TrackPerf</span>}
             </div>
         )
     );
@@ -85,18 +92,37 @@ export const Layout: React.FC = () => {
             className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col md:flex-row transition-colors duration-200">
             {/* Sidebar - Desktop */}
             <aside
-                className="hidden md:flex flex-col w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 h-screen sticky top-0 transition-colors duration-200">
+                className={`hidden md:flex flex-col ${isCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 h-screen sticky top-0 transition-all duration-300 z-50`}>
                 <div
-                    className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-center md:justify-start min-h-[88px]">
+                    className={`p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} min-h-[88px]`}>
                     {logoContent}
+                    {!isCollapsed && (
+                        <button 
+                            onClick={() => setIsCollapsed(true)}
+                            className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"
+                        >
+                            <ChevronLeft size={18} />
+                        </button>
+                    )}
                 </div>
 
-                <nav className="flex-1 p-4 space-y-1">
+                <nav className="flex-1 p-4 space-y-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                    {isCollapsed && (
+                        <button 
+                            onClick={() => setIsCollapsed(false)}
+                            className="w-full flex justify-center p-3 mb-4 rounded-xl text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all"
+                            title="Expandir menu"
+                        >
+                            <ChevronRight size={20} />
+                        </button>
+                    )}
+
                     <NavItem
                         to="/dashboard"
                         icon={<TrendingUp size={20}/>}
                         label="Indicadores"
                         active={location.pathname === '/dashboard'}
+                        isCollapsed={isCollapsed}
                     />
                     <NavItem
                         to="/posts"
@@ -117,6 +143,7 @@ export const Layout: React.FC = () => {
                         icon={<Map size={20}/>}
                         label="Jornadas"
                         active={location.pathname === '/journeys'}
+                        isCollapsed={isCollapsed}
                     />
                     <NavItem
                         to="/feedbacks"
