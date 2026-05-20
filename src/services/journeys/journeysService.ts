@@ -2,11 +2,18 @@ import { API_BASE_URL, getHeaders, handleResponse } from '../core/apiClient';
 import { JourneyPayload } from '../../types';
 
 export const journeysService = {
-  getJourneys: async (token: string, page = 1, status?: string, search?: string) => {
+  getJourneys: async (token: string, page = 1, perPage = 15, status?: string, search?: string) => {
     const params = new URLSearchParams();
     params.append('page', page.toString());
-    if (status && status !== 'all') params.append('status', status);
-    if (search) params.append('search', search);
+    params.append('per_page', perPage.toString());
+    
+    if (status && status !== 'all') {
+      params.append('status', status);
+    }
+    
+    if (search) {
+      params.append('search', search);
+    }
 
     const response = await fetch(`${API_BASE_URL}/journeys?${params.toString()}`, {
       headers: getHeaders(token),

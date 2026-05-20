@@ -100,6 +100,14 @@ function countDays(start: string, end: string): number | null {
   return Math.round(diff / (1000 * 60 * 60 * 24)) + 1;
 }
 
+function getTodayISO(): string {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJourney, onClose, onSaved }) => {
@@ -627,6 +635,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                     </label>
                     <input
                       type="date"
+                      min={editingJourney ? undefined : getTodayISO()}
                       disabled={isReadOnly}
                       value={formData.start_date}
                       onChange={e => setFormData(f => ({ ...f, start_date: e.target.value }))}
@@ -640,6 +649,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                     </label>
                     <input
                       type="date"
+                      min={formData.start_date || getTodayISO()}
                       disabled={isReadOnly}
                       value={formData.end_date}
                       onChange={e => setFormData(f => ({ ...f, end_date: e.target.value }))}
