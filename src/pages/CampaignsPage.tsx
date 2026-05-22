@@ -2436,20 +2436,30 @@ export const CampaignsPage: React.FC = () => {
                                 <input
                                   type="number"
                                   value={formData.goal}
+                                  onKeyDown={(e) => {
+                                    if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
+                                      e.preventDefault();
+                                    }
+                                  }}
                                   onChange={(e) => {
                                     const val = e.target.value;
+                                    if (val === '') {
+                                      setFormData({ ...formData, goal: '' });
+                                      return;
+                                    }
                                     const numVal = parseInt(val) || 0;
                                     const finalVal = Math.min(99999, Math.max(0, numVal));
                                     if (numVal > 99999) {
                                       addToast('warning', `O valor máximo permitido é 99.999 ${coinName}`);
                                     }
-                                    setFormData({ ...formData, goal: val === '' ? '' : String(finalVal) });
+                                    setFormData({ ...formData, goal: String(finalVal) });
                                   }}
                                   className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                                     formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   }`}
                                   placeholder="Ex: 100"
                                   min="0"
+                                  max="99999"
                                 />
                                 {formErrors.goal && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal}</p>}
                               </div>
@@ -2458,16 +2468,30 @@ export const CampaignsPage: React.FC = () => {
                                 <input
                                   type="number"
                                   value={formData.goal_campaign}
+                                  onKeyDown={(e) => {
+                                    if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
+                                      e.preventDefault();
+                                    }
+                                  }}
                                   onChange={(e) => {
                                     const val = e.target.value;
+                                    if (val === '') {
+                                      setFormData({ ...formData, goal_campaign: '' });
+                                      return;
+                                    }
                                     const numVal = parseInt(val) || 0;
-                                    setFormData({ ...formData, goal_campaign: val === '' ? '' : String(Math.max(0, numVal)) });
+                                    const finalVal = Math.min(99999, Math.max(0, numVal));
+                                    if (numVal > 99999) {
+                                      addToast('warning', `O valor máximo permitido é 99.999 ${coinName}`);
+                                    }
+                                    setFormData({ ...formData, goal_campaign: String(finalVal) });
                                   }}
                                   className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                                     formErrors.goal_campaign ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   }`}
                                   placeholder="Ex: 500"
                                   min="0"
+                                  max="99999"
                                 />
                                 {formErrors.goal_campaign && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal_campaign}</p>}
                               </div>
