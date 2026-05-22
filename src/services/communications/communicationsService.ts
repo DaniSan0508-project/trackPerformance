@@ -3,9 +3,10 @@ import { Communication, CommunicationFeed, CommunicationView } from '../../types
 
 export const communicationsService = {
   // Admin endpoints
-  getCommunications: async (token: string, page = 1, search = '', status?: string) => {
+  getCommunications: async (token: string, page = 1, search = '', status?: string, perPage = 15) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
+    queryParams.append('per_page', perPage.toString());
     if (search) queryParams.append('filter[title]', search);
     if (status && status !== 'all') queryParams.append('filter[status]', status);
 
@@ -92,13 +93,13 @@ export const communicationsService = {
   },
 
   // User feed endpoints
-  getCommunicationFeed: async (token: string, page = 1, search = '') => {
+  getCommunicationFeed: async (token: string, page = 1, search = '', perPage = 15) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
-    queryParams.append('filter[status]', 'published');
+    queryParams.append('per_page', perPage.toString());
     if (search) queryParams.append('filter[title]', search);
 
-    const response = await fetch(`${API_BASE_URL}/communications?${queryParams.toString()}`, {
+    const response = await fetch(`${API_BASE_URL}/app/communications?${queryParams.toString()}`, {
       headers: getHeaders(token),
     });
     return handleResponse(response);

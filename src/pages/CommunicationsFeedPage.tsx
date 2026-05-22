@@ -49,7 +49,7 @@ export const CommunicationsFeedPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await communicationsService.getCommunicationFeed(token, page, search);
+      const data = await communicationsService.getCommunicationFeed(token, page, search, 10);
       
       // Filtra comunicados destinados ao usuário
       const filteredComms = (data.data || []).filter((c: CommunicationFeed) => {
@@ -66,7 +66,7 @@ export const CommunicationsFeedPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, currentUser?.id]);
 
   useEffect(() => {
     fetchFeed(currentPage, debouncedSearchTerm);

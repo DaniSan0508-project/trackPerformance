@@ -23,7 +23,7 @@ export const CommunicationsPoller: React.FC<CommunicationsPollerProps> = ({ onUn
     if (!token) return;
 
     try {
-      const data = await communicationsService.getCommunicationFeed(token, 1, '');
+      const data = await communicationsService.getCommunicationFeed(token, 1, '', 50);
       const communications: CommunicationFeed[] = data.data || [];
       
       // Filtra APENAS comunicados não lidos e destinados ao usuário

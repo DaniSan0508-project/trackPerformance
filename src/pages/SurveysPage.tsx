@@ -1043,32 +1043,28 @@ export const SurveysPage: React.FC = () => {
             </div>
 
             {/* Paginação */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between pt-4">
-                <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Mostrando <span className="font-semibold text-zinc-900 dark:text-white">{fromItem}</span> até{' '}
-                  <span className="font-semibold text-zinc-900 dark:text-white">{toItem}</span> de{' '}
-                  <span className="font-semibold text-zinc-900 dark:text-white">{totalItems}</span> resultados
+            {totalItems > 0 && (
+              <div className="flex items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
+                <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                  Mostrando <span className="font-medium">{fromItem}</span> até <span className="font-medium">{toItem}</span> de <span className="font-medium">{totalItems}</span> resultados
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
-                    className="flex items-center gap-1 px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400"
                   >
-                    <ChevronLeft size={16} />
-                    Anterior
+                    <ChevronLeft size={20} />
                   </button>
-                  <span className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium">
-                    {currentPage} de {totalPages}
+                  <span className="text-sm font-medium px-2 text-zinc-700 dark:text-zinc-300">
+                    Página {currentPage} de {totalPages}
                   </span>
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
-                    className="flex items-center gap-1 px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400"
                   >
-                    Próxima
-                    <ChevronRight size={16} />
+                    <ChevronRight size={20} />
                   </button>
                 </div>
               </div>

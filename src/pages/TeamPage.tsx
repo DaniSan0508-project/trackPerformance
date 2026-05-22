@@ -763,7 +763,7 @@ export const TeamPage: React.FC = () => {
                     <ChevronLeft size={20} />
                   </button>
                   <span className="text-sm font-medium px-2 text-zinc-700 dark:text-zinc-300">
-                    Página {currentPage} de {totalPages} (total: {totalItems})
+                    Página {currentPage} de {totalPages}
                   </span>
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}

@@ -2436,15 +2436,20 @@ export const CampaignsPage: React.FC = () => {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Data de Início *</label>
-                              <div className="relative">
-                                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
+                              <div className="relative group cursor-pointer" onClick={(e) => {
+                                const input = e.currentTarget.querySelector('input');
+                                if (input && 'showPicker' in input) {
+                                  try { input.showPicker(); } catch (err) { console.error(err); }
+                                }
+                              }}>
+                                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 pointer-events-none group-hover:text-primary-600 transition-colors z-10" />
                                 <input
                                   type="date"
                                   value={formData.start_date}
                                   onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                                   min={getMinDate()}
                                   disabled={!!editingCampaign}
-                                  className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
+                                  className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
                                     formErrors.start_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   } ${editingCampaign ? 'opacity-60 cursor-not-allowed' : ''}`}
                                 />
@@ -2454,15 +2459,20 @@ export const CampaignsPage: React.FC = () => {
 
                             <div>
                               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Data de Término *</label>
-                              <div className="relative">
-                                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] pointer-events-none z-10" />
+                              <div className="relative group cursor-pointer" onClick={(e) => {
+                                const input = e.currentTarget.querySelector('input');
+                                if (input && 'showPicker' in input) {
+                                  try { input.showPicker(); } catch (err) { console.error(err); }
+                                }
+                              }}>
+                                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 pointer-events-none group-hover:text-primary-600 transition-colors z-10" />
                                 <input
                                   type="date"
                                   value={formData.end_date}
                                   onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                                   min={formData.start_date || getMinDate()}
                                   disabled={!!editingCampaign}
-                                  className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
+                                  className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
                                     formErrors.end_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   } ${editingCampaign ? 'opacity-60 cursor-not-allowed' : ''}`}
                                 />

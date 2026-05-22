@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, ChevronRight, ChevronLeft, Plus, Trash2, Check, Search, Loader2, Trophy, Star, Zap, Flag, Crown, Medal, Shield, Target, Rocket, Heart, Diamond, Gift as GiftIcon, ArrowUp, ArrowDown, Save } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Plus, Trash2, Check, Search, Loader2, Trophy, Star, Zap, Flag, Crown, Medal, Shield, Target, Rocket, Heart, Diamond, Gift as GiftIcon, ArrowUp, ArrowDown, Save, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -109,6 +109,17 @@ function getTodayISO(): string {
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
+
+// Utility to sanitize coin inputs
+const sanitizeCoinValue = (value: string): number => {
+  // Remove tudo que não for dígito
+  const numericValue = value.replace(/\D/g, '');
+  // Remove zeros à esquerda
+  const noZeros = numericValue.replace(/^0+(?=\d)/, '') || '0';
+  // Limita o valor máximo a 999
+  const finalValue = parseInt(noZeros);
+  return finalValue > 999 ? 999 : (finalValue || 1);
+};
 
 export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJourney, onClose, onSaved }) => {
   const { token, coinName } = useAuth();
@@ -633,28 +644,44 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                       Data de Início <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="date"
-                      min={editingJourney ? undefined : getTodayISO()}
-                      disabled={isReadOnly}
-                      value={formData.start_date}
-                      onChange={e => setFormData(f => ({ ...f, start_date: e.target.value }))}
-                      className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-60"
-                    />
+                    <div className="relative group cursor-pointer" onClick={(e) => {
+                      const input = e.currentTarget.querySelector('input');
+                      if (input && 'showPicker' in input) {
+                        try { input.showPicker(); } catch (err) { console.error(err); }
+                      }
+                    }}>
+                      <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 pointer-events-none group-hover:text-primary-600 transition-colors z-10" />
+                      <input
+                        type="date"
+                        min={editingJourney ? undefined : getTodayISO()}
+                        disabled={isReadOnly}
+                        value={formData.start_date}
+                        onChange={e => setFormData(f => ({ ...f, start_date: e.target.value }))}
+                        className="w-full pl-9 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-60 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                      />
+                    </div>
                     {errors.start_date && <p className="text-xs text-red-500 mt-1">{errors.start_date}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                       Data de Fim <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="date"
-                      min={formData.start_date || getTodayISO()}
-                      disabled={isReadOnly}
-                      value={formData.end_date}
-                      onChange={e => setFormData(f => ({ ...f, end_date: e.target.value }))}
-                      className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-60"
-                    />
+                    <div className="relative group cursor-pointer" onClick={(e) => {
+                      const input = e.currentTarget.querySelector('input');
+                      if (input && 'showPicker' in input) {
+                        try { input.showPicker(); } catch (err) { console.error(err); }
+                      }
+                    }}>
+                      <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 pointer-events-none group-hover:text-primary-600 transition-colors z-10" />
+                      <input
+                        type="date"
+                        min={formData.start_date || getTodayISO()}
+                        disabled={isReadOnly}
+                        value={formData.end_date}
+                        onChange={e => setFormData(f => ({ ...f, end_date: e.target.value }))}
+                        className="w-full pl-9 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-60 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                      />
+                    </div>
                     {errors.end_date && <p className="text-xs text-red-500 mt-1">{errors.end_date}</p>}
                   </div>
                 </div>
@@ -668,19 +695,27 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                     <input
                       type="range"
                       min={1}
-                      max={50}
+                      max={100}
                       disabled={isReadOnly}
                       value={formData.coins_factor}
                       onChange={e => setFormData(f => ({ ...f, coins_factor: parseInt(e.target.value) }))}
                       className="flex-1 accent-primary-600 disabled:opacity-60"
                     />
                     <input
-                      type="number"
-                      min={1}
-                      max={9999}
+                      type="text"
+                      inputMode="numeric"
                       disabled={isReadOnly}
                       value={formData.coins_factor}
-                      onChange={e => setFormData(f => ({ ...f, coins_factor: Math.max(1, parseInt(e.target.value) || 1) }))}
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        const numericVal = parseInt(val, 10);
+                        if (!val) {
+                          setFormData(f => ({ ...f, coins_factor: 1 }));
+                          return;
+                        }
+                        const finalValue = numericVal > 999 ? 999 : (numericVal || 1);
+                        setFormData(f => ({ ...f, coins_factor: finalValue }));
+                      }}
                       className="w-20 px-2 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-center focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-60"
                     />
                   </div>

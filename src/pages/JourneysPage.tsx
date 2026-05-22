@@ -455,28 +455,28 @@ export const JourneysPage: React.FC = () => {
             )}
 
             {/* Paginação */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm transition-colors">
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  Mostrando {fromItem}–{toItem} de {totalItems} jornadas
-                </p>
+            {totalItems > 0 && (
+              <div className="flex items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
+                <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                  Mostrando <span className="font-medium">{fromItem}</span> até <span className="font-medium">{toItem}</span> de <span className="font-medium">{totalItems}</span> jornadas
+                </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
                     disabled={currentPage <= 1}
-                    className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg disabled:opacity-40 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                    className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 transition-colors"
                   >
-                    <ChevronLeft size={16} />
+                    <ChevronLeft size={20} />
                   </button>
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    {currentPage} / {totalPages}
+                  <span className="text-sm font-medium px-2 text-zinc-700 dark:text-zinc-300">
+                    Página {currentPage} de {totalPages}
                   </span>
                   <button
                     onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
                     disabled={currentPage >= totalPages}
-                    className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg disabled:opacity-40 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                    className="p-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-600 dark:text-zinc-400 transition-colors"
                   >
-                    <ChevronRight size={16} />
+                    <ChevronRight size={20} />
                   </button>
                 </div>
               </div>
