@@ -1802,7 +1802,19 @@ export const CampaignsPage: React.FC = () => {
 
   const handleGoalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    const formatted = formatCurrencyInput(value);
+    const digits = value.replace(/\D/g, '');
+    let numberValue = parseInt(digits) / 100;
+
+    // Limite máximo de 999.999,00
+    if (numberValue > 999999) {
+      numberValue = 999999;
+      addToast('warning', 'O valor máximo permitido é R$ 999.999,00');
+    }
+
+    const formatted = numberValue.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
     // Converte de volta para formato numérico com ponto decimal
     const numericValue = formatted.replace(/\./g, '').replace(',', '.');
     setFormData({ ...formData, goal: numericValue });
@@ -1811,14 +1823,31 @@ export const CampaignsPage: React.FC = () => {
   const handleGoalCampaignChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (formData.type === 'sales') {
-      const formatted = formatCurrencyInput(value);
+      const digits = value.replace(/\D/g, '');
+      let numberValue = parseInt(digits) / 100;
+
+      // Limite máximo de 999.999,00
+      if (numberValue > 999999) {
+        numberValue = 999999;
+        addToast('warning', 'O valor máximo permitido é R$ 999.999,00');
+      }
+
+      const formatted = numberValue.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
       const numericValue = formatted.replace(/\./g, '').replace(',', '.');
       setFormData({ ...formData, goal_campaign: numericValue });
     } else {
-      setFormData({ ...formData, goal_campaign: value });
+      // Limite para moedas (engajamento) - 99.999
+      const numVal = parseInt(value) || 0;
+      const finalVal = Math.min(99999, Math.max(0, numVal));
+      if (numVal > 99999) {
+        addToast('warning', `O valor máximo permitido é 99.999 ${coinName}`);
+      }
+      setFormData({ ...formData, goal_campaign: value === '' ? '' : String(finalVal) });
     }
   };
-
   // Obtém data mínima (hoje) no formato YYYY-MM-DD
   const getMinDate = () => {
     const today = new Date();
@@ -2407,7 +2436,15 @@ export const CampaignsPage: React.FC = () => {
                                 <input
                                   type="number"
                                   value={formData.goal}
-                                  onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const numVal = parseInt(val) || 0;
+                                    const finalVal = Math.min(99999, Math.max(0, numVal));
+                                    if (numVal > 99999) {
+                                      addToast('warning', `O valor máximo permitido é 99.999 ${coinName}`);
+                                    }
+                                    setFormData({ ...formData, goal: val === '' ? '' : String(finalVal) });
+                                  }}
                                   className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                                     formErrors.goal ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   }`}
@@ -2421,7 +2458,11 @@ export const CampaignsPage: React.FC = () => {
                                 <input
                                   type="number"
                                   value={formData.goal_campaign}
-                                  onChange={handleGoalCampaignChange}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const numVal = parseInt(val) || 0;
+                                    setFormData({ ...formData, goal_campaign: val === '' ? '' : String(Math.max(0, numVal)) });
+                                  }}
                                   className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                                     formErrors.goal_campaign ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   }`}
@@ -2912,44 +2953,23 @@ export const CampaignsPage: React.FC = () => {
                                         type="number"
                                         min="0"
                                         max="999"
-                                        inputMode="numeric"
                                         value={actionCoinsInputs[action.id] ?? (selectedActions.find(a => a.id === action.id)?.coins ?? 0)}
                                         onKeyDown={(e) => {
-                                          if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E' || e.key === ',' || e.key === '.') {
+                                          if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
                                             e.preventDefault();
                                           }
                                         }}
                                         onChange={(e) => {
                                           const val = e.target.value;
                                           if (val === '') {
-                                            setActionCoinsInputs(prev => ({ ...prev, [action.id]: val }));
-                                            return;
-                                          }
-                                          if (/^\d*$/.test(val)) {
-                                            const numVal = parseInt(val);
-                                            if (numVal <= 999) {
-                                              setActionCoinsInputs(prev => ({ ...prev, [action.id]: val }));
-                                            }
-                                          }
-                                        }}
-                                        onBlur={(e) => {
-                                          const val = e.target.value.trim();
-                                          if (val === '') {
-                                            setActionCoinsInputs(prev => ({ ...prev, [action.id]: '0' }));
+                                            setActionCoinsInputs(prev => ({ ...prev, [action.id]: '' }));
                                             updateActionCoins(action.id, 0);
                                             return;
                                           }
-                                          let numVal = parseInt(val);
-                                          if (isNaN(numVal) || numVal < 0) {
-                                            numVal = 0;
-                                            addToast('warning', 'Apenas valores positivos são permitidos.');
-                                          } else if (numVal > 999) {
-                                            numVal = 999;
-                                            addToast('warning', 'O valor máximo permitido é 999.');
-                                          }
-                                          
-                                          setActionCoinsInputs(prev => ({ ...prev, [action.id]: String(numVal) }));
-                                          updateActionCoins(action.id, numVal);
+                                          const numVal = parseInt(val) || 0;
+                                          const finalVal = Math.min(999, Math.max(0, numVal));
+                                          setActionCoinsInputs(prev => ({ ...prev, [action.id]: String(finalVal) }));
+                                          updateActionCoins(action.id, finalVal);
                                         }}
                                         onClick={(e) => e.stopPropagation()}
                                         className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
@@ -2993,39 +3013,25 @@ export const CampaignsPage: React.FC = () => {
                           <Coins className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500" size={18} />
                           <input
                             type="number"
-                            placeholder="Coins"
+                            placeholder="0"
                             value={newHashtagCoins}
                             onKeyDown={(e) => {
-                              if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E' || e.key === ',' || e.key === '.') {
+                              if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
                                 e.preventDefault();
                               }
                             }}
                             onChange={(e) => {
                               const val = e.target.value;
                               if (val === '') {
-                                setNewHashtagCoins(val);
+                                setNewHashtagCoins('');
                                 return;
                               }
-                              if (/^\d*$/.test(val)) {
-                                const numVal = parseInt(val);
-                                if (numVal <= 999) {
-                                  setNewHashtagCoins(val);
-                                }
-                              }
-                            }}
-                            onBlur={() => {
-                              if (newHashtagCoins !== '') {
-                                const numVal = parseInt(newHashtagCoins);
-                                if (numVal > 999) {
-                                  setNewHashtagCoins('999');
-                                  addToast('warning', 'O valor máximo permitido é 999.');
-                                }
-                              }
+                              const numVal = parseInt(val) || 0;
+                              setNewHashtagCoins(String(Math.min(999, Math.max(0, numVal))));
                             }}
                             className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                             min="0"
                             max="999"
-                            inputMode="numeric"
                           />
                         </div>
                         <button

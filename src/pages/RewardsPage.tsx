@@ -1565,12 +1565,26 @@ export const RewardsPage: React.FC = () => {
                         <input
                           type="number"
                           value={formData.price_coins}
-                          onChange={(e) => setFormData({ ...formData, price_coins: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '') {
+                              setFormData({ ...formData, price_coins: '' });
+                              return;
+                            }
+                            const numVal = parseInt(val) || 0;
+                            setFormData({ ...formData, price_coins: String(Math.min(999, Math.max(0, numVal))) });
+                          }}
                           className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                             formErrors.price_coins ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                           }`}
                           placeholder="100"
                           min="0"
+                          max="999"
                         />
                         {formErrors.price_coins && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.price_coins}</p>}
                       </div>
@@ -1580,7 +1594,20 @@ export const RewardsPage: React.FC = () => {
                         <input
                           type="number"
                           value={formData.stock}
-                          onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '') {
+                              setFormData({ ...formData, stock: '' });
+                              return;
+                            }
+                            const numVal = parseInt(val) || 0;
+                            setFormData({ ...formData, stock: String(Math.max(0, numVal)) });
+                          }}
                           className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                             formErrors.stock ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                           }`}
