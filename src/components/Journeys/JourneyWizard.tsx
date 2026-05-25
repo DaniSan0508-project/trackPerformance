@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, ChevronRight, ChevronLeft, Plus, Trash2, Check, Search, Loader2, Trophy, Star, Zap, Flag, Crown, Medal, Shield, Target, Rocket, Heart, Diamond, Gift as GiftIcon, ArrowUp, ArrowDown, Save, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
@@ -132,6 +132,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
   const [currentStep, setCurrentStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const wizardBodyRef = useRef<HTMLDivElement>(null);
 
   // ── Dados do formulário ──────────────────────────────────────────────────────
   const [formData, setFormData] = useState<WizardFormData>({
@@ -342,14 +343,23 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
     if (!token) return;
     setLoadingRewards(true);
     try {
-      const resp = await rewardsService.getCampaignRewards(token, 1, search);
-      setRewards(resp.data || []);
+      if (isReadOnly && formData.prize_reward_id && !search) {
+        const resp = await rewardsService.getRewardById(token, formData.prize_reward_id);
+        if (resp.data) {
+          setRewards([resp.data]);
+        } else {
+          setRewards([]);
+        }
+      } else {
+        const resp = await rewardsService.getCampaignRewards(token, 1, search);
+        setRewards(resp.data || []);
+      }
     } catch (err) {
       console.error('Error fetching rewards', err);
     } finally {
       setLoadingRewards(false);
     }
-  }, [token]);
+  }, [token, isReadOnly, formData.prize_reward_id]);
 
   const fetchCampaigns = useCallback(async () => {
     if (!token) return;
@@ -479,6 +489,20 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
       xp_threshold: lastXp + 100,
     };
     setFormData(f => ({ ...f, levels: [...f.levels, newLevel] }));
+
+    // UX: Rolar para o final e focar no input de nome do novo nível
+    setTimeout(() => {
+      if (wizardBodyRef.current) {
+        wizardBodyRef.current.scrollTo({
+          top: wizardBodyRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+      // Pequeno delay para esperar a animação de scroll e renderização
+      const inputs = document.querySelectorAll('input[placeholder="Ex: Bronze"]');
+      const lastInput = inputs[inputs.length - 1] as HTMLInputElement;
+      if (lastInput) lastInput.focus();
+    }, 100);
   };
 
   const removeLevel = (index: number) => {
@@ -605,7 +629,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div ref={wizardBodyRef} className="flex-1 overflow-y-auto px-6 py-4">
           <AnimatePresence mode="wait">
             {/* ── Etapa 1: Informações básicas ─────────────────────────────── */}
             {currentStep === 0 && (
@@ -997,11 +1021,21 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                             Limiar de XP {index === 0 && <span className="text-zinc-400">(fixo: 0)</span>}
                           </label>
                           <input
-                            type="number"
-                            min={index === 0 ? 0 : 1}
+                            type="text"
+                            inputMode="numeric"
                             disabled={isReadOnly || index === 0}
                             value={level.xp_threshold}
-                            onChange={e => updateLevel(index, 'xp_threshold', parseInt(e.target.value) || 0)}
+                            onChange={e => {
+                              const val = e.target.value.replace(/\D/g, '');
+                              if (val === '') {
+                                updateLevel(index, 'xp_threshold', 0);
+                                return;
+                              }
+                              const noZeros = val.replace(/^0+(?=\d)/, '');
+                              const numVal = parseInt(noZeros, 10) || 0;
+                              const finalVal = Math.min(999, Math.max(0, numVal));
+                              updateLevel(index, 'xp_threshold', finalVal);
+                            }}
                             className="w-full px-2.5 py-1.5 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-60"
                           />
                         </div>
@@ -1091,21 +1125,60 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                     Prêmio do Conquistador (opcional)
                   </label>
-                  <div className="relative mb-2">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                    <input
-                      type="text"
-                      placeholder="Buscar recompensa..."
-                      value={rewardSearch}
-                      onChange={e => setRewardSearch(e.target.value)}
-                      disabled={isReadOnly}
-                      className="w-full pl-9 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500 disabled:opacity-60"
-                    />
-                  </div>
+                  {!isReadOnly && (
+                    <div className="relative mb-2">
+                      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                      <input
+                        type="text"
+                        placeholder="Buscar recompensa..."
+                        value={rewardSearch}
+                        onChange={e => setRewardSearch(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                  )}
                   {loadingRewards ? (
                     <div className="flex justify-center py-4"><Loader2 size={20} className="animate-spin text-primary-600" /></div>
+                  ) : isReadOnly ? (
+                    <div className="flex justify-center">
+                      {formData.prize_reward_id ? (
+                        (() => {
+                          const r = rewards.find(r => r.id === formData.prize_reward_id);
+                          if (!r) return <p className="text-sm text-zinc-500 p-4 italic">Carregando prêmio selecionado...</p>;
+                          return (
+                            <div className="w-full p-4 bg-white dark:bg-zinc-800 border-2 border-primary-500 rounded-2xl shadow-md flex items-center gap-4">
+                              <div className="w-20 h-20 rounded-xl overflow-hidden border border-zinc-100 dark:border-zinc-700 bg-white dark:bg-zinc-900 flex-shrink-0">
+                                {r.images?.[0]?.image_full_url ? (
+                                  <img src={r.images[0].image_full_url} alt={r.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-zinc-200 dark:text-zinc-700">
+                                    <GiftIcon size={32} />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="mb-1">
+                                  {r.fulfillment_type === 'voucher' ? (
+                                    <span className="bg-blue-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm uppercase">Voucher</span>
+                                  ) : (
+                                    <span className="bg-green-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm uppercase">Físico</span>
+                                  )}
+                                </div>
+                                <p className="font-bold text-zinc-900 dark:text-white truncate text-base">{r.name}</p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2">{r.description}</p>
+                              </div>
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        <div className="w-full p-6 bg-zinc-50 dark:bg-zinc-800/50 border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-2xl flex flex-col items-center justify-center text-zinc-400">
+                          <X size={32} className="mb-2" />
+                          <span className="text-sm font-bold uppercase tracking-tight">Sem prêmio definido</span>
+                        </div>
+                      )}
+                    </div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-64 overflow-y-auto border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50/50 dark:bg-zinc-900/30">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50/50 dark:bg-zinc-900/30">
                       <label 
                         className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all cursor-pointer text-center min-h-[120px] ${
                           formData.prize_reward_id === null 
@@ -1174,32 +1247,77 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                 </div>
 
                 {/* Campanhas vinculadas */}
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    Campanhas Vinculadas (opcional)
-                  </label>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
-                    Se vinculadas, apenas coins dessas campanhas contam para XP.
-                  </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                      Campanhas Vinculadas (opcional)
+                    </label>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Apenas ganhos nestas campanhas serão convertidos em XP para esta jornada.
+                    </p>
+                  </div>
+
                   {loadingCampaigns ? (
-                    <div className="flex justify-center py-4"><Loader2 size={20} className="animate-spin text-primary-600" /></div>
-                  ) : (
-                    <div className="space-y-1 max-h-36 overflow-y-auto border border-zinc-200 dark:border-zinc-700 rounded-lg p-2">
-                      {campaigns.length === 0 ? (
-                        <p className="text-sm text-zinc-500 p-2 text-center">Nenhuma campanha ativa.</p>
+                    <div className="flex justify-center py-4">
+                      <Loader2 size={20} className="animate-spin text-primary-600" />
+                    </div>
+                  ) : isReadOnly ? (
+                    <div className="flex flex-wrap gap-2 p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl min-h-[50px]">
+                      {formData.campaign_ids.length === 0 ? (
+                        <p className="text-xs text-zinc-400 italic">Nenhuma campanha específica vinculada. Todas as campanhas pontuam.</p>
                       ) : (
-                        campaigns.map(c => (
-                          <label key={c.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={formData.campaign_ids.includes(c.id)}
-                              onChange={() => toggleCampaign(c.id)}
-                              disabled={isReadOnly}
-                              className="rounded accent-primary-600"
-                            />
-                            <span className="text-sm text-zinc-900 dark:text-white">{c.name}</span>
-                          </label>
-                        ))
+                        formData.campaign_ids.map(id => {
+                          const c = campaigns.find(item => item.id === id);
+                          return (
+                            <div 
+                              key={id}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-zinc-800 border border-primary-200 dark:border-primary-900 text-primary-700 dark:text-primary-400 rounded-lg text-xs font-bold shadow-sm"
+                            >
+                              <div className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
+                              {c?.name || `Campanha #${id}`}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border border-zinc-200 dark:border-zinc-700 rounded-xl p-2 bg-zinc-50/30 dark:bg-zinc-900/20">
+                      {campaigns.length === 0 ? (
+                        <p className="text-sm text-zinc-500 p-4 text-center italic col-span-full">Nenhuma campanha ativa disponível.</p>
+                      ) : (
+                        campaigns.map(c => {
+                          const isSelected = formData.campaign_ids.includes(c.id);
+                          return (
+                            <label 
+                              key={c.id} 
+                              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 transition-all cursor-pointer ${
+                                isSelected 
+                                  ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 shadow-sm' 
+                                  : 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-800 hover:border-primary-200 dark:hover:border-primary-900'
+                              }`}
+                            >
+                              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                                isSelected ? 'bg-primary-500 border-primary-500' : 'border-zinc-300 dark:border-zinc-600'
+                              }`}>
+                                {isSelected && <Check size={12} className="text-white" />}
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleCampaign(c.id)}
+                                className="sr-only"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-xs font-bold truncate ${isSelected ? 'text-primary-700 dark:text-primary-400' : 'text-zinc-700 dark:text-zinc-300'}`}>
+                                  {c.name}
+                                </p>
+                                <p className="text-[10px] text-zinc-500 dark:text-zinc-500 uppercase tracking-wider font-medium">
+                                  {c.type === 'sales' ? '🎯 Vendas' : '🔥 Engajamento'}
+                                </p>
+                              </div>
+                            </label>
+                          );
+                        })
                       )}
                     </div>
                   )}
