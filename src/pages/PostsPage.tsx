@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar, Rocket, Shield, Coins, AlertCircle, CheckCircle, Megaphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Post, Like, Comment, User as UserType } from '../types';
+import { Post, Like, Comment, User as UserType, QuizAlternative, QuizAnswer, CampaignHashtag } from '../types';
 import { postsService, usersService, campaignsService } from '../services';
 import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';

@@ -139,6 +139,9 @@ export interface QuizAnswer {
     profile_image_url: string | null;
     journey_level?: JourneyLevelBadge | null;
   };
+}
+
+export interface PostImage {
   id: number | null;
   post_id: number;
   image_path?: string;
