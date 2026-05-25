@@ -1558,6 +1558,49 @@ export const RewardsPage: React.FC = () => {
                     {formErrors.description && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.description}</p>}
                   </div>
 
+                  {/* Tipo de Reward (Standard ou Campaign) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Tipo de Uso *
+                      </label>
+                      <select
+                        value={formData.reward_type}
+                        onChange={(e) => {
+                          const newType = e.target.value as 'standard' | 'campaign';
+                          setFormData({ 
+                            ...formData, 
+                            reward_type: newType,
+                            // Limpar valid_until se for campanha
+                            valid_until: newType === 'campaign' ? '' : formData.valid_until
+                          });
+                        }}
+                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                      >
+                        <option value="standard">🛒 Catálogo</option>
+                        <option value="campaign">🏆 Prêmio de Campanha/Jornada</option>
+                      </select>
+                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1">
+                        {formData.reward_type === 'standard'
+                          ? 'Aparece no catálogo para resgate direto'
+                          : 'Vinculado a uma campanha ou jornada'}
+                      </p>
+                    </div>
+
+                    {/* Tipo de Recompensa */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tipo de Recompensa *</label>
+                      <select
+                        value={formData.fulfillment_type}
+                        onChange={(e) => setFormData({ ...formData, fulfillment_type: e.target.value as 'physical' | 'voucher' })}
+                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                      >
+                        <option value="physical">📦 Produto Físico</option>
+                        <option value="voucher">🎫 Voucher Digital</option>
+                      </select>
+                    </div>
+                  </div>
+
                   {formData.reward_type !== 'campaign' && (
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -1618,47 +1661,6 @@ export const RewardsPage: React.FC = () => {
                       </div>
                     </div>
                   )}
-
-                  {/* Tipo de Reward (Standard ou Campaign) */}
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                      Tipo de Uso *
-                    </label>
-                    <select
-                      value={formData.reward_type}
-                      onChange={(e) => {
-                        const newType = e.target.value as 'standard' | 'campaign';
-                        setFormData({ 
-                          ...formData, 
-                          reward_type: newType,
-                          // Limpar valid_until se for campanha
-                          valid_until: newType === 'campaign' ? '' : formData.valid_until
-                        });
-                      }}
-                      className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                    >
-                      <option value="standard">🛒 Catálogo</option>
-                      <option value="campaign">🏆 Prêmio de Campanha/Jornada</option>
-                    </select>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                      {formData.reward_type === 'standard'
-                        ? 'Recompensa aparece no catálogo para todos os usuários resgatarem'
-                        : 'Recompensa vinculada a uma campanha ou jornada'}
-                    </p>
-                  </div>
-
-                  {/* Tipo de Recompensa */}
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tipo de Recompensa *</label>
-                    <select
-                      value={formData.fulfillment_type}
-                      onChange={(e) => setFormData({ ...formData, fulfillment_type: e.target.value as 'physical' | 'voucher' })}
-                      className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                    >
-                      <option value="physical">📦 Produto Físico</option>
-                      <option value="voucher">🎫 Voucher Digital</option>
-                    </select>
-                  </div>
 
                   {/* Data de Validade */}
                   {formData.reward_type !== 'campaign' && (

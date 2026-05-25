@@ -689,7 +689,7 @@ export const TeamPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-3 flex-1">
+                  <div className="space-y-3 flex-1 flex flex-col">
                     <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                       <Mail size={16} className="text-zinc-400 flex-shrink-0" />
                       <span className="truncate" title={user.email}>{user.email}</span>
@@ -717,6 +717,8 @@ export const TeamPage: React.FC = () => {
                         <span className="text-xs italic line-clamp-2" title={user.description}>{user.description}</span>
                       </div>
                     )}
+
+                    <div className="flex-1" />
 
                     <div className="flex items-center justify-between gap-4 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                       {user.user_type_id !== 1 && (isSuperAdmin || isAdmin) && (
