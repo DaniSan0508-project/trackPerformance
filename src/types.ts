@@ -619,7 +619,7 @@ export interface Journey {
   start_date: string;
   end_date: string;
   coins_factor: number;
-  audience_ids: number[] | null;
+  participant_ids: number[] | null;
   prize_reward_id: number | null;
   published_at: string | null;
   created_by: { id: number; name: string } | null;
@@ -647,7 +647,7 @@ export interface JourneyPayload {
   start_date: string;
   end_date: string;
   coins_factor: number;
-  audience_ids?: number[] | null;
+  participant_ids?: number[] | null;
   prize_reward_id?: number | null;
   campaign_ids?: number[];
   levels: JourneyLevelPayload[];

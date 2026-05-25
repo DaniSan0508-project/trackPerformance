@@ -94,10 +94,10 @@ export const journeysService = {
   },
 
   addParticipants: async (token: string, id: number, userIds: number[]) => {
-    const response = await fetch(`${API_BASE_URL}/journeys/${id}/participants`, {
-      method: 'POST',
+    const response = await fetch(`${API_BASE_URL}/journeys/${id}`, {
+      method: 'PUT',
       headers: getHeaders(token),
-      body: JSON.stringify({ user_ids: userIds }),
+      body: JSON.stringify({ participant_ids: userIds }),
     });
     return handleResponse(response);
   },
