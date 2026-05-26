@@ -131,6 +131,8 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
 
   const [currentStep, setCurrentStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const wizardBodyRef = useRef<HTMLDivElement>(null);
 
@@ -478,6 +480,22 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editingJourney || !token) return;
+    setDeleting(true);
+    try {
+      await journeysService.deleteJourney(token, editingJourney.id);
+      addToast('success', 'Jornada excluída com sucesso!');
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      addToast('error', err.message || 'Erro ao excluir jornada.');
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -1455,13 +1473,26 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
 
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-200 dark:border-zinc-800">
-          <button
-            onClick={handleBack}
-            disabled={currentStep === 0}
-            className="flex items-center gap-2 px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-40 text-sm font-medium"
-          >
-            <ChevronLeft size={16} /> Voltar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBack}
+              disabled={currentStep === 0}
+              className="flex items-center gap-2 px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-40 text-sm font-medium"
+            >
+              <ChevronLeft size={16} /> Voltar
+            </button>
+
+            {(editingJourney?.status === 'draft' || editingJourney?.status === 'active') && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={deleting || saving}
+                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-sm font-medium disabled:opacity-60"
+              >
+                {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                Excluir
+              </button>
+            )}
+          </div>
 
           <div className="flex items-center gap-2">
             {!isReadOnly && (
@@ -1509,6 +1540,41 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
           </div>
         </div>
       </motion.div>
+
+      {/* Confirmação de Exclusão Interna */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl max-w-sm w-full p-6 border border-zinc-200 dark:border-zinc-800"
+            >
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Excluir Jornada?</h3>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+                Tem certeza que deseja excluir esta jornada? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
+                >
+                  {deleting && <Loader2 size={14} className="animate-spin" />}
+                  Confirmar Exclusão
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

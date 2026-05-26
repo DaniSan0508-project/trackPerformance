@@ -244,12 +244,27 @@ export const JourneysPage: React.FC = () => {
                     {formatDate(detailJourney.start_date)} até {formatDate(detailJourney.end_date)}
                   </p>
                 </div>
-                <button
-                  onClick={() => setDetailJourney(null)}
-                  className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-                >
-                  ✕
-                </button>
+                <div className="flex items-center gap-2">
+                  {isAdmin && (detailJourney.status === 'draft' || detailJourney.status === 'active') && (
+                    <button
+                      onClick={() => {
+                        const journeyToDelete = detailJourney;
+                        setDetailJourney(null);
+                        handleDelete(journeyToDelete);
+                      }}
+                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      title="Excluir jornada"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setDetailJourney(null)}
+                    className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
@@ -651,7 +666,7 @@ const JourneyCard: React.FC<JourneyCardProps> = ({
                 <Edit2 size={20} />
               </button>
 
-              {isDraft && (
+              {(isDraft || isActive) && (
                 <button
                   onClick={onDelete}
                   disabled={deletingId === journey.id}
