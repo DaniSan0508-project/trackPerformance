@@ -516,8 +516,8 @@ const JourneyCard: React.FC<JourneyCardProps> = ({
     : null;
 
   // Calculando quantidade de participantes
-  const participantsCount = journey.stats?.participants_count ?? journey.participant_ids?.length ?? 0;
-  const isPublic = !journey.participant_ids || journey.participant_ids.length === 0;
+  const participantsCount = journey.stats?.participants_count ?? journey.audience_ids?.length ?? 0;
+  const isPublic = !journey.audience_ids || journey.audience_ids.length === 0;
 
   return (
     <motion.div

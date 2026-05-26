@@ -97,7 +97,7 @@ export const journeysService = {
     const response = await fetch(`${API_BASE_URL}/journeys/${id}`, {
       method: 'PUT',
       headers: getHeaders(token),
-      body: JSON.stringify({ participant_ids: userIds }),
+      body: JSON.stringify({ audience_ids: userIds }),
     });
     return handleResponse(response);
   },

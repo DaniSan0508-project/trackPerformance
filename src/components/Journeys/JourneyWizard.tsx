@@ -66,7 +66,7 @@ interface WizardFormData {
   start_date: string;
   end_date: string;
   coins_factor: number;
-  participant_ids: number[];
+  audience_ids: number[];
   prize_reward_id: number | null;
   campaign_ids: number[];
   levels: LevelPayloadWithColor[];
@@ -141,7 +141,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
     start_date: '',
     end_date: '',
     coins_factor: 10,
-    participant_ids: [],
+    audience_ids: [],
     prize_reward_id: null,
     campaign_ids: [],
     levels: DEFAULT_LEVELS,
@@ -204,7 +204,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
         start_date: editingJourney.start_date?.split('T')[0] ?? '',
         end_date: editingJourney.end_date?.split('T')[0] ?? '',
         coins_factor: editingJourney.coins_factor,
-        participant_ids: editingJourney.participant_ids ?? [],
+        audience_ids: editingJourney.audience_ids ?? [],
         prize_reward_id: editingJourney.prize_reward_id ?? null,
         campaign_ids: editingJourney.campaigns.map(c => c.id),
         levels,
@@ -216,7 +216,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
         start_date: '',
         end_date: '',
         coins_factor: 10,
-        participant_ids: [],
+        audience_ids: [],
         prize_reward_id: null,
         campaign_ids: [],
         levels: DEFAULT_LEVELS,
@@ -253,7 +253,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
 
       // Construir set de IDs de usuários já em outras jornadas
       const enrolledItems: any[] = enrolledRes.data ?? [];
-      const ownIds = new Set<number>(editingJourney?.participant_ids ?? []);
+      const ownIds = new Set<number>(editingJourney?.audience_ids ?? []);
       const enrolled = new Set<number>(
         enrolledItems
           .map((item: any) => item.id ?? item.user_id ?? item.user?.id)
@@ -266,7 +266,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
         const next = new Set<string>();
         rolesRes.data?.forEach((r: Role) => {
           const inRole = collaborators.filter(u => u.role === r.description);
-          if (inRole.length > 0 && inRole.every(u => formData.participant_ids.includes(u.id))) {
+          if (inRole.length > 0 && inRole.every(u => formData.audience_ids.includes(u.id))) {
             next.add(r.description);
           }
         });
@@ -283,7 +283,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
     } finally {
       setLoadingUsers(false);
     }
-  }, [token, formData.participant_ids, editingJourney]);
+  }, [token, formData.audience_ids, editingJourney]);
 
   useEffect(() => {
     if (isOpen && currentStep === 1) {
@@ -310,9 +310,9 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
     setFormData(f => {
       const roleIds = roleUsers.map(u => u.id);
       const newIds = allSelected
-        ? f.participant_ids.filter(id => !roleIds.includes(id))
-        : [...new Set([...f.participant_ids, ...roleIds])];
-      return { ...f, participant_ids: newIds };
+        ? f.audience_ids.filter(id => !roleIds.includes(id))
+        : [...new Set([...f.audience_ids, ...roleIds])];
+      return { ...f, audience_ids: newIds };
     });
     setFullySelectedRoles(prev => {
       const next = new Set(prev);
@@ -326,16 +326,16 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
   const availableIds = allUsersCache
     .filter(u => !enrolledUserIds.has(u.id))
     .map(u => u.id);
-  const allSelected = availableIds.length > 0 && availableIds.every(id => formData.participant_ids.includes(id));
+  const allSelected = availableIds.length > 0 && availableIds.every(id => formData.audience_ids.includes(id));
 
   const handleSelectAll = () => {
     if (allSelected) {
       // Desmarcar todos
-      setFormData(f => ({ ...f, participant_ids: f.participant_ids.filter(id => !availableIds.includes(id)) }));
+      setFormData(f => ({ ...f, audience_ids: f.audience_ids.filter(id => !availableIds.includes(id)) }));
       setFullySelectedRoles(new Set());
     } else {
       // Selecionar todos disponíveis
-      setFormData(f => ({ ...f, participant_ids: [...new Set([...f.participant_ids, ...availableIds])] }));
+      setFormData(f => ({ ...f, audience_ids: [...new Set([...f.audience_ids, ...availableIds])] }));
       setFullySelectedRoles(new Set(roles.map(r => r.description)));
     }
   };
@@ -433,7 +433,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
     try {
       // Jornada ativa: apenas sincroniza participantes via rota dedicada
       if (editingJourney && editingJourney.status === 'active') {
-        await journeysService.addParticipants(token, editingJourney.id, formData.participant_ids);
+        await journeysService.addParticipants(token, editingJourney.id, formData.audience_ids);
         addToast('success', 'Participantes atualizados com sucesso!');
         onSaved();
         return;
@@ -445,7 +445,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
         start_date: formData.start_date,
         end_date: formData.end_date,
         coins_factor: formData.coins_factor,
-        participant_ids: formData.participant_ids.length > 0 ? formData.participant_ids : null,
+        audience_ids: formData.audience_ids.length > 0 ? formData.audience_ids : null,
         prize_reward_id: formData.prize_reward_id,
         campaign_ids: formData.campaign_ids,
         levels: formData.levels.map((l, i) => ({
@@ -549,9 +549,9 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
   const toggleUser = (userId: number) => {
     setFormData(f => ({
       ...f,
-      participant_ids: f.participant_ids.includes(userId)
-        ? f.participant_ids.filter(id => id !== userId)
-        : [...f.participant_ids, userId],
+      audience_ids: f.audience_ids.includes(userId)
+        ? f.audience_ids.filter(id => id !== userId)
+        : [...f.audience_ids, userId],
     }));
   };
 
@@ -765,9 +765,9 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                     <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Selecionar Participantes</h3>
                   </div>
                   <div className="flex items-center gap-2">
-                    {formData.participant_ids.length > 0 && (
+                    {formData.audience_ids.length > 0 && (
                       <span className="text-xs font-semibold bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 px-2.5 py-1 rounded-full">
-                        {formData.participant_ids.length} selecionados
+                        {formData.audience_ids.length} selecionados
                       </span>
                     )}
                     {isParticipantsEditable && availableIds.length > 0 && (
@@ -838,7 +838,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {users.map(user => {
-                          const selected = formData.participant_ids.includes(user.id);
+                          const selected = formData.audience_ids.includes(user.id);
                           const isEnrolled = enrolledUserIds.has(user.id);
                           const isDisabled = !isParticipantsEditable || isEnrolled;
                           return (
@@ -1402,7 +1402,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                         ? `${formatDateBR(formData.start_date)} até ${formatDateBR(formData.end_date)} (${countDays(formData.start_date, formData.end_date)} dias)`
                         : '—'}</div>
                     <div><span className="font-medium text-zinc-900 dark:text-white">Fator de conversão:</span> {formData.coins_factor} coins = 1 XP</div>
-                    <div><span className="font-medium text-zinc-900 dark:text-white">Participantes:</span> {formData.participant_ids.length > 0 ? `${formData.participant_ids.length} selecionados` : 'Todos os colaboradores'}</div>
+                    <div><span className="font-medium text-zinc-900 dark:text-white">Participantes:</span> {formData.audience_ids.length > 0 ? `${formData.audience_ids.length} selecionados` : 'Todos os colaboradores'}</div>
                     <div><span className="font-medium text-zinc-900 dark:text-white">Níveis:</span> {formData.levels.length} níveis configurados</div>
                     <div className="flex flex-wrap gap-1.5 mt-1">
                       {formData.levels.map((l, i) => (
