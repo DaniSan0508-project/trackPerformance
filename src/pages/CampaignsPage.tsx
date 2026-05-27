@@ -2071,11 +2071,13 @@ export const CampaignsPage: React.FC = () => {
                                     {formatDate(campaign.start_date)} até {formatDate(campaign.end_date)}
                                   </span>
                                 </div>
-                                {campaign.users && campaign.users.length > 0 && (
+                                {(campaign.participants_count !== undefined || (campaign.users && campaign.users.length > 0)) && (
                                   <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
                                     <Users size={16} className="text-purple-500" />
                                     <span className="text-zinc-500 dark:text-zinc-500">Participantes:</span>
-                                    <span className="font-medium text-zinc-900 dark:text-white">{campaign.users.length}</span>
+                                    <span className="font-medium text-zinc-900 dark:text-white">
+                                      {campaign.participants_count ?? campaign.users?.length ?? 0}
+                                    </span>
                                   </div>
                                 )}
                                 {campaign.actions && campaign.actions.length > 0 && (

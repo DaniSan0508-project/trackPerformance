@@ -181,6 +181,8 @@ export interface Post {
   likes_count?: number;
   comments?: Comment[];
   comments_count?: number;
+  shares_count?: number;
+  views_count?: number;
   images?: PostImage[];
 }
 
@@ -622,6 +624,7 @@ export interface Journey {
   start_date: string;
   end_date: string;
   coins_factor: number;
+  count_all_coins: boolean;
   participant_ids: number[] | null;
   prize_reward_id: number | null;
   published_at: string | null;
@@ -650,6 +653,7 @@ export interface JourneyPayload {
   start_date: string;
   end_date: string;
   coins_factor: number;
+  count_all_coins?: boolean;
   participant_ids?: number[] | null;
   prize_reward_id?: number | null;
   campaign_ids?: number[];

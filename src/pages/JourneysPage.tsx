@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Map, Calendar, Users, Trophy, Send, TrendingUp, BarChart3, AlertCircle, Flag } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Map, Calendar, Users, Trophy, Send, TrendingUp, BarChart3, AlertCircle, Flag, Pause } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -34,7 +34,7 @@ const statusLabels: Record<JourneyStatus, string> = {
 const statusColors: Record<JourneyStatus, string> = {
   draft: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400',
   active: 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400',
-  ended: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-500',
+  ended: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400',
 };
 
 // ─── Componente ───────────────────────────────────────────────────────────────
@@ -150,6 +150,27 @@ export const JourneysPage: React.FC = () => {
     }
   };
 
+  const handleEndJourney = (journey: Journey) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Encerrar Jornada',
+      message: `Deseja encerrar a jornada "${journey.name}"? Todos os participantes serão notificados e a jornada não poderá mais ser editada.`,
+      isLoading: false,
+      onConfirm: async () => {
+        if (!token) return;
+        try {
+          await journeysService.updateJourney(token, journey.id, { status: 'ended' } as any);
+          addToast('success', 'Jornada encerrada com sucesso!');
+          fetchJourneys(currentPage, searchTerm);
+        } catch (err: any) {
+          addToast('error', err.message || 'Erro ao encerrar jornada.');
+        } finally {
+          setConfirmModal(prev => ({ ...prev, isLoading: false, isOpen: false }));
+        }
+      },
+    });
+  };
+
   // ── Publicar ─────────────────────────────────────────────────────────────────
   const handlePublish = (journey: Journey) => {
     setConfirmModal({
@@ -244,12 +265,40 @@ export const JourneysPage: React.FC = () => {
                     {formatDate(detailJourney.start_date)} até {formatDate(detailJourney.end_date)}
                   </p>
                 </div>
-                <button
-                  onClick={() => setDetailJourney(null)}
-                  className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-                >
-                  ✕
-                </button>
+                <div className="flex items-center gap-2">
+                  {isAdmin && detailJourney.status === 'active' && (
+                    <button
+                      onClick={() => {
+                        const journeyAction = detailJourney;
+                        setDetailJourney(null);
+                        handleEndJourney(journeyAction);
+                      }}
+                      className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                      title="Encerrar jornada"
+                    >
+                      <Pause size={18} />
+                    </button>
+                  )}
+                  {isAdmin && (detailJourney.status === 'draft' || detailJourney.status === 'ended') && (
+                    <button
+                      onClick={() => {
+                        const journeyAction = detailJourney;
+                        setDetailJourney(null);
+                        handleDelete(journeyAction);
+                      }}
+                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      title="Excluir jornada"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setDetailJourney(null)}
+                    className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
@@ -449,6 +498,7 @@ export const JourneysPage: React.FC = () => {
                   onDetail={() => handleOpenDetail(journey)}
                   onEdit={() => { setEditingJourney(journey); setIsWizardOpen(true); }}
                   onPublish={() => handlePublish(journey)}
+                  onEnd={() => handleEndJourney(journey)}
                   onDelete={() => handleDelete(journey)}
                 />
               ))
@@ -498,11 +548,12 @@ interface JourneyCardProps {
   onDetail: () => void;
   onEdit: () => void;
   onPublish: () => void;
+  onEnd: () => void;
   onDelete: () => void;
 }
 
 const JourneyCard: React.FC<JourneyCardProps> = ({
-  journey, isAdmin, deletingId, publishingId, onDetail, onEdit, onPublish, onDelete,
+  journey, isAdmin, deletingId, publishingId, onDetail, onEdit, onPublish, onEnd, onDelete,
 }) => {
   const isDraft = journey.status === 'draft';
   const isActive = journey.status === 'active';
@@ -651,7 +702,17 @@ const JourneyCard: React.FC<JourneyCardProps> = ({
                 <Edit2 size={20} />
               </button>
 
-              {isDraft && (
+              {isActive && (
+                <button
+                  onClick={onEnd}
+                  className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                  title="Encerrar jornada"
+                >
+                  <Pause size={20} />
+                </button>
+              )}
+
+              {(isDraft || isEnded) && (
                 <button
                   onClick={onDelete}
                   disabled={deletingId === journey.id}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, ChevronRight, ChevronLeft, Plus, Trash2, Check, Search, Loader2, Trophy, Star, Zap, Flag, Crown, Medal, Shield, Target, Rocket, Heart, Diamond, Gift as GiftIcon, ArrowUp, ArrowDown, Save, Calendar } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Plus, Trash2, Check, Search, Loader2, Trophy, Star, Zap, Flag, Crown, Medal, Shield, Target, Rocket, Heart, Diamond, Gift as GiftIcon, ArrowUp, ArrowDown, Save, Calendar, Pause } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -66,6 +66,7 @@ interface WizardFormData {
   start_date: string;
   end_date: string;
   coins_factor: number;
+  count_all_coins: boolean;
   participant_ids: number[];
   prize_reward_id: number | null;
   campaign_ids: number[];
@@ -131,6 +132,10 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
 
   const [currentStep, setCurrentStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [ending, setEnding] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const wizardBodyRef = useRef<HTMLDivElement>(null);
 
@@ -141,6 +146,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
     start_date: '',
     end_date: '',
     coins_factor: 10,
+    count_all_coins: false,
     participant_ids: [],
     prize_reward_id: null,
     campaign_ids: [],
@@ -204,6 +210,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
         start_date: editingJourney.start_date?.split('T')[0] ?? '',
         end_date: editingJourney.end_date?.split('T')[0] ?? '',
         coins_factor: editingJourney.coins_factor,
+        count_all_coins: editingJourney.count_all_coins ?? false,
         participant_ids: editingJourney.participant_ids ?? [],
         prize_reward_id: editingJourney.prize_reward_id ?? null,
         campaign_ids: editingJourney.campaigns.map(c => c.id),
@@ -445,6 +452,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
         start_date: formData.start_date,
         end_date: formData.end_date,
         coins_factor: formData.coins_factor,
+        count_all_coins: formData.count_all_coins,
         participant_ids: formData.participant_ids.length > 0 ? formData.participant_ids : null,
         prize_reward_id: formData.prize_reward_id,
         campaign_ids: formData.campaign_ids,
@@ -478,6 +486,38 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editingJourney || !token) return;
+    setDeleting(true);
+    try {
+      await journeysService.deleteJourney(token, editingJourney.id);
+      addToast('success', 'Jornada excluída com sucesso!');
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      addToast('error', err.message || 'Erro ao excluir jornada.');
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleEndJourney = async () => {
+    if (!editingJourney || !token) return;
+    setEnding(true);
+    try {
+      await journeysService.updateJourney(token, editingJourney.id, { status: 'ended' } as any);
+      addToast('success', 'Jornada encerrada com sucesso!');
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      addToast('error', err.message || 'Erro ao encerrar jornada.');
+    } finally {
+      setEnding(false);
+      setShowEndConfirm(false);
     }
   };
 
@@ -713,46 +753,84 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                   </div>
                 </div>
 
-                {/* Fator de conversão */}
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    Fator de Conversão ({coinName || 'coins'} → XP) <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min={1}
-                      max={100}
-                      disabled={isReadOnly}
-                      value={formData.coins_factor}
-                      onChange={e => setFormData(f => ({ ...f, coins_factor: parseInt(e.target.value) }))}
-                      className="flex-1 accent-primary-600 disabled:opacity-60"
-                    />
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      disabled={isReadOnly}
-                      value={formData.coins_factor}
-                      onChange={e => {
-                        const val = e.target.value.replace(/\D/g, '');
-                        const numericVal = parseInt(val, 10);
-                        if (!val) {
-                          setFormData(f => ({ ...f, coins_factor: 1 }));
-                          return;
-                        }
-                        const finalValue = numericVal > 999 ? 999 : (numericVal || 1);
-                        setFormData(f => ({ ...f, coins_factor: finalValue }));
-                      }}
-                      className="w-20 px-2 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-center focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-60"
-                    />
+                {/* Fator de conversão e Count all coins */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                      Fator de Conversão ({coinName || 'coins'} → XP) <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min={1}
+                        max={100}
+                        disabled={isReadOnly}
+                        value={formData.coins_factor > 100 ? 100 : formData.coins_factor}
+                        onChange={e => setFormData(f => ({ ...f, coins_factor: parseInt(e.target.value) }))}
+                        className="flex-1 accent-primary-600 disabled:opacity-60"
+                      />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        disabled={isReadOnly}
+                        value={formData.coins_factor}
+                        onChange={e => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          const numericVal = parseInt(val, 10);
+                          if (!val) {
+                            setFormData(f => ({ ...f, coins_factor: 1 }));
+                            return;
+                          }
+                          const finalValue = numericVal > 999 ? 999 : (numericVal || 1);
+                          setFormData(f => ({ ...f, coins_factor: finalValue }));
+                        }}
+                        className="w-20 px-2 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-center focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-60"
+                        placeholder="Ex: 100"
+                      />
+                    </div>
+                    {errors.coins_factor && <p className="text-xs text-red-500 mt-1">{errors.coins_factor}</p>}
+                    <p className="text-[10px] text-zinc-500 mt-1">
+                      {formData.coins_factor} {coinName || 'coins'} = 1 XP
+                    </p>
                   </div>
-                  {errors.coins_factor && <p className="text-xs text-red-500 mt-1">{errors.coins_factor}</p>}
-                  <div className="mt-2 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg text-sm text-primary-700 dark:text-primary-400">
-                    <span className="font-semibold">Preview:</span>{' '}
-                    100 {coinName || 'coins'} = {xpPreview(100)} XP &nbsp;|&nbsp;
-                    500 {coinName || 'coins'} = {xpPreview(500)} XP &nbsp;|&nbsp;
-                    1.000 {coinName || 'coins'} = {xpPreview(1000)} XP
+
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                      Abranger Engajamento Global
+                    </label>
+                    <div className="flex items-center gap-3 py-2">
+                      <button
+                        type="button"
+                        disabled={!!editingJourney}
+                        onClick={() => setFormData(f => ({ ...f, count_all_coins: !f.count_all_coins }))}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                          formData.count_all_coins ? "bg-primary-600" : "bg-zinc-300 dark:bg-zinc-600"
+                        } ${!!editingJourney ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            formData.count_all_coins ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {formData.count_all_coins ? 'Sim' : 'Não'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-zinc-500 leading-tight">
+                      {formData.count_all_coins 
+                        ? 'Soma moedas de campanhas vinculadas + moedas de ações de engajamento gerais (perfil, posts, etc).' 
+                        : 'Soma apenas as moedas das campanhas vinculadas a esta jornada.'}
+                    </p>
+                    <p className="text-[10px] text-zinc-400 mt-0.5">Imutável após a criação.</p>
                   </div>
+                </div>
+
+                <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg text-sm text-primary-700 dark:text-primary-400">
+                  <span className="font-semibold">Preview:</span>{' '}
+                  100 {coinName || 'coins'} = {xpPreview(100)} XP &nbsp;|&nbsp;
+                  500 {coinName || 'coins'} = {xpPreview(500)} XP &nbsp;|&nbsp;
+                  1.000 {coinName || 'coins'} = {xpPreview(1000)} XP
                 </div>
               </motion.div>
             )}
@@ -1455,13 +1533,37 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
 
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-200 dark:border-zinc-800">
-          <button
-            onClick={handleBack}
-            disabled={currentStep === 0}
-            className="flex items-center gap-2 px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-40 text-sm font-medium"
-          >
-            <ChevronLeft size={16} /> Voltar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBack}
+              disabled={currentStep === 0}
+              className="flex items-center gap-2 px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-40 text-sm font-medium"
+            >
+              <ChevronLeft size={16} /> Voltar
+            </button>
+
+            {editingJourney?.status === 'active' && (
+              <button
+                onClick={() => setShowEndConfirm(true)}
+                disabled={ending || saving}
+                className="flex items-center gap-2 px-4 py-2 text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-sm font-medium disabled:opacity-60"
+              >
+                {ending ? <Loader2 size={14} className="animate-spin" /> : <Pause size={16} />}
+                Encerrar
+              </button>
+            )}
+
+            {(editingJourney?.status === 'draft' || editingJourney?.status === 'ended') && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={deleting || saving}
+                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-sm font-medium disabled:opacity-60"
+              >
+                {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                Excluir
+              </button>
+            )}
+          </div>
 
           <div className="flex items-center gap-2">
             {!isReadOnly && (
@@ -1509,6 +1611,76 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
           </div>
         </div>
       </motion.div>
+
+      {/* Confirmação de Exclusão Interna */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl max-w-sm w-full p-6 border border-zinc-200 dark:border-zinc-800"
+            >
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Excluir Jornada?</h3>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+                Tem certeza que deseja excluir esta jornada? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
+                >
+                  {deleting && <Loader2 size={14} className="animate-spin" />}
+                  Confirmar Exclusão
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmação de Encerramento Interna */}
+      <AnimatePresence>
+        {showEndConfirm && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl max-w-sm w-full p-6 border border-zinc-200 dark:border-zinc-800"
+            >
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Encerrar Jornada?</h3>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+                Deseja encerrar esta jornada ativa? Todos os participantes serão notificados e a jornada não poderá mais ser editada.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowEndConfirm(false)}
+                  className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleEndJourney}
+                  disabled={ending}
+                  className="px-4 py-2 bg-zinc-800 dark:bg-zinc-700 hover:bg-zinc-900 dark:hover:bg-zinc-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
+                >
+                  {ending && <Loader2 size={14} className="animate-spin" />}
+                  Confirmar Encerramento
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

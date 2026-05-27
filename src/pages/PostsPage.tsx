@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar, Rocket, Shield, Coins, AlertCircle, CheckCircle, Megaphone } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar, Rocket, Shield, Coins, AlertCircle, CheckCircle, Megaphone, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Post, Like, Comment, User as UserType, QuizAlternative, QuizAnswer, CampaignHashtag } from '../types';
@@ -99,9 +99,9 @@ export const PostsPage: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [newPostIsSponsored, setNewPostIsSponsored] = useState(false);
   const [newPostEarnsCoins, setNewPostEarnsCoins] = useState(false);
-  const [newPostBoostLikeCoins, setNewPostBoostLikeCoins] = useState<string>('10');
-  const [newPostBoostCommentCoins, setNewPostBoostCommentCoins] = useState<string>('5');
-  const [newPostBoostShareCoins, setNewPostBoostShareCoins] = useState<string>('8');
+  const [newPostBoostLikeCoins, setNewPostBoostLikeCoins] = useState<string>('0');
+  const [newPostBoostCommentCoins, setNewPostBoostCommentCoins] = useState<string>('0');
+  const [newPostBoostShareCoins, setNewPostBoostShareCoins] = useState<string>('0');
 
   // Quiz Create state
   const [newPostType, setNewPostType] = useState<'standard' | 'quiz'>('standard');
@@ -125,9 +125,9 @@ export const PostsPage: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [editIsSponsored, setEditIsSponsored] = useState(false);
   const [editEarnsCoins, setEditEarnsCoins] = useState(false);
-  const [editBoostLikeCoins, setEditBoostLikeCoins] = useState<string>('10');
-  const [editBoostCommentCoins, setEditBoostCommentCoins] = useState<string>('5');
-  const [editBoostShareCoins, setEditBoostShareCoins] = useState<string>('8');
+  const [editBoostLikeCoins, setEditBoostLikeCoins] = useState<string>('0');
+  const [editBoostCommentCoins, setEditBoostCommentCoins] = useState<string>('0');
+  const [editBoostShareCoins, setEditBoostShareCoins] = useState<string>('0');
 
   // Quiz Edit state
   const [editPostType, setEditPostType] = useState<'standard' | 'quiz'>('standard');
@@ -280,6 +280,7 @@ export const PostsPage: React.FC = () => {
     if (navigator.share) {
       try {
         await navigator.share(shareData);
+        await registerShareIntent(post.id);
       } catch (err) {
         console.error('Error sharing:', err);
       }
@@ -288,9 +289,21 @@ export const PostsPage: React.FC = () => {
     }
   };
 
-  const copyToClipboard = (text: string) => {
+  const registerShareIntent = async (postId: number) => {
+    if (!token) return;
+    try {
+      await postsService.registerShare(token, postId);
+      // Atualiza o contador localmente ou recarrega para mostrar a recompensa se houver
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, shares_count: (p.shares_count || 0) + 1 } : p));
+    } catch (err) {
+      console.error('Error registering share:', err);
+    }
+  };
+
+  const copyToClipboard = (text: string, postId?: number) => {
     navigator.clipboard.writeText(text);
     addToast('success', 'Link copiado para a área de transferência!');
+    if (postId) registerShareIntent(postId);
     setShareModalPost(null);
   };
 
@@ -302,9 +315,9 @@ export const PostsPage: React.FC = () => {
     setMediaType('none');
     setNewPostIsSponsored(false);
     setNewPostEarnsCoins(false);
-    setNewPostBoostLikeCoins('10');
-    setNewPostBoostCommentCoins('5');
-    setNewPostBoostShareCoins('8');
+    setNewPostBoostLikeCoins('0');
+    setNewPostBoostCommentCoins('0');
+    setNewPostBoostShareCoins('0');
     setNewPostType('standard');
     setNewQuizQuestion('');
     setNewQuizCoinsParticipation('0');
@@ -378,6 +391,16 @@ export const PostsPage: React.FC = () => {
         if (currentUser?.user_type_id === 1) {
           formData.append('is_sponsored', newPostIsSponsored ? '1' : '0');
           if (newPostEarnsCoins) {
+            const like = parseInt(newPostBoostLikeCoins || '0');
+            const comment = parseInt(newPostBoostCommentCoins || '0');
+            const share = parseInt(newPostBoostShareCoins || '0');
+
+            if (like === 0 && comment === 0 && share === 0) {
+              addToast('error', 'Ao habilitar Post Turbinado, preencha pelo menos um dos valores de recompensa (Curtir, Comentar ou Compartilhar).');
+              setIsCreating(false);
+              return;
+            }
+
             formData.append('boost_like_coins', newPostBoostLikeCoins.toString());
             formData.append('boost_comment_coins', newPostBoostCommentCoins.toString());
             formData.append('boost_share_coins', newPostBoostShareCoins.toString());
@@ -402,9 +425,9 @@ export const PostsPage: React.FC = () => {
       setMediaType('none');
       setNewPostIsSponsored(false);
       setNewPostEarnsCoins(false);
-      setNewPostBoostLikeCoins('10');
-      setNewPostBoostCommentCoins('5');
-      setNewPostBoostShareCoins('8');
+      setNewPostBoostLikeCoins('0');
+      setNewPostBoostCommentCoins('0');
+      setNewPostBoostShareCoins('0');
 
       // Reset Quiz
       setNewPostType('standard');
@@ -599,9 +622,9 @@ export const PostsPage: React.FC = () => {
     setEditVideoUrl('');
     setEditIsSponsored(false);
     setEditEarnsCoins(false);
-    setEditBoostLikeCoins('10');
-    setEditBoostCommentCoins('5');
-    setEditBoostShareCoins('8');
+    setEditBoostLikeCoins('0');
+    setEditBoostCommentCoins('0');
+    setEditBoostShareCoins('0');
     setEditPostType('standard');
     setEditQuizQuestion('');
     setEditQuizCoinsParticipation('0');
@@ -694,6 +717,16 @@ export const PostsPage: React.FC = () => {
         if (currentUser?.user_type_id === 1) {
           formData.append('is_sponsored', editIsSponsored ? '1' : '0');
           if (editEarnsCoins) {
+            const like = parseInt(editBoostLikeCoins || '0');
+            const comment = parseInt(editBoostCommentCoins || '0');
+            const share = parseInt(editBoostShareCoins || '0');
+
+            if (like === 0 && comment === 0 && share === 0) {
+              addToast('error', 'Ao habilitar Post Turbinado, preencha pelo menos um dos valores de recompensa (Curtir, Comentar ou Compartilhar).');
+              setIsUpdating(false);
+              return;
+            }
+
             formData.append('boost_like_coins', editBoostLikeCoins.toString());
             formData.append('boost_comment_coins', editBoostCommentCoins.toString());
             formData.append('boost_share_coins', editBoostShareCoins.toString());
@@ -783,9 +816,9 @@ export const PostsPage: React.FC = () => {
                       Number(post.boost_comment_coins) > 0 || 
                       Number(post.boost_share_coins) > 0);
     setEditEarnsCoins(hasBoosts);
-    setEditBoostLikeCoins(String(post.boost_like_coins || 10));
-    setEditBoostCommentCoins(String(post.boost_comment_coins || 5));
-    setEditBoostShareCoins(String(post.boost_share_coins || 8));
+    setEditBoostLikeCoins(String(post.boost_like_coins || 0));
+    setEditBoostCommentCoins(String(post.boost_comment_coins || 0));
+    setEditBoostShareCoins(String(post.boost_share_coins || 0));
     
     // Inicializar mídia atual do post
     if (post.video_url) {
@@ -1766,6 +1799,23 @@ export const PostsPage: React.FC = () => {
                         <MessageSquare size={18} className="group-hover:scale-110 transition-transform" />
                         <span className="text-xs font-medium">{post.comments_count || 0}</span>
                       </button>
+
+                      <button 
+                        onClick={() => handleShare(post)}
+                        className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 hover:text-green-600 dark:hover:text-green-500 transition-colors group"
+                        title="Compartilhar"
+                      >
+                        <Share2 size={18} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-xs font-medium">{post.shares_count || 0}</span>
+                      </button>
+
+                      <div 
+                        className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 ml-auto"
+                        title="Visualizações"
+                      >
+                        <Eye size={18} />
+                        <span className="text-xs font-medium">{post.views_count || 0}</span>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -1946,13 +1996,17 @@ export const PostsPage: React.FC = () => {
                     href={`https://wa.me/?text=${encodeURIComponent(`Confira este post de ${shareModalPost.user?.name}: ${shareModalPost.content} ${window.location.href}`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => {
+                      registerShareIntent(shareModalPost.id);
+                      setShareModalPost(null);
+                    }}
                     className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
                   >
                     <Share2 size={24} />
                     <span className="text-sm font-medium">WhatsApp</span>
                   </a>
                   <button 
-                    onClick={() => copyToClipboard(window.location.href)}
+                    onClick={() => copyToClipboard(window.location.href, shareModalPost.id)}
                     className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
                   >
                     <Share2 size={24} />
@@ -2514,12 +2568,19 @@ export const PostsPage: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setEditEarnsCoins(!editEarnsCoins)}
+                          onClick={() => {
+                            const nextValue = !editEarnsCoins;
+                            setEditEarnsCoins(nextValue);
+                            if (nextValue) {
+                              setEditBoostLikeCoins('0');
+                              setEditBoostCommentCoins('0');
+                              setEditBoostShareCoins('0');
+                            }
+                          }}
                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
                             editEarnsCoins ? "bg-primary-600" : "bg-zinc-300 dark:bg-zinc-600"
                           }`}
-                        >
-                          <span
+                        >                          <span
                             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                               editEarnsCoins ? "translate-x-6" : "translate-x-1"
                             }`}
@@ -3053,7 +3114,15 @@ export const PostsPage: React.FC = () => {
                           </label>
                           <button
                             type="button"
-                            onClick={() => setNewPostEarnsCoins(!newPostEarnsCoins)}
+                            onClick={() => {
+                              const nextValue = !newPostEarnsCoins;
+                              setNewPostEarnsCoins(nextValue);
+                              if (nextValue) {
+                                setNewPostBoostLikeCoins('0');
+                                setNewPostBoostCommentCoins('0');
+                                setNewPostBoostShareCoins('0');
+                              }
+                            }}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
                               newPostEarnsCoins ? "bg-primary-600" : "bg-zinc-300 dark:bg-zinc-600"
                             }`}
