@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar, Rocket, Shield, Coins, AlertCircle, CheckCircle, Megaphone } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, Heart, Share2, Bookmark, MoreHorizontal, User, X, Edit, Trash2, Plus, Image as ImageIcon, Calendar, Rocket, Shield, Coins, AlertCircle, CheckCircle, Megaphone, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Post, Like, Comment, User as UserType, QuizAlternative, QuizAnswer, CampaignHashtag } from '../types';
@@ -280,6 +280,7 @@ export const PostsPage: React.FC = () => {
     if (navigator.share) {
       try {
         await navigator.share(shareData);
+        await registerShareIntent(post.id);
       } catch (err) {
         console.error('Error sharing:', err);
       }
@@ -288,9 +289,21 @@ export const PostsPage: React.FC = () => {
     }
   };
 
-  const copyToClipboard = (text: string) => {
+  const registerShareIntent = async (postId: number) => {
+    if (!token) return;
+    try {
+      await postsService.registerShare(token, postId);
+      // Atualiza o contador localmente ou recarrega para mostrar a recompensa se houver
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, shares_count: (p.shares_count || 0) + 1 } : p));
+    } catch (err) {
+      console.error('Error registering share:', err);
+    }
+  };
+
+  const copyToClipboard = (text: string, postId?: number) => {
     navigator.clipboard.writeText(text);
     addToast('success', 'Link copiado para a área de transferência!');
+    if (postId) registerShareIntent(postId);
     setShareModalPost(null);
   };
 
@@ -1786,6 +1799,23 @@ export const PostsPage: React.FC = () => {
                         <MessageSquare size={18} className="group-hover:scale-110 transition-transform" />
                         <span className="text-xs font-medium">{post.comments_count || 0}</span>
                       </button>
+
+                      <button 
+                        onClick={() => handleShare(post)}
+                        className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 hover:text-green-600 dark:hover:text-green-500 transition-colors group"
+                        title="Compartilhar"
+                      >
+                        <Share2 size={18} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-xs font-medium">{post.shares_count || 0}</span>
+                      </button>
+
+                      <div 
+                        className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 ml-auto"
+                        title="Visualizações"
+                      >
+                        <Eye size={18} />
+                        <span className="text-xs font-medium">{post.views_count || 0}</span>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -1966,13 +1996,17 @@ export const PostsPage: React.FC = () => {
                     href={`https://wa.me/?text=${encodeURIComponent(`Confira este post de ${shareModalPost.user?.name}: ${shareModalPost.content} ${window.location.href}`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => {
+                      registerShareIntent(shareModalPost.id);
+                      setShareModalPost(null);
+                    }}
                     className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
                   >
                     <Share2 size={24} />
                     <span className="text-sm font-medium">WhatsApp</span>
                   </a>
                   <button 
-                    onClick={() => copyToClipboard(window.location.href)}
+                    onClick={() => copyToClipboard(window.location.href, shareModalPost.id)}
                     className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
                   >
                     <Share2 size={24} />

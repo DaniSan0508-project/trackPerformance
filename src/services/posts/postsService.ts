@@ -73,4 +73,13 @@ export const postsService = {
     });
     return handleResponse(response);
   },
+
+  registerShare: async (token: string, postId: number) => {
+    const response = await fetch(`${API_BASE_URL}/post-shares`, {
+      method: 'POST',
+      headers: getHeaders(token),
+      body: JSON.stringify({ post_id: postId }),
+    });
+    return handleResponse(response);
+  },
 };
