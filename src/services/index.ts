@@ -16,5 +16,6 @@ export * from './surveys/surveysService';
 export * from './tenantConfigs/tenantConfigsService';
 export * from './users/usersService';
 export * from './vouchers/vouchersService';
+export * from './moods/moodsService';
 export * from './rewards/rewardApprovalsService';
 export * from './journeys/journeysService';

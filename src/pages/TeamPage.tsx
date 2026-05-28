@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera, LogOut, Store as StoreIcon, FileText, Eye, EyeOff, Settings, Crown, Bell, BellOff } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera, LogOut, Store as StoreIcon, FileText, Eye, EyeOff, Settings, Crown, Bell, BellOff, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { User as UserType, Role, Store } from '../types';
@@ -8,7 +8,7 @@ import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { userSchema, userUpdateSchema, roleSchema } from '../validators/schemas';
 import { getFullImageUrl } from '../utils';
-import { CoinStatementModal } from '../components/Team';
+import { CoinStatementModal, UserMoodModal } from '../components/Team';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -83,6 +83,14 @@ export const TeamPage: React.FC = () => {
 
   // Modal de Extrato
   const [coinStatementModal, setCoinStatementModal] = useState<{
+    isOpen: boolean;
+    user: UserType | null;
+  }>({
+    isOpen: false,
+    user: null,
+  });
+
+  const [moodModal, setMoodModal] = useState<{
     isOpen: boolean;
     user: UserType | null;
   }>({
@@ -265,6 +273,14 @@ export const TeamPage: React.FC = () => {
 
   const handleCloseCoinStatement = () => {
     setCoinStatementModal({ isOpen: false, user: null });
+  };
+
+  const handleViewMood = (user: UserType) => {
+    setMoodModal({ isOpen: true, user });
+  };
+
+  const handleCloseMood = () => {
+    setMoodModal({ isOpen: false, user: null });
   };
 
   const handleCloseModal = () => {
@@ -673,6 +689,17 @@ export const TeamPage: React.FC = () => {
                           title="Ver extrato de moedas"
                         >
                           <FileText size={16} />
+                        </button>
+                      )}
+
+                      {/* Ver humor */}
+                      {(isSuperAdmin || isAdmin) && (
+                        <button
+                          onClick={() => handleViewMood(user)}
+                          className="p-2 text-zinc-400 hover:text-pink-600 dark:hover:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20 rounded-lg transition-colors"
+                          title="Ver acompanhamento de humor"
+                        >
+                          <Heart size={16} />
                         </button>
                       )}
                       
@@ -1166,6 +1193,14 @@ export const TeamPage: React.FC = () => {
         user={coinStatementModal.user}
         token={token}
         onClose={handleCloseCoinStatement}
+      />
+
+      {/* Modal de Humor */}
+      <UserMoodModal
+        isOpen={moodModal.isOpen}
+        user={moodModal.user}
+        token={token}
+        onClose={handleCloseMood}
       />
     </>
   );
