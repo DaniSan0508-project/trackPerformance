@@ -75,16 +75,30 @@ export const Layout: React.FC = () => {
     if (!user) return null;
 
     const logoContent = (
-        logoUrl ? (
-            <img src={logoUrl} alt="Logo" className={`h-10 w-auto object-contain transition-all duration-300 ${isCollapsed ? 'max-w-[40px]' : 'max-w-[180px]'}`}/>
-        ) : (
-            <div className="flex items-center gap-3">
-                <div className="bg-primary-600 p-2 rounded-lg shrink-0">
-                    <Trophy className="w-5 h-5 text-white"/>
-                </div>
-                {!isCollapsed && <span className="font-bold text-xl text-zinc-900 dark:text-white truncate">TrackPerf</span>}
-            </div>
-        )
+        <div className="flex items-center justify-center">
+            {isCollapsed ? (
+                <img 
+                    src="/favicon.png" 
+                    alt="Icon" 
+                    className="h-8 w-8 object-contain transition-all duration-300 animate-in fade-in zoom-in"
+                />
+            ) : (
+                logoUrl ? (
+                    <img 
+                        src={logoUrl} 
+                        alt="Logo" 
+                        className="h-10 w-auto object-contain transition-all duration-300 max-w-[180px] animate-in fade-in slide-in-from-left-2"
+                    />
+                ) : (
+                    <div className="flex items-center gap-3">
+                        <div className="bg-primary-600 p-2 rounded-lg shrink-0">
+                            <Trophy className="w-5 h-5 text-white"/>
+                        </div>
+                        <span className="font-bold text-xl text-zinc-900 dark:text-white truncate">Engora</span>
+                    </div>
+                )
+            )}
+        </div>
     );
 
     return (
