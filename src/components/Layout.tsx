@@ -50,9 +50,22 @@ export const Layout: React.FC = () => {
     });
     const userMenuRef = useRef<HTMLDivElement>(null);
 
-    // Reset loading state when collapse changes to show loading for the new image
+    // Manage logo loading state with a failsafe timeout
     useEffect(() => {
+        // If expanded and there is no custom logo, we show text, so no loading needed
+        if (!isCollapsed && !logoUrl) {
+            setIsLogoLoading(false);
+            return;
+        }
+
         setIsLogoLoading(true);
+
+        // Failsafe: if image is cached and onLoad doesn't fire, remove loading after 500ms
+        const timer = setTimeout(() => {
+            setIsLogoLoading(false);
+        }, 500);
+
+        return () => clearTimeout(timer);
     }, [isCollapsed, logoUrl]);
 
     useEffect(() => {
