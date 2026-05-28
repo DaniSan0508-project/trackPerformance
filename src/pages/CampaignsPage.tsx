@@ -68,6 +68,7 @@ const actionLabels: Record<string, string> = {
   answer_survey: 'Responder Pesquisa',
   create_post: 'Criar Post',
   change_profile_photo: 'Alterar Foto do Perfil',
+  record_mood: 'Registrar Humor',
 };
 
 const defaultActionCoins: Record<string, number> = {
@@ -78,6 +79,7 @@ const defaultActionCoins: Record<string, number> = {
   send_feedback: 10,
   answer_survey: 5,
   create_post: 15,
+  record_mood: 5,
 };
 
 export const CampaignsPage: React.FC = () => {

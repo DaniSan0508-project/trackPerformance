@@ -254,6 +254,7 @@ export const DashboardPage = () => {
                             share_post: 'Compartilhamentos',
                             send_feedback: 'Feedbacks',
                             answer_survey: 'Pesquisas',
+                            record_mood: 'Humor',
                         };
 
                         const isDark = theme === 'dark';

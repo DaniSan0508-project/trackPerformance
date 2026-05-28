@@ -12,6 +12,7 @@ import {
     Bell,
     Search,
     Menu,
+    Loader2,
     Building2,
     Megaphone,
     ThumbsUp,
@@ -30,7 +31,8 @@ import {
     Map,
 } from 'lucide-react';
 import {UserProfileModal} from './UserProfileModal';
-import {NotificationsSidebar} from './NotificationsSidebar';
+import { NotificationsSidebar } from './NotificationsSidebar';
+import { motion, AnimatePresence } from 'motion/react';
 
 export const Layout: React.FC = () => {
     const {user, logout, logoUrl} = useAuth();
@@ -41,11 +43,17 @@ export const Layout: React.FC = () => {
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [showNotificationsSidebar, setShowNotificationsSidebar] = useState(false);
+    const [isLogoLoading, setIsLogoLoading] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(() => {
         const saved = localStorage.getItem('sidebar-collapsed');
         return saved === 'true';
     });
     const userMenuRef = useRef<HTMLDivElement>(null);
+
+    // Reset loading state when collapse changes to show loading for the new image
+    useEffect(() => {
+        setIsLogoLoading(true);
+    }, [isCollapsed, logoUrl]);
 
     useEffect(() => {
         localStorage.setItem('sidebar-collapsed', String(isCollapsed));
@@ -75,29 +83,61 @@ export const Layout: React.FC = () => {
     if (!user) return null;
 
     const logoContent = (
-        <div className="flex items-center justify-center">
-            {isCollapsed ? (
-                <img 
-                    src="/favicon.png" 
-                    alt="Icon" 
-                    className="h-8 w-8 object-contain transition-all duration-300 animate-in fade-in zoom-in"
-                />
-            ) : (
-                logoUrl ? (
-                    <img 
-                        src={logoUrl} 
-                        alt="Logo" 
-                        className="h-10 w-auto object-contain transition-all duration-300 max-w-[180px] animate-in fade-in slide-in-from-left-2"
+        <div className="flex items-center justify-center min-h-[48px] relative w-full">
+            {/* Loading Indicator */}
+            <AnimatePresence>
+                {isLogoLoading && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 flex items-center justify-center z-10 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-[1px]"
+                    >
+                        <Loader2 className="w-5 h-5 text-primary-500 animate-spin" />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence mode="wait">
+                {isCollapsed ? (
+                    <motion.img
+                        key="collapsed-icon"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.2 }}
+                        src="/favicon.png"
+                        alt="Icon"
+                        onLoad={() => setIsLogoLoading(false)}
+                        className={`h-8 w-8 object-contain ${isLogoLoading ? 'invisible' : 'visible'}`}
                     />
                 ) : (
-                    <div className="flex items-center gap-3">
-                        <div className="bg-primary-600 p-2 rounded-lg shrink-0">
-                            <Trophy className="w-5 h-5 text-white"/>
-                        </div>
-                        <span className="font-bold text-xl text-zinc-900 dark:text-white truncate">Engora</span>
-                    </div>
-                )
-            )}
+                    <motion.div
+                        key="expanded-logo"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        transition={{ duration: 0.2 }}
+                        className={`w-full flex justify-center ${isLogoLoading ? 'invisible' : 'visible'}`}
+                    >
+                        {logoUrl ? (
+                            <img
+                                src={logoUrl}
+                                alt="Logo"
+                                onLoad={() => setIsLogoLoading(false)}
+                                className="h-10 w-auto object-contain max-w-[180px]"
+                            />
+                        ) : (
+                            <div className="flex items-center gap-3">
+                                <div className="bg-primary-600 p-2 rounded-lg shrink-0">
+                                    <Trophy className="w-5 h-5 text-white" />
+                                </div>
+                                <span className="font-bold text-xl text-zinc-900 dark:text-white truncate">Engora</span>
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 
