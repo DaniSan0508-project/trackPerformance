@@ -56,6 +56,7 @@ export interface User {
   store_id?: number | null;
   store?: Store | null;
   last_login_at?: string | null;
+  push_notifications_enabled?: boolean;
   journey_level?: JourneyLevelBadge | null;
 }
 

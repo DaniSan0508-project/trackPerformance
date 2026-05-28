@@ -63,6 +63,7 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [markingReadId, setMarkingReadId] = useState<number | null>(null);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
@@ -176,6 +177,22 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
       setMarkingReadId(null);
     }
   }, [token, addToast, fetchUnreadCount, filter]);
+
+  const handleMarkAllAsRead = useCallback(async () => {
+    if (!token) return;
+
+    setMarkingAllRead(true);
+    try {
+      await notificationsService.markAllAsRead(token);
+      addToast('success', 'Todas as notificações foram marcadas como lidas.');
+      refresh();
+    } catch (error: any) {
+      console.error('Error marking all as read:', error);
+      addToast('error', error.message || 'Erro ao marcar todas como lidas.');
+    } finally {
+      setMarkingAllRead(false);
+    }
+  }, [token, addToast, refresh]);
 
   const handleSelectNotification = useCallback(async (notification: NotificationItem) => {
     if (!token) return;
@@ -306,21 +323,39 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
             </div>
 
             {!selectedNotification && (
-              <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex gap-2">
-                {(['all', 'unread', 'read'] as NotificationFilter[]).map((itemFilter) => (
+              <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-2">
+                <div className="flex gap-2">
+                  {(['all', 'unread', 'read'] as NotificationFilter[]).map((itemFilter) => (
+                    <button
+                      key={itemFilter}
+                      type="button"
+                      onClick={() => setFilter(itemFilter)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        filter === itemFilter
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                      }`}
+                    >
+                      {FILTER_LABELS[itemFilter]}
+                    </button>
+                  ))}
+                </div>
+
+                {unreadCount > 0 && (
                   <button
-                    key={itemFilter}
                     type="button"
-                    onClick={() => setFilter(itemFilter)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                      filter === itemFilter
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                    }`}
+                    onClick={handleMarkAllAsRead}
+                    disabled={markingAllRead}
+                    className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1 disabled:opacity-50"
                   >
-                    {FILTER_LABELS[itemFilter]}
+                    {markingAllRead ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <CheckCircle size={12} />
+                    )}
+                    Marcar todas
                   </button>
-                ))}
+                )}
               </div>
             )}
 

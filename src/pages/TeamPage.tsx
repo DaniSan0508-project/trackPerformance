@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera, LogOut, Store as StoreIcon, FileText, Eye, EyeOff, Settings, Crown } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera, LogOut, Store as StoreIcon, FileText, Eye, EyeOff, Settings, Crown, Bell, BellOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { User as UserType, Role, Store } from '../types';
@@ -650,6 +650,17 @@ export const TeamPage: React.FC = () => {
                               <span>{user.journey_level.level_name}</span>
                             </span>
                           )}
+                          <span 
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border cursor-default transition-colors ${
+                              user.push_notifications_enabled 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
+                                : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800'
+                            }`}
+                            title={user.push_notifications_enabled ? 'Ativo' : 'Inativo'}
+                          >
+                            {user.push_notifications_enabled ? <Bell size={10} /> : <BellOff size={10} />}
+                            {user.push_notifications_enabled ? 'Notificação ativa' : 'Notificação inativa'}
+                          </span>
                         </div>
                       </div>
                     </div>

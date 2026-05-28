@@ -43,4 +43,12 @@ export const notificationsService = {
     });
     return handleResponse(response);
   },
+
+  markAllAsRead: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/notifications/read-all`, {
+      method: 'PUT',
+      headers: getHeaders(token),
+    });
+    return handleResponse(response);
+  },
 };
