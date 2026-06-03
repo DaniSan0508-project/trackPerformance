@@ -69,6 +69,51 @@ const actionLabels: Record<string, string> = {
   create_post: 'Criar Post',
   change_profile_photo: 'Alterar Foto do Perfil',
   record_mood: 'Registrar Humor',
+  discovery: 'Discovery',
+};
+
+const DISCOVERY_ACTION_NAME = 'discovery';
+
+type SelectedCampaignAction = {
+  id: number;
+  coins: number;
+  discoveryRequirement?: 'minutes' | 'videos';
+  minutes_required?: number;
+  videos_required?: number;
+  once_per_day?: boolean;
+};
+
+const buildActionPayload = (
+  action: SelectedCampaignAction,
+  actionName?: string
+): Record<string, unknown> => {
+  const payload: Record<string, unknown> = { id: action.id, coins: action.coins };
+  if (actionName !== DISCOVERY_ACTION_NAME) return payload;
+
+  if (action.discoveryRequirement === 'minutes' && action.minutes_required != null && action.minutes_required >= 1) {
+    payload.minutes_required = action.minutes_required;
+  } else if (action.discoveryRequirement === 'videos' && action.videos_required != null && action.videos_required >= 1) {
+    payload.videos_required = action.videos_required;
+  }
+  if (action.once_per_day) {
+    payload.once_per_day = true;
+  }
+  return payload;
+};
+
+const validateDiscoveryAction = (action: SelectedCampaignAction): string | null => {
+  if (action.coins < 1) return 'Discovery exige pelo menos 1 coin.';
+  if (!action.discoveryRequirement) return 'Selecione minutos ou vídeos como requisito da Discovery.';
+  if (action.discoveryRequirement === 'minutes') {
+    if (!action.minutes_required || action.minutes_required < 1) {
+      return 'Informe os minutos obrigatórios (mínimo 1).';
+    }
+    return null;
+  }
+  if (!action.videos_required || action.videos_required < 1) {
+    return 'Informe a quantidade de vídeos obrigatória (mínimo 1).';
+  }
+  return null;
 };
 
 const defaultActionCoins: Record<string, number> = {
@@ -204,7 +249,7 @@ export const CampaignsPage: React.FC = () => {
 
   // Seleções
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
-  const [selectedActions, setSelectedActions] = useState<{ id: number; coins: number }[]>([]);
+  const [selectedActions, setSelectedActions] = useState<SelectedCampaignAction[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
 
   // Ações de engajamento (buscadas da API)
@@ -686,10 +731,18 @@ export const CampaignsPage: React.FC = () => {
 
           if (campaign.type === 'engagement') {
             // Mapeia ações do previews.actions (que contém os coins configurados)
-            const campaignActions = (campaignDetails.previews?.actions || []).map((a: any) => ({
-              id: a.action_id || a.id,
-              coins: parseInt(a.coins) || 0
-            }));
+            const campaignActions: SelectedCampaignAction[] = (campaignDetails.previews?.actions || []).map((a: any) => {
+              const hasMinutes = a.minutes_required != null && a.minutes_required !== '';
+              const hasVideos = a.videos_required != null && a.videos_required !== '';
+              return {
+                id: a.action_id || a.id,
+                coins: parseInt(a.coins) || 0,
+                discoveryRequirement: hasMinutes ? 'minutes' as const : hasVideos ? 'videos' as const : undefined,
+                minutes_required: hasMinutes ? parseInt(a.minutes_required) : undefined,
+                videos_required: hasVideos ? parseInt(a.videos_required) : undefined,
+                once_per_day: !!a.once_per_day,
+              };
+            });
             setSelectedActions(campaignActions);
 
             // Popula os inputs de moedas para a UI
@@ -1247,12 +1300,25 @@ export const CampaignsPage: React.FC = () => {
           return;
         }
         
-        // Valida se todas as ações têm coins válidos (não negativos)
-        const invalidActions = selectedActions.filter(a => !a.coins || a.coins < 0);
+        // Valida se todas as ações têm coins válidos (inteiro ≥ 1)
+        const invalidActions = selectedActions.filter(a => !a.coins || a.coins < 1);
         if (invalidActions.length > 0) {
-          addToast('error', 'Existem ações com valores inválidos. Verifique os coins de cada ação.');
+          addToast('error', 'Cada ação deve ter pelo menos 1 coin.');
           setActiveTab('actions');
           return;
+        }
+
+        for (const selected of selectedActions) {
+          const meta = engagementActions.find(a => a.id === selected.id);
+          if (meta?.name === DISCOVERY_ACTION_NAME) {
+            const discoveryError = validateDiscoveryAction(selected);
+            if (discoveryError) {
+              setFormErrors({ actions: discoveryError });
+              addToast('error', discoveryError);
+              setActiveTab('actions');
+              return;
+            }
+          }
         }
         
         if (selectedProducts.length > 0) {
@@ -1336,7 +1402,10 @@ export const CampaignsPage: React.FC = () => {
         } else if (editingCampaign.type === 'engagement') {
           // Envia actions apenas se houver selecionadas
           if (selectedActions.length > 0) {
-            dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
+            dataToSave.actions = selectedActions.map(a => {
+              const meta = engagementActions.find(e => e.id === a.id);
+              return buildActionPayload(a, meta?.name);
+            });
           }
           // Envia hashtags
           dataToSave.hashtags = selectedHashtags;
@@ -1365,7 +1434,10 @@ export const CampaignsPage: React.FC = () => {
             dataToSave.goal_campaign = parseFloat(formData.goal_campaign);
           }
           dataToSave.reward_id = formData.reward_id || null;
-          dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
+          dataToSave.actions = selectedActions.map(a => {
+            const meta = engagementActions.find(e => e.id === a.id);
+            return buildActionPayload(a, meta?.name);
+          });
           dataToSave.hashtags = selectedHashtags;
         }
       }
@@ -1573,8 +1645,15 @@ export const CampaignsPage: React.FC = () => {
         // Ao marcar, remove da lista de desmarcadas manualmente
         setManuallyUnselectedActions(prev => prev.filter(id => id !== actionId));
         const action = engagementActions.find(a => a.id === actionId);
-        const defaultCoins = 0;
-        return [...prev, { id: actionId, coins: defaultCoins }];
+        const isDiscovery = action?.name === DISCOVERY_ACTION_NAME;
+        const newAction: SelectedCampaignAction = {
+          id: actionId,
+          coins: 0,
+          ...(isDiscovery
+            ? { discoveryRequirement: 'minutes' as const, once_per_day: false }
+            : {}),
+        };
+        return [...prev, newAction];
       }
     });
   };
@@ -1582,6 +1661,24 @@ export const CampaignsPage: React.FC = () => {
   const updateActionCoins = (actionId: number, coins: number) => {
     setSelectedActions(prev =>
       prev.map(a => a.id === actionId ? { ...a, coins } : a)
+    );
+  };
+
+  const updateDiscoveryAction = (
+    actionId: number,
+    patch: Partial<Pick<SelectedCampaignAction, 'discoveryRequirement' | 'minutes_required' | 'videos_required' | 'once_per_day'>>
+  ) => {
+    setSelectedActions(prev =>
+      prev.map(a => {
+        if (a.id !== actionId) return a;
+        const next = { ...a, ...patch };
+        if (patch.discoveryRequirement === 'minutes') {
+          delete next.videos_required;
+        } else if (patch.discoveryRequirement === 'videos') {
+          delete next.minutes_required;
+        }
+        return next;
+      })
     );
   };
 
@@ -2930,16 +3027,51 @@ export const CampaignsPage: React.FC = () => {
                               const isUsedInAnotherCampaign = action.in_use && (!!actionCampaignId && Number(actionCampaignId) !== Number(editingCampaign?.id));
                               const isDisabled = isUsedInAnotherCampaign && !manuallyUnselectedActions.includes(action.id);
                               const campaignName = action.campaign?.name || (action as any).campaign_name;
-                              const isSelected = selectedActions.find(a => a.id === action.id);
+                              const selectedEntry = selectedActions.find(a => a.id === action.id);
+                              const isSelected = !!selectedEntry;
                               const actionLabel = actionLabels[action.name] || action.name;
+                              const isDiscovery = action.name === DISCOVERY_ACTION_NAME;
                               
                               // Permite desmarcar ações já selecionadas, mesmo que estejam em uso em outra campanha
                               const canToggle = isSelected || !isDisabled;
 
+                              const coinsInput = (
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    {coinName.charAt(0).toUpperCase() + coinName.slice(1)}:
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="999"
+                                    value={actionCoinsInputs[action.id] ?? (selectedEntry?.coins ?? '')}
+                                    onKeyDown={(e) => {
+                                      if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
+                                        e.preventDefault();
+                                      }
+                                    }}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      if (val === '') {
+                                        setActionCoinsInputs(prev => ({ ...prev, [action.id]: '' }));
+                                        updateActionCoins(action.id, 0);
+                                        return;
+                                      }
+                                      const numVal = parseInt(val) || 0;
+                                      const finalVal = Math.min(999, Math.max(1, numVal));
+                                      setActionCoinsInputs(prev => ({ ...prev, [action.id]: String(finalVal) }));
+                                      updateActionCoins(action.id, finalVal);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
+                                  />
+                                </div>
+                              );
+
                               return (
                                 <div
                                   key={action.id}
-                                  className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                                  className={`p-3 rounded-lg border transition-all ${
                                     isSelected
                                       ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
                                       : isDisabled
@@ -2947,61 +3079,139 @@ export const CampaignsPage: React.FC = () => {
                                         : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-amber-300 dark:hover:border-amber-700'
                                   }`}
                                 >
-                                  <button
-                                    onClick={() => canToggle && toggleAction(action.id)}
-                                    disabled={!canToggle}
-                                    className="flex items-center gap-3 flex-1 text-left disabled:cursor-not-allowed"
-                                  >
-                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${
-                                      isSelected
-                                        ? 'bg-amber-500 border-amber-500'
-                                        : 'border-zinc-300 dark:border-zinc-600'
-                                    }`}>
-                                      {isSelected && <Check size={14} className="text-white" />}
-                                    </div>
-                                    <div className="flex-1">
-                                      <p className={`font-medium text-sm ${
-                                        isDisabled && !isSelected ? 'text-zinc-500 dark:text-zinc-400' : 'text-zinc-900 dark:text-white'
+                                  <div className="flex items-center justify-between gap-3">
+                                    <button
+                                      onClick={() => canToggle && toggleAction(action.id)}
+                                      disabled={!canToggle}
+                                      className="flex items-center gap-3 flex-1 text-left disabled:cursor-not-allowed min-w-0"
+                                    >
+                                      <div className={`w-5 h-5 shrink-0 rounded border flex items-center justify-center ${
+                                        isSelected
+                                          ? 'bg-amber-500 border-amber-500'
+                                          : 'border-zinc-300 dark:border-zinc-600'
                                       }`}>
-                                        {actionLabel}
-                                      </p>
-                                      {isDisabled && campaignName && !isSelected && Number(actionCampaignId) !== Number(editingCampaign?.id) && (
-                                        <p className="text-xs text-red-500 dark:text-red-400 mt-0.5 flex items-center gap-1">
-                                          <span>🚫</span> Em uso em: {campaignName}
+                                        {isSelected && <Check size={14} className="text-white" />}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className={`font-medium text-sm ${
+                                          isDisabled && !isSelected ? 'text-zinc-500 dark:text-zinc-400' : 'text-zinc-900 dark:text-white'
+                                        }`}>
+                                          {actionLabel}
                                         </p>
-                                      )}
-                                    </div>
-                                  </button>
-                                  {isSelected && (
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                                        {coinName.charAt(0).toUpperCase() + coinName.slice(1)}:
-                                      </span>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="999"
-                                        value={actionCoinsInputs[action.id] ?? (selectedActions.find(a => a.id === action.id)?.coins ?? 0)}
-                                        onKeyDown={(e) => {
-                                          if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
-                                            e.preventDefault();
-                                          }
-                                        }}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          if (val === '') {
-                                            setActionCoinsInputs(prev => ({ ...prev, [action.id]: '' }));
-                                            updateActionCoins(action.id, 0);
-                                            return;
-                                          }
-                                          const numVal = parseInt(val) || 0;
-                                          const finalVal = Math.min(999, Math.max(0, numVal));
-                                          setActionCoinsInputs(prev => ({ ...prev, [action.id]: String(finalVal) }));
-                                          updateActionCoins(action.id, finalVal);
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
-                                      />
+                                        {isDisabled && campaignName && !isSelected && Number(actionCampaignId) !== Number(editingCampaign?.id) && (
+                                          <p className="text-xs text-red-500 dark:text-red-400 mt-0.5 flex items-center gap-1">
+                                            <span>🚫</span> Em uso em: {campaignName}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </button>
+                                    {isSelected && !isDiscovery && coinsInput}
+                                  </div>
+
+                                  {isSelected && isDiscovery && selectedEntry && (
+                                    <div className="mt-3 pt-3 border-t border-amber-200/70 dark:border-amber-800/50 space-y-3 pl-8">
+                                      <div className="flex flex-wrap items-center justify-between gap-3">
+                                        {coinsInput}
+                                      </div>
+
+                                      <div>
+                                        <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2">
+                                          Requisito (escolha um)
+                                        </p>
+                                        <div className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-600 overflow-hidden bg-white dark:bg-zinc-900 p-0.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => updateDiscoveryAction(action.id, { discoveryRequirement: 'minutes' })}
+                                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                                              selectedEntry.discoveryRequirement === 'minutes'
+                                                ? 'bg-amber-500 text-white shadow-sm'
+                                                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                            }`}
+                                          >
+                                            Minutos
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => updateDiscoveryAction(action.id, { discoveryRequirement: 'videos' })}
+                                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                                              selectedEntry.discoveryRequirement === 'videos'
+                                                ? 'bg-amber-500 text-white shadow-sm'
+                                                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                            }`}
+                                          >
+                                            Vídeos
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex flex-wrap items-end gap-3">
+                                        {selectedEntry.discoveryRequirement === 'minutes' ? (
+                                          <div className="flex-1 min-w-[140px]">
+                                            <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                                              Minutos obrigatórios
+                                            </label>
+                                            <input
+                                              type="number"
+                                              min="1"
+                                              max="9999"
+                                              placeholder="Ex: 30"
+                                              value={selectedEntry.minutes_required ?? ''}
+                                              onKeyDown={(e) => {
+                                                if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
+                                                  e.preventDefault();
+                                                }
+                                              }}
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                updateDiscoveryAction(action.id, {
+                                                  minutes_required: val === '' ? undefined : Math.max(1, parseInt(val) || 1),
+                                                });
+                                              }}
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="w-full p-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
+                                            />
+                                          </div>
+                                        ) : (
+                                          <div className="flex-1 min-w-[140px]">
+                                            <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                                              Vídeos obrigatórios
+                                            </label>
+                                            <input
+                                              type="number"
+                                              min="1"
+                                              max="9999"
+                                              placeholder="Ex: 3"
+                                              value={selectedEntry.videos_required ?? ''}
+                                              onKeyDown={(e) => {
+                                                if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
+                                                  e.preventDefault();
+                                                }
+                                              }}
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                updateDiscoveryAction(action.id, {
+                                                  videos_required: val === '' ? undefined : Math.max(1, parseInt(val) || 1),
+                                                });
+                                              }}
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="w-full p-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
+                                            />
+                                          </div>
+                                        )}
+
+                                        <label className="flex items-center gap-2 pb-2 cursor-pointer select-none">
+                                          <input
+                                            type="checkbox"
+                                            checked={!!selectedEntry.once_per_day}
+                                            onChange={(e) => updateDiscoveryAction(action.id, { once_per_day: e.target.checked })}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="w-4 h-4 rounded border-zinc-300 text-amber-500 focus:ring-amber-500"
+                                          />
+                                          <span className="text-xs text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+                                            Uma vez por dia
+                                          </span>
+                                        </label>
+                                      </div>
                                     </div>
                                   )}
                                 </div>
