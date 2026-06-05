@@ -740,7 +740,7 @@ export const CampaignsPage: React.FC = () => {
                 discoveryRequirement: hasMinutes ? 'minutes' as const : hasVideos ? 'videos' as const : undefined,
                 minutes_required: hasMinutes ? parseInt(a.minutes_required) : undefined,
                 videos_required: hasVideos ? parseInt(a.videos_required) : undefined,
-                once_per_day: !!a.once_per_day,
+                once_per_day: a.once_per_day !== undefined && a.once_per_day !== null ? !!a.once_per_day : undefined,
               };
             });
             setSelectedActions(campaignActions);
@@ -792,13 +792,57 @@ export const CampaignsPage: React.FC = () => {
       // A API retorna array direto, não dentro de { data: ... }
       const actionsData = Array.isArray(response) ? response : (response?.data || []);
       setEngagementActions(actionsData);
+
+      // Preenche os campos do discovery se estiver em uso na campanha atual
+      if (editingCampaign) {
+        const discoveryAction = actionsData.find((a: any) => a.name === DISCOVERY_ACTION_NAME);
+        if (discoveryAction && discoveryAction.in_use) {
+          const actionCampaignId = discoveryAction.campaign?.id || discoveryAction.campaign_id;
+          if (actionCampaignId && Number(actionCampaignId) === Number(editingCampaign.id)) {
+            const hasMinutes = discoveryAction.metric_type === 'minutes';
+            const hasVideos = discoveryAction.metric_type === 'videos';
+            
+            setSelectedActions(prev => {
+              const exists = prev.find(a => a.id === discoveryAction.id);
+              const apiOncePerDay = discoveryAction.once_per_day === true || discoveryAction.once_per_day === 'true' || discoveryAction.once_per_day === 1 || discoveryAction.once_per_day === '1' || discoveryAction.once_per_day === 't' || discoveryAction.once_per_day === 'T';
+              
+              if (exists) {
+                return prev.map(a => {
+                  if (a.id === discoveryAction.id) {
+                    return {
+                      ...a,
+                      discoveryRequirement: hasMinutes ? 'minutes' : hasVideos ? 'videos' : undefined,
+                      minutes_required: hasMinutes ? Number(discoveryAction.minutes_required) : undefined,
+                      videos_required: hasVideos ? Number(discoveryAction.videos_required) : undefined,
+                      once_per_day: apiOncePerDay,
+                    };
+                  }
+                  return a;
+                });
+              } else {
+                return [
+                  ...prev,
+                  {
+                    id: discoveryAction.id,
+                    coins: 0,
+                    discoveryRequirement: hasMinutes ? 'minutes' : hasVideos ? 'videos' : undefined,
+                    minutes_required: hasMinutes ? Number(discoveryAction.minutes_required) : undefined,
+                    videos_required: hasVideos ? Number(discoveryAction.videos_required) : undefined,
+                    once_per_day: apiOncePerDay,
+                  }
+                ];
+              }
+            });
+          }
+        }
+      }
     } catch (error) {
       console.error('Error loading engagement actions:', error);
       addToast('error', 'Erro ao carregar ações de engajamento.');
     } finally {
       setLoadingEngagementActions(false);
     }
-  }, [token, loadingEngagementActions, addToast]);
+  }, [token, loadingEngagementActions, editingCampaign, addToast]);
 
   // Carregamento sob demanda de dados auxiliares baseado na aba ativa
   useEffect(() => {
@@ -915,6 +959,7 @@ export const CampaignsPage: React.FC = () => {
     setSelectedProducts([]);
     setSelectedActions([]);
     setSelectedHashtags([]);
+    setEngagementActions([]);
     setManuallyUnselectedActions([]);
     setActionCoinsInputs({});
     setFullySelectedRoles(new Set());
@@ -1639,19 +1684,36 @@ export const CampaignsPage: React.FC = () => {
           return newInputs;
         });
         // Rastreia que esta ação foi desmarcada manualmente
-        setManuallyUnselectedActions(prev => [...prev, actionId]);
+        setManuallyUnselectedActions(prevUnselected => [...prevUnselected, actionId]);
         return prev.filter(a => a.id !== actionId);
       } else {
         // Ao marcar, remove da lista de desmarcadas manualmente
-        setManuallyUnselectedActions(prev => prev.filter(id => id !== actionId));
+        setManuallyUnselectedActions(prevUnselected => prevUnselected.filter(id => id !== actionId));
         const action = engagementActions.find(a => a.id === actionId);
         const isDiscovery = action?.name === DISCOVERY_ACTION_NAME;
+        
+        let discoveryFields = {};
+        if (isDiscovery && action) {
+          const hasMinutes = action.metric_type === 'minutes';
+          const hasVideos = action.metric_type === 'videos';
+          
+          discoveryFields = {
+            discoveryRequirement: hasMinutes ? 'minutes' as const : hasVideos ? 'videos' as const : 'minutes' as const,
+            minutes_required: hasMinutes && action.minutes_required ? Number(action.minutes_required) : undefined,
+            videos_required: hasVideos && action.videos_required ? Number(action.videos_required) : undefined,
+            once_per_day: !!action.once_per_day,
+          };
+        } else if (isDiscovery) {
+          discoveryFields = {
+            discoveryRequirement: 'minutes' as const,
+            once_per_day: false,
+          };
+        }
+        
         const newAction: SelectedCampaignAction = {
           id: actionId,
           coins: 0,
-          ...(isDiscovery
-            ? { discoveryRequirement: 'minutes' as const, once_per_day: false }
-            : {}),
+          ...discoveryFields,
         };
         return [...prev, newAction];
       }
@@ -3109,108 +3171,117 @@ export const CampaignsPage: React.FC = () => {
                                   </div>
 
                                   {isSelected && isDiscovery && selectedEntry && (
-                                    <div className="mt-3 pt-3 border-t border-amber-200/70 dark:border-amber-800/50 space-y-3 pl-8">
-                                      <div className="flex flex-wrap items-center justify-between gap-3">
-                                        {coinsInput}
-                                      </div>
-
-                                      <div>
-                                        <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2">
-                                          Requisito (escolha um)
-                                        </p>
-                                        <div className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-600 overflow-hidden bg-white dark:bg-zinc-900 p-0.5">
-                                          <button
-                                            type="button"
-                                            onClick={() => updateDiscoveryAction(action.id, { discoveryRequirement: 'minutes' })}
-                                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                                              selectedEntry.discoveryRequirement === 'minutes'
-                                                ? 'bg-amber-500 text-white shadow-sm'
-                                                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                                            }`}
-                                          >
-                                            Minutos
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => updateDiscoveryAction(action.id, { discoveryRequirement: 'videos' })}
-                                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                                              selectedEntry.discoveryRequirement === 'videos'
-                                                ? 'bg-amber-500 text-white shadow-sm'
-                                                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                                            }`}
-                                          >
-                                            Vídeos
-                                          </button>
+                                    <div className="mt-3 pl-8">
+                                      <div className="flex flex-wrap items-center gap-4 bg-zinc-50 dark:bg-zinc-900/30 p-3 rounded-xl border border-zinc-200/60 dark:border-zinc-800/80">
+                                        {/* Moedas */}
+                                        <div className="shrink-0">
+                                          {coinsInput}
                                         </div>
-                                      </div>
 
-                                      <div className="flex flex-wrap items-end gap-3">
-                                        {selectedEntry.discoveryRequirement === 'minutes' ? (
-                                          <div className="flex-1 min-w-[140px]">
-                                            <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-                                              Minutos obrigatórios
-                                            </label>
-                                            <input
-                                              type="number"
-                                              min="1"
-                                              max="9999"
-                                              placeholder="Ex: 30"
-                                              value={selectedEntry.minutes_required ?? ''}
-                                              onKeyDown={(e) => {
-                                                if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
-                                                  e.preventDefault();
-                                                }
-                                              }}
-                                              onChange={(e) => {
-                                                const val = e.target.value;
-                                                updateDiscoveryAction(action.id, {
-                                                  minutes_required: val === '' ? undefined : Math.max(1, parseInt(val) || 1),
-                                                });
-                                              }}
-                                              onClick={(e) => e.stopPropagation()}
-                                              className="w-full p-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
-                                            />
-                                          </div>
-                                        ) : (
-                                          <div className="flex-1 min-w-[140px]">
-                                            <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-                                              Vídeos obrigatórios
-                                            </label>
-                                            <input
-                                              type="number"
-                                              min="1"
-                                              max="9999"
-                                              placeholder="Ex: 3"
-                                              value={selectedEntry.videos_required ?? ''}
-                                              onKeyDown={(e) => {
-                                                if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
-                                                  e.preventDefault();
-                                                }
-                                              }}
-                                              onChange={(e) => {
-                                                const val = e.target.value;
-                                                updateDiscoveryAction(action.id, {
-                                                  videos_required: val === '' ? undefined : Math.max(1, parseInt(val) || 1),
-                                                });
-                                              }}
-                                              onClick={(e) => e.stopPropagation()}
-                                              className="w-full p-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
-                                            />
-                                          </div>
-                                        )}
+                                        {/* Separador Desktop */}
+                                        <div className="hidden md:block h-6 w-px bg-zinc-200 dark:bg-zinc-700" />
 
-                                        <label className="flex items-center gap-2 pb-2 cursor-pointer select-none">
-                                          <input
-                                            type="checkbox"
-                                            checked={!!selectedEntry.once_per_day}
-                                            onChange={(e) => updateDiscoveryAction(action.id, { once_per_day: e.target.checked })}
-                                            onClick={(e) => e.stopPropagation()}
-                                            className="w-4 h-4 rounded border-zinc-300 text-amber-500 focus:ring-amber-500"
-                                          />
-                                          <span className="text-xs text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
-                                            Uma vez por dia
+                                        {/* Requisito */}
+                                        <div className="flex items-center gap-2 shrink-0">
+                                          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Requisito:</span>
+                                          <div className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden bg-white dark:bg-zinc-900 p-0.5 shadow-sm">
+                                            <button
+                                              type="button"
+                                              onClick={() => updateDiscoveryAction(action.id, { discoveryRequirement: 'minutes' })}
+                                              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                                                selectedEntry.discoveryRequirement === 'minutes'
+                                                  ? 'bg-amber-500 text-white shadow-sm'
+                                                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                              }`}
+                                            >
+                                              Minutos
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => updateDiscoveryAction(action.id, { discoveryRequirement: 'videos' })}
+                                              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                                                selectedEntry.discoveryRequirement === 'videos'
+                                                  ? 'bg-amber-500 text-white shadow-sm'
+                                                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                              }`}
+                                            >
+                                              Vídeos
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        {/* Separador Desktop */}
+                                        <div className="hidden md:block h-6 w-px bg-zinc-200 dark:bg-zinc-700" />
+
+                                        {/* Input do valor */}
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                                            {selectedEntry.discoveryRequirement === 'minutes' ? 'Mins:' : 'Vídeos:'}
                                           </span>
-                                        </label>
+                                          <input
+                                            type="number"
+                                            min="1"
+                                            max="999"
+                                            placeholder={selectedEntry.discoveryRequirement === 'minutes' ? 'Ex: 30' : 'Ex: 3'}
+                                            value={
+                                              selectedEntry.discoveryRequirement === 'minutes'
+                                                ? (selectedEntry.minutes_required ?? '')
+                                                : (selectedEntry.videos_required ?? '')
+                                            }
+                                            onKeyDown={(e) => {
+                                              if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
+                                                e.preventDefault();
+                                              }
+                                            }}
+                                            onChange={(e) => {
+                                              const val = e.target.value;
+                                              if (val === '') {
+                                                updateDiscoveryAction(action.id, {
+                                                  minutes_required: undefined,
+                                                  videos_required: undefined,
+                                                });
+                                                return;
+                                              }
+                                              const cleanVal = val.replace(/\D/g, '');
+                                              if (cleanVal === '') {
+                                                updateDiscoveryAction(action.id, {
+                                                  minutes_required: undefined,
+                                                  videos_required: undefined,
+                                                });
+                                                return;
+                                              }
+                                              const numVal = parseInt(cleanVal, 10);
+                                              const finalVal = Math.min(999, Math.max(1, numVal));
+                                              
+                                              if (selectedEntry.discoveryRequirement === 'minutes') {
+                                                updateDiscoveryAction(action.id, { minutes_required: finalVal });
+                                              } else {
+                                                updateDiscoveryAction(action.id, { videos_required: finalVal });
+                                              }
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all shadow-sm"
+                                          />
+                                        </div>
+
+                                        {/* Separador Desktop */}
+                                        <div className="hidden md:block h-6 w-px bg-zinc-200 dark:bg-zinc-700" />
+
+                                        {/* Checkbox */}
+                                        <div className="flex items-center shrink-0">
+                                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                                            <input
+                                              type="checkbox"
+                                              checked={!!selectedEntry.once_per_day}
+                                              onChange={(e) => updateDiscoveryAction(action.id, { once_per_day: e.target.checked })}
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="w-4 h-4 rounded border-zinc-300 text-amber-500 focus:ring-amber-500 cursor-pointer shadow-sm"
+                                            />
+                                            <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+                                              Uma vez por dia
+                                            </span>
+                                          </label>
+                                        </div>
                                       </div>
                                     </div>
                                   )}

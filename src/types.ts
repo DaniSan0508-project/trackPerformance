@@ -330,6 +330,10 @@ export interface EngagementAction {
     id: number;
     name: string;
   } | null;
+  metric_type?: 'minutes' | 'videos';
+  minutes_required?: number;
+  videos_required?: number;
+  once_per_day?: boolean;
 }
 
 export interface CampaignRanking {
