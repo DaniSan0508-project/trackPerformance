@@ -10,8 +10,8 @@ import loginBackgroundImage from '../resources/img-background-login.jpeg';
 import { ForgotPasswordModal } from '../components/auth/ForgotPasswordModal';
 
 export const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('admin@teste.com');
-  const [password, setPassword] = useState('secret123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<{ email?: string; password?: string }>({});
@@ -79,13 +79,14 @@ export const LoginPage: React.FC = () => {
         className="sm:mx-auto sm:w-full sm:max-w-md relative z-10"
       >
         <div className="flex justify-center">
-          <div className="bg-primary-600 p-3 rounded-2xl shadow-lg">
-            <LogIn className="w-8 h-8 text-white" />
+          <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl border border-white/20 transform hover:scale-105 transition-transform duration-300">
+            <img 
+              src="/logo.jpeg" 
+              alt="Engora Logo" 
+              className="w-48 h-auto object-contain"
+            />
           </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-white shadow-sm">
-          TrackPerformance
-        </h2>
         <p className="mt-2 text-center text-sm text-zinc-200">
             Suba de nível na gestão da sua empresa!
         </p>
@@ -120,7 +121,7 @@ export const LoginPage: React.FC = () => {
                       ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
                       : 'border-zinc-300 dark:border-zinc-700 focus:ring-primary-500'
                   }`}
-                  placeholder="admin@teste.com"
+                  placeholder="Digite seu e-mail"
                 />
               </div>
               {validationErrors.email && (
@@ -149,7 +150,7 @@ export const LoginPage: React.FC = () => {
                       ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
                       : 'border-zinc-300 dark:border-zinc-700 focus:ring-primary-500'
                   }`}
-                  placeholder="••••••••"
+                  placeholder="Digite sua senha"
                 />
               </div>
               {validationErrors.password && (

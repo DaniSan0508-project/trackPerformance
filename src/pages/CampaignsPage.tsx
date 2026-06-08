@@ -68,6 +68,52 @@ const actionLabels: Record<string, string> = {
   answer_survey: 'Responder Pesquisa',
   create_post: 'Criar Post',
   change_profile_photo: 'Alterar Foto do Perfil',
+  record_mood: 'Registrar Humor',
+  discovery: 'Discovery',
+};
+
+const DISCOVERY_ACTION_NAME = 'discovery';
+
+type SelectedCampaignAction = {
+  id: number;
+  coins: number;
+  discoveryRequirement?: 'minutes' | 'videos';
+  minutes_required?: number;
+  videos_required?: number;
+  once_per_day?: boolean;
+};
+
+const buildActionPayload = (
+  action: SelectedCampaignAction,
+  actionName?: string
+): Record<string, unknown> => {
+  const payload: Record<string, unknown> = { id: action.id, coins: action.coins };
+  if (actionName !== DISCOVERY_ACTION_NAME) return payload;
+
+  if (action.discoveryRequirement === 'minutes' && action.minutes_required != null && action.minutes_required >= 1) {
+    payload.minutes_required = action.minutes_required;
+  } else if (action.discoveryRequirement === 'videos' && action.videos_required != null && action.videos_required >= 1) {
+    payload.videos_required = action.videos_required;
+  }
+  if (action.once_per_day) {
+    payload.once_per_day = true;
+  }
+  return payload;
+};
+
+const validateDiscoveryAction = (action: SelectedCampaignAction): string | null => {
+  if (action.coins < 1) return 'Discovery exige pelo menos 1 coin.';
+  if (!action.discoveryRequirement) return 'Selecione minutos ou vídeos como requisito da Discovery.';
+  if (action.discoveryRequirement === 'minutes') {
+    if (!action.minutes_required || action.minutes_required < 1) {
+      return 'Informe os minutos obrigatórios (mínimo 1).';
+    }
+    return null;
+  }
+  if (!action.videos_required || action.videos_required < 1) {
+    return 'Informe a quantidade de vídeos obrigatória (mínimo 1).';
+  }
+  return null;
 };
 
 const defaultActionCoins: Record<string, number> = {
@@ -78,6 +124,7 @@ const defaultActionCoins: Record<string, number> = {
   send_feedback: 10,
   answer_survey: 5,
   create_post: 15,
+  record_mood: 5,
 };
 
 export const CampaignsPage: React.FC = () => {
@@ -202,7 +249,7 @@ export const CampaignsPage: React.FC = () => {
 
   // Seleções
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
-  const [selectedActions, setSelectedActions] = useState<{ id: number; coins: number }[]>([]);
+  const [selectedActions, setSelectedActions] = useState<SelectedCampaignAction[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
 
   // Ações de engajamento (buscadas da API)
@@ -684,10 +731,18 @@ export const CampaignsPage: React.FC = () => {
 
           if (campaign.type === 'engagement') {
             // Mapeia ações do previews.actions (que contém os coins configurados)
-            const campaignActions = (campaignDetails.previews?.actions || []).map((a: any) => ({
-              id: a.action_id || a.id,
-              coins: parseInt(a.coins) || 0
-            }));
+            const campaignActions: SelectedCampaignAction[] = (campaignDetails.previews?.actions || []).map((a: any) => {
+              const hasMinutes = a.minutes_required != null && a.minutes_required !== '';
+              const hasVideos = a.videos_required != null && a.videos_required !== '';
+              return {
+                id: a.action_id || a.id,
+                coins: parseInt(a.coins) || 0,
+                discoveryRequirement: hasMinutes ? 'minutes' as const : hasVideos ? 'videos' as const : undefined,
+                minutes_required: hasMinutes ? parseInt(a.minutes_required) : undefined,
+                videos_required: hasVideos ? parseInt(a.videos_required) : undefined,
+                once_per_day: a.once_per_day !== undefined && a.once_per_day !== null ? !!a.once_per_day : undefined,
+              };
+            });
             setSelectedActions(campaignActions);
 
             // Popula os inputs de moedas para a UI
@@ -737,13 +792,57 @@ export const CampaignsPage: React.FC = () => {
       // A API retorna array direto, não dentro de { data: ... }
       const actionsData = Array.isArray(response) ? response : (response?.data || []);
       setEngagementActions(actionsData);
+
+      // Preenche os campos do discovery se estiver em uso na campanha atual
+      if (editingCampaign) {
+        const discoveryAction = actionsData.find((a: any) => a.name === DISCOVERY_ACTION_NAME);
+        if (discoveryAction && discoveryAction.in_use) {
+          const actionCampaignId = discoveryAction.campaign?.id || discoveryAction.campaign_id;
+          if (actionCampaignId && Number(actionCampaignId) === Number(editingCampaign.id)) {
+            const hasMinutes = discoveryAction.metric_type === 'minutes';
+            const hasVideos = discoveryAction.metric_type === 'videos';
+            
+            setSelectedActions(prev => {
+              const exists = prev.find(a => a.id === discoveryAction.id);
+              const apiOncePerDay = discoveryAction.once_per_day === true || discoveryAction.once_per_day === 'true' || discoveryAction.once_per_day === 1 || discoveryAction.once_per_day === '1' || discoveryAction.once_per_day === 't' || discoveryAction.once_per_day === 'T';
+              
+              if (exists) {
+                return prev.map(a => {
+                  if (a.id === discoveryAction.id) {
+                    return {
+                      ...a,
+                      discoveryRequirement: hasMinutes ? 'minutes' : hasVideos ? 'videos' : undefined,
+                      minutes_required: hasMinutes ? Number(discoveryAction.minutes_required) : undefined,
+                      videos_required: hasVideos ? Number(discoveryAction.videos_required) : undefined,
+                      once_per_day: apiOncePerDay,
+                    };
+                  }
+                  return a;
+                });
+              } else {
+                return [
+                  ...prev,
+                  {
+                    id: discoveryAction.id,
+                    coins: 0,
+                    discoveryRequirement: hasMinutes ? 'minutes' : hasVideos ? 'videos' : undefined,
+                    minutes_required: hasMinutes ? Number(discoveryAction.minutes_required) : undefined,
+                    videos_required: hasVideos ? Number(discoveryAction.videos_required) : undefined,
+                    once_per_day: apiOncePerDay,
+                  }
+                ];
+              }
+            });
+          }
+        }
+      }
     } catch (error) {
       console.error('Error loading engagement actions:', error);
       addToast('error', 'Erro ao carregar ações de engajamento.');
     } finally {
       setLoadingEngagementActions(false);
     }
-  }, [token, loadingEngagementActions, addToast]);
+  }, [token, loadingEngagementActions, editingCampaign, addToast]);
 
   // Carregamento sob demanda de dados auxiliares baseado na aba ativa
   useEffect(() => {
@@ -860,6 +959,7 @@ export const CampaignsPage: React.FC = () => {
     setSelectedProducts([]);
     setSelectedActions([]);
     setSelectedHashtags([]);
+    setEngagementActions([]);
     setManuallyUnselectedActions([]);
     setActionCoinsInputs({});
     setFullySelectedRoles(new Set());
@@ -1245,12 +1345,25 @@ export const CampaignsPage: React.FC = () => {
           return;
         }
         
-        // Valida se todas as ações têm coins válidos (não negativos)
-        const invalidActions = selectedActions.filter(a => !a.coins || a.coins < 0);
+        // Valida se todas as ações têm coins válidos (inteiro ≥ 1)
+        const invalidActions = selectedActions.filter(a => !a.coins || a.coins < 1);
         if (invalidActions.length > 0) {
-          addToast('error', 'Existem ações com valores inválidos. Verifique os coins de cada ação.');
+          addToast('error', 'Cada ação deve ter pelo menos 1 coin.');
           setActiveTab('actions');
           return;
+        }
+
+        for (const selected of selectedActions) {
+          const meta = engagementActions.find(a => a.id === selected.id);
+          if (meta?.name === DISCOVERY_ACTION_NAME) {
+            const discoveryError = validateDiscoveryAction(selected);
+            if (discoveryError) {
+              setFormErrors({ actions: discoveryError });
+              addToast('error', discoveryError);
+              setActiveTab('actions');
+              return;
+            }
+          }
         }
         
         if (selectedProducts.length > 0) {
@@ -1334,7 +1447,10 @@ export const CampaignsPage: React.FC = () => {
         } else if (editingCampaign.type === 'engagement') {
           // Envia actions apenas se houver selecionadas
           if (selectedActions.length > 0) {
-            dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
+            dataToSave.actions = selectedActions.map(a => {
+              const meta = engagementActions.find(e => e.id === a.id);
+              return buildActionPayload(a, meta?.name);
+            });
           }
           // Envia hashtags
           dataToSave.hashtags = selectedHashtags;
@@ -1363,7 +1479,10 @@ export const CampaignsPage: React.FC = () => {
             dataToSave.goal_campaign = parseFloat(formData.goal_campaign);
           }
           dataToSave.reward_id = formData.reward_id || null;
-          dataToSave.actions = selectedActions.map(a => ({ id: a.id, coins: a.coins }));
+          dataToSave.actions = selectedActions.map(a => {
+            const meta = engagementActions.find(e => e.id === a.id);
+            return buildActionPayload(a, meta?.name);
+          });
           dataToSave.hashtags = selectedHashtags;
         }
       }
@@ -1565,14 +1684,38 @@ export const CampaignsPage: React.FC = () => {
           return newInputs;
         });
         // Rastreia que esta ação foi desmarcada manualmente
-        setManuallyUnselectedActions(prev => [...prev, actionId]);
+        setManuallyUnselectedActions(prevUnselected => [...prevUnselected, actionId]);
         return prev.filter(a => a.id !== actionId);
       } else {
         // Ao marcar, remove da lista de desmarcadas manualmente
-        setManuallyUnselectedActions(prev => prev.filter(id => id !== actionId));
+        setManuallyUnselectedActions(prevUnselected => prevUnselected.filter(id => id !== actionId));
         const action = engagementActions.find(a => a.id === actionId);
-        const defaultCoins = 0;
-        return [...prev, { id: actionId, coins: defaultCoins }];
+        const isDiscovery = action?.name === DISCOVERY_ACTION_NAME;
+        
+        let discoveryFields = {};
+        if (isDiscovery && action) {
+          const hasMinutes = action.metric_type === 'minutes';
+          const hasVideos = action.metric_type === 'videos';
+          
+          discoveryFields = {
+            discoveryRequirement: hasMinutes ? 'minutes' as const : hasVideos ? 'videos' as const : 'minutes' as const,
+            minutes_required: hasMinutes && action.minutes_required ? Number(action.minutes_required) : undefined,
+            videos_required: hasVideos && action.videos_required ? Number(action.videos_required) : undefined,
+            once_per_day: !!action.once_per_day,
+          };
+        } else if (isDiscovery) {
+          discoveryFields = {
+            discoveryRequirement: 'minutes' as const,
+            once_per_day: false,
+          };
+        }
+        
+        const newAction: SelectedCampaignAction = {
+          id: actionId,
+          coins: 0,
+          ...discoveryFields,
+        };
+        return [...prev, newAction];
       }
     });
   };
@@ -1580,6 +1723,24 @@ export const CampaignsPage: React.FC = () => {
   const updateActionCoins = (actionId: number, coins: number) => {
     setSelectedActions(prev =>
       prev.map(a => a.id === actionId ? { ...a, coins } : a)
+    );
+  };
+
+  const updateDiscoveryAction = (
+    actionId: number,
+    patch: Partial<Pick<SelectedCampaignAction, 'discoveryRequirement' | 'minutes_required' | 'videos_required' | 'once_per_day'>>
+  ) => {
+    setSelectedActions(prev =>
+      prev.map(a => {
+        if (a.id !== actionId) return a;
+        const next = { ...a, ...patch };
+        if (patch.discoveryRequirement === 'minutes') {
+          delete next.videos_required;
+        } else if (patch.discoveryRequirement === 'videos') {
+          delete next.minutes_required;
+        }
+        return next;
+      })
     );
   };
 
@@ -2928,16 +3089,51 @@ export const CampaignsPage: React.FC = () => {
                               const isUsedInAnotherCampaign = action.in_use && (!!actionCampaignId && Number(actionCampaignId) !== Number(editingCampaign?.id));
                               const isDisabled = isUsedInAnotherCampaign && !manuallyUnselectedActions.includes(action.id);
                               const campaignName = action.campaign?.name || (action as any).campaign_name;
-                              const isSelected = selectedActions.find(a => a.id === action.id);
+                              const selectedEntry = selectedActions.find(a => a.id === action.id);
+                              const isSelected = !!selectedEntry;
                               const actionLabel = actionLabels[action.name] || action.name;
+                              const isDiscovery = action.name === DISCOVERY_ACTION_NAME;
                               
                               // Permite desmarcar ações já selecionadas, mesmo que estejam em uso em outra campanha
                               const canToggle = isSelected || !isDisabled;
 
+                              const coinsInput = (
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    {coinName.charAt(0).toUpperCase() + coinName.slice(1)}:
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="999"
+                                    value={actionCoinsInputs[action.id] ?? (selectedEntry?.coins ?? '')}
+                                    onKeyDown={(e) => {
+                                      if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
+                                        e.preventDefault();
+                                      }
+                                    }}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      if (val === '') {
+                                        setActionCoinsInputs(prev => ({ ...prev, [action.id]: '' }));
+                                        updateActionCoins(action.id, 0);
+                                        return;
+                                      }
+                                      const numVal = parseInt(val) || 0;
+                                      const finalVal = Math.min(999, Math.max(1, numVal));
+                                      setActionCoinsInputs(prev => ({ ...prev, [action.id]: String(finalVal) }));
+                                      updateActionCoins(action.id, finalVal);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
+                                  />
+                                </div>
+                              );
+
                               return (
                                 <div
                                   key={action.id}
-                                  className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                                  className={`p-3 rounded-lg border transition-all ${
                                     isSelected
                                       ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
                                       : isDisabled
@@ -2945,61 +3141,148 @@ export const CampaignsPage: React.FC = () => {
                                         : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-amber-300 dark:hover:border-amber-700'
                                   }`}
                                 >
-                                  <button
-                                    onClick={() => canToggle && toggleAction(action.id)}
-                                    disabled={!canToggle}
-                                    className="flex items-center gap-3 flex-1 text-left disabled:cursor-not-allowed"
-                                  >
-                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${
-                                      isSelected
-                                        ? 'bg-amber-500 border-amber-500'
-                                        : 'border-zinc-300 dark:border-zinc-600'
-                                    }`}>
-                                      {isSelected && <Check size={14} className="text-white" />}
-                                    </div>
-                                    <div className="flex-1">
-                                      <p className={`font-medium text-sm ${
-                                        isDisabled && !isSelected ? 'text-zinc-500 dark:text-zinc-400' : 'text-zinc-900 dark:text-white'
+                                  <div className="flex items-center justify-between gap-3">
+                                    <button
+                                      onClick={() => canToggle && toggleAction(action.id)}
+                                      disabled={!canToggle}
+                                      className="flex items-center gap-3 flex-1 text-left disabled:cursor-not-allowed min-w-0"
+                                    >
+                                      <div className={`w-5 h-5 shrink-0 rounded border flex items-center justify-center ${
+                                        isSelected
+                                          ? 'bg-amber-500 border-amber-500'
+                                          : 'border-zinc-300 dark:border-zinc-600'
                                       }`}>
-                                        {actionLabel}
-                                      </p>
-                                      {isDisabled && campaignName && !isSelected && Number(actionCampaignId) !== Number(editingCampaign?.id) && (
-                                        <p className="text-xs text-red-500 dark:text-red-400 mt-0.5 flex items-center gap-1">
-                                          <span>🚫</span> Em uso em: {campaignName}
+                                        {isSelected && <Check size={14} className="text-white" />}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className={`font-medium text-sm ${
+                                          isDisabled && !isSelected ? 'text-zinc-500 dark:text-zinc-400' : 'text-zinc-900 dark:text-white'
+                                        }`}>
+                                          {actionLabel}
                                         </p>
-                                      )}
-                                    </div>
-                                  </button>
-                                  {isSelected && (
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                                        {coinName.charAt(0).toUpperCase() + coinName.slice(1)}:
-                                      </span>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="999"
-                                        value={actionCoinsInputs[action.id] ?? (selectedActions.find(a => a.id === action.id)?.coins ?? 0)}
-                                        onKeyDown={(e) => {
-                                          if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
-                                            e.preventDefault();
-                                          }
-                                        }}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          if (val === '') {
-                                            setActionCoinsInputs(prev => ({ ...prev, [action.id]: '' }));
-                                            updateActionCoins(action.id, 0);
-                                            return;
-                                          }
-                                          const numVal = parseInt(val) || 0;
-                                          const finalVal = Math.min(999, Math.max(0, numVal));
-                                          setActionCoinsInputs(prev => ({ ...prev, [action.id]: String(finalVal) }));
-                                          updateActionCoins(action.id, finalVal);
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
-                                      />
+                                        {isDisabled && campaignName && !isSelected && Number(actionCampaignId) !== Number(editingCampaign?.id) && (
+                                          <p className="text-xs text-red-500 dark:text-red-400 mt-0.5 flex items-center gap-1">
+                                            <span>🚫</span> Em uso em: {campaignName}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </button>
+                                    {isSelected && !isDiscovery && coinsInput}
+                                  </div>
+
+                                  {isSelected && isDiscovery && selectedEntry && (
+                                    <div className="mt-3 pl-8">
+                                      <div className="flex flex-wrap items-center gap-4 bg-zinc-50 dark:bg-zinc-900/30 p-3 rounded-xl border border-zinc-200/60 dark:border-zinc-800/80">
+                                        {/* Moedas */}
+                                        <div className="shrink-0">
+                                          {coinsInput}
+                                        </div>
+
+                                        {/* Separador Desktop */}
+                                        <div className="hidden md:block h-6 w-px bg-zinc-200 dark:bg-zinc-700" />
+
+                                        {/* Requisito */}
+                                        <div className="flex items-center gap-2 shrink-0">
+                                          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Requisito:</span>
+                                          <div className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden bg-white dark:bg-zinc-900 p-0.5 shadow-sm">
+                                            <button
+                                              type="button"
+                                              onClick={() => updateDiscoveryAction(action.id, { discoveryRequirement: 'minutes' })}
+                                              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                                                selectedEntry.discoveryRequirement === 'minutes'
+                                                  ? 'bg-amber-500 text-white shadow-sm'
+                                                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                              }`}
+                                            >
+                                              Minutos
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => updateDiscoveryAction(action.id, { discoveryRequirement: 'videos' })}
+                                              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                                                selectedEntry.discoveryRequirement === 'videos'
+                                                  ? 'bg-amber-500 text-white shadow-sm'
+                                                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                              }`}
+                                            >
+                                              Vídeos
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        {/* Separador Desktop */}
+                                        <div className="hidden md:block h-6 w-px bg-zinc-200 dark:bg-zinc-700" />
+
+                                        {/* Input do valor */}
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                                            {selectedEntry.discoveryRequirement === 'minutes' ? 'Mins:' : 'Vídeos:'}
+                                          </span>
+                                          <input
+                                            type="number"
+                                            min="1"
+                                            max="999"
+                                            placeholder={selectedEntry.discoveryRequirement === 'minutes' ? 'Ex: 30' : 'Ex: 3'}
+                                            value={
+                                              selectedEntry.discoveryRequirement === 'minutes'
+                                                ? (selectedEntry.minutes_required ?? '')
+                                                : (selectedEntry.videos_required ?? '')
+                                            }
+                                            onKeyDown={(e) => {
+                                              if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
+                                                e.preventDefault();
+                                              }
+                                            }}
+                                            onChange={(e) => {
+                                              const val = e.target.value;
+                                              if (val === '') {
+                                                updateDiscoveryAction(action.id, {
+                                                  minutes_required: undefined,
+                                                  videos_required: undefined,
+                                                });
+                                                return;
+                                              }
+                                              const cleanVal = val.replace(/\D/g, '');
+                                              if (cleanVal === '') {
+                                                updateDiscoveryAction(action.id, {
+                                                  minutes_required: undefined,
+                                                  videos_required: undefined,
+                                                });
+                                                return;
+                                              }
+                                              const numVal = parseInt(cleanVal, 10);
+                                              const finalVal = Math.min(999, Math.max(1, numVal));
+                                              
+                                              if (selectedEntry.discoveryRequirement === 'minutes') {
+                                                updateDiscoveryAction(action.id, { minutes_required: finalVal });
+                                              } else {
+                                                updateDiscoveryAction(action.id, { videos_required: finalVal });
+                                              }
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all shadow-sm"
+                                          />
+                                        </div>
+
+                                        {/* Separador Desktop */}
+                                        <div className="hidden md:block h-6 w-px bg-zinc-200 dark:bg-zinc-700" />
+
+                                        {/* Checkbox */}
+                                        <div className="flex items-center shrink-0">
+                                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                                            <input
+                                              type="checkbox"
+                                              checked={!!selectedEntry.once_per_day}
+                                              onChange={(e) => updateDiscoveryAction(action.id, { once_per_day: e.target.checked })}
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="w-4 h-4 rounded border-zinc-300 text-amber-500 focus:ring-amber-500 cursor-pointer shadow-sm"
+                                            />
+                                            <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+                                              Uma vez por dia
+                                            </span>
+                                          </label>
+                                        </div>
+                                      </div>
                                     </div>
                                   )}
                                 </div>

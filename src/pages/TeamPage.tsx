@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera, LogOut, Store as StoreIcon, FileText, Eye, EyeOff, Settings, Crown } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, User, Mail, Shield, Coins, Briefcase, Plus, Edit2, Trash2, X, Save, Camera, LogOut, Store as StoreIcon, FileText, Eye, EyeOff, Settings, Crown, Bell, BellOff, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { User as UserType, Role, Store } from '../types';
@@ -8,7 +8,7 @@ import { useToast } from '../context/ToastContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { userSchema, userUpdateSchema, roleSchema } from '../validators/schemas';
 import { getFullImageUrl } from '../utils';
-import { CoinStatementModal } from '../components/Team';
+import { CoinStatementModal, UserMoodModal } from '../components/Team';
 
 // Utility for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -83,6 +83,14 @@ export const TeamPage: React.FC = () => {
 
   // Modal de Extrato
   const [coinStatementModal, setCoinStatementModal] = useState<{
+    isOpen: boolean;
+    user: UserType | null;
+  }>({
+    isOpen: false,
+    user: null,
+  });
+
+  const [moodModal, setMoodModal] = useState<{
     isOpen: boolean;
     user: UserType | null;
   }>({
@@ -265,6 +273,14 @@ export const TeamPage: React.FC = () => {
 
   const handleCloseCoinStatement = () => {
     setCoinStatementModal({ isOpen: false, user: null });
+  };
+
+  const handleViewMood = (user: UserType) => {
+    setMoodModal({ isOpen: true, user });
+  };
+
+  const handleCloseMood = () => {
+    setMoodModal({ isOpen: false, user: null });
   };
 
   const handleCloseModal = () => {
@@ -609,11 +625,11 @@ export const TeamPage: React.FC = () => {
                   key={user.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-all duration-200 flex flex-col"
+                  className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-all duration-200 flex flex-col"
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="w-14 h-14 bg-gradient-to-br from-primary-100 to-teal-100 dark:from-primary-900/30 dark:to-teal-900/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 overflow-hidden border-2 border-primary-200 dark:border-primary-800 flex-shrink-0">
+                  <div className="flex items-start justify-between gap-2 mb-4">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-primary-100 to-teal-100 dark:from-primary-900/30 dark:to-teal-900/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 overflow-hidden border-2 border-primary-200 dark:border-primary-800 flex-shrink-0">
                         {user.profile_image_url ? (
                           <img src={getFullImageUrl(user.profile_image_url) || ''} alt={user.name} className="w-full h-full object-cover" />
                         ) : (
@@ -650,18 +666,40 @@ export const TeamPage: React.FC = () => {
                               <span>{user.journey_level.level_name}</span>
                             </span>
                           )}
+                          <span 
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border cursor-default transition-colors ${
+                              user.push_notifications_enabled 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
+                                : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800'
+                            }`}
+                            title={user.push_notifications_enabled ? 'Ativo' : 'Inativo'}
+                          >
+                            {user.push_notifications_enabled ? <Bell size={10} /> : <BellOff size={10} />}
+                            {user.push_notifications_enabled ? 'Notificação ativa' : 'Notificação inativa'}
+                          </span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-1 flex-shrink-0">
+                    <div className="flex gap-0.5 sm:gap-1 flex-shrink-0 ml-2">
                       {/* Ver extrato: Apenas colaboradores possuem extrato. Admin e Super Admin podem ver de colaboradores. */}
                       {user.user_type_id !== 1 && (isSuperAdmin || isAdmin) && (
                         <button
                           onClick={() => handleViewCoinStatement(user)}
-                          className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+                          className="p-1.5 sm:p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
                           title="Ver extrato de moedas"
                         >
                           <FileText size={16} />
+                        </button>
+                      )}
+
+                      {/* Ver humor */}
+                      {(isSuperAdmin || isAdmin) && (
+                        <button
+                          onClick={() => handleViewMood(user)}
+                          className="p-1.5 sm:p-2 text-zinc-400 hover:text-pink-600 dark:hover:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20 rounded-lg transition-colors"
+                          title="Ver acompanhamento de humor"
+                        >
+                          <Heart size={16} />
                         </button>
                       )}
                       
@@ -669,7 +707,7 @@ export const TeamPage: React.FC = () => {
                       {(isSuperAdmin || currentUser?.id === user.id || (isAdmin && user.user_type_id !== 1)) && (
                         <button
                           onClick={() => handleOpenModal(user)}
-                          className="p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+                          className="p-1.5 sm:p-2 text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
                           title="Editar"
                         >
                           <Edit2 size={16} />
@@ -680,7 +718,7 @@ export const TeamPage: React.FC = () => {
                       {(isSuperAdmin || (isAdmin && user.user_type_id !== 1)) && currentUser?.id !== user.id && (
                         <button
                           onClick={() => handleDelete(user)}
-                          className="p-2 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          className="p-1.5 sm:p-2 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                           title="Excluir"
                         >
                           {deletingId === user.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
@@ -720,7 +758,7 @@ export const TeamPage: React.FC = () => {
 
                     <div className="flex-1" />
 
-                    <div className="flex items-center justify-between gap-4 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                       {user.user_type_id !== 1 && (isSuperAdmin || isAdmin) && (
                         <div className="flex items-center gap-1.5 text-sm">
                           <Coins size={14} className="text-amber-500 flex-shrink-0" />
@@ -1155,6 +1193,14 @@ export const TeamPage: React.FC = () => {
         user={coinStatementModal.user}
         token={token}
         onClose={handleCloseCoinStatement}
+      />
+
+      {/* Modal de Humor */}
+      <UserMoodModal
+        isOpen={moodModal.isOpen}
+        user={moodModal.user}
+        token={token}
+        onClose={handleCloseMood}
       />
     </>
   );

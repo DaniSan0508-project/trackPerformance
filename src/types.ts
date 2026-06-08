@@ -56,6 +56,7 @@ export interface User {
   store_id?: number | null;
   store?: Store | null;
   last_login_at?: string | null;
+  push_notifications_enabled?: boolean;
   journey_level?: JourneyLevelBadge | null;
 }
 
@@ -329,6 +330,10 @@ export interface EngagementAction {
     id: number;
     name: string;
   } | null;
+  metric_type?: 'minutes' | 'videos';
+  minutes_required?: number;
+  videos_required?: number;
+  once_per_day?: boolean;
 }
 
 export interface CampaignRanking {
