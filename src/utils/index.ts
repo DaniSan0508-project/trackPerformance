@@ -13,3 +13,5 @@ export {
   extractYouTubeVideoId,
   getYouTubeThumbnailUrl,
 } from './formatters';
+
+export { resolvePortalDomain } from './domain';

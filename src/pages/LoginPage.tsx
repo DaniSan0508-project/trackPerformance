@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { LogIn, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { authService, dashboardService, usersService, campaignsService, productsService, manufacturersService, rolesService, rewardsService, feedbacksService, postsService, redemptionsService, tenantConfigsService, surveysService, storesService, coinsService } from '../services';
+import { resolvePortalDomain } from '../utils';
 import { loginSchema } from '../validators/schemas';
 import loginBackgroundImage from '../resources/img-background-login.jpeg';
 import { ForgotPasswordModal } from '../components/auth/ForgotPasswordModal';
@@ -38,7 +39,14 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const data = await authService.login({ email, password });
+      const domain = resolvePortalDomain();
+
+      if (!domain) {
+        setError('Não foi possível identificar o domínio do portal para autenticação.');
+        return;
+      }
+
+      const data = await authService.login({ email, password, domain });
       login(data, rememberMe);
       navigate('/dashboard');
     } catch (err: any) {

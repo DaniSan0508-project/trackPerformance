@@ -2,9 +2,15 @@ import { API_BASE_URL, getHeaders, handleResponse } from '../core/apiClient';
 
 const API_SECRET = import.meta.env.VITE_API_SECRET || '';
 
+interface LoginCredentials {
+  email: string;
+  password: string;
+  domain: string;
+}
+
 export const authService = {
-  login: async (credentials: any) => {
-    const response = await fetch(`${API_BASE_URL}/login`, {
+  login: async (credentials: LoginCredentials) => {
+    const response = await fetch(`${API_BASE_URL}/portal/login`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(credentials),
