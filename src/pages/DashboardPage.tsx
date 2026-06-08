@@ -3,7 +3,7 @@ import {ChartNoAxesColumn, User} from 'lucide-react';
 import {useAuth} from '../context/AuthContext';
 import {useTheme} from '../context/ThemeContext';
 import { authService, dashboardService, usersService, campaignsService, productsService, manufacturersService, rolesService, rewardsService, feedbacksService, postsService, redemptionsService, tenantConfigsService, surveysService, storesService, coinsService } from '../services';
-import {getFullImageUrl} from '../utils/formatters';
+import {getFullImageUrl, resolvePortalDomain} from '../utils';
 import { motion } from 'motion/react';
 import {
     Chart as ChartJS,
@@ -18,81 +18,230 @@ import {Bar} from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
 
+type DashboardStat = { value: number | string; growth_percentage: number | null } | null;
+type TopCollaborator = {
+    position: number;
+    user_id: number;
+    name: string;
+    profile_image_url?: string | null;
+    total_coins: number;
+};
+type Campaign = {
+    id: number;
+    name: string;
+    type: string;
+    goal: number;
+    goal_campaign?: number;
+    current_value: number;
+    progress_percentage: number;
+    participants_count: number;
+};
+type EngagementIndexItem = {
+    store_id: number;
+    store_name: string;
+    score: number;
+    participants: number;
+    breakdown: Record<string, number>;
+};
+type ActionsPeriod = 'current_month' | 'current_week' | 'current_day';
+type ActionsSummary = {
+    period: string;
+    actions: Record<string, number>;
+    total: number;
+};
+type DemoDashboardData = {
+    stats: {
+        active_users: DashboardStat;
+        engagement: DashboardStat;
+        coins_generated: DashboardStat;
+        redemptions: DashboardStat;
+    };
+    top: TopCollaborator[];
+    campaigns: Campaign[];
+    engagementIndex: EngagementIndexItem[];
+    actionsSummary: Record<ActionsPeriod, ActionsSummary>;
+};
+
+const DEMO_DASHBOARD_ENABLED = import.meta.env.VITE_ENABLE_DEMO_DASHBOARD === 'true';
+const DEMO_DOMAIN = 'demostracao';
+
+const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+const randomGrowth = (min = -20, max = 20) => randomInt(min, max);
+const pick = <T,>(items: T[]) => items[randomInt(0, items.length - 1)];
+
+const firstNames = [
+    'Ana', 'Beatriz', 'Camila', 'Carla', 'Daniela', 'Eduarda', 'Fernanda', 'Gabriela',
+    'Isabela', 'Juliana', 'Larissa', 'Mariana', 'Patricia', 'Rafaela', 'Sabrina', 'Vanessa',
+    'Adriana', 'Bruno', 'Carlos', 'Diego', 'Eduardo', 'Felipe', 'Gabriel', 'Gustavo',
+    'Henrique', 'Joao', 'Leonardo', 'Lucas', 'Marcelo', 'Matheus', 'Rafael', 'Thiago',
+];
+
+const lastNames = [
+    'Silva', 'Santos', 'Oliveira', 'Souza', 'Lima', 'Pereira', 'Costa', 'Rodrigues',
+    'Almeida', 'Nascimento', 'Araujo', 'Fernandes', 'Carvalho', 'Gomes', 'Martins', 'Rocha',
+];
+
+const storeNames = [
+    'Unidade Paulista',
+    'Unidade Campinas',
+    'Unidade Pinheiros',
+    'Unidade Santo Andre',
+    'Unidade Ribeirao Preto',
+];
+
+const campaignNames = [
+    'Sprint de Vendas',
+    'Missao Atendimento Nota 10',
+    'Desafio de Engajamento',
+    'Campanha Superacao de Metas',
+];
+
+const createBrazilianName = (usedNames: Set<string>) => {
+    let fullName = '';
+
+    do {
+        fullName = `${pick(firstNames)} ${pick(lastNames)}`;
+    } while (usedNames.has(fullName));
+
+    usedNames.add(fullName);
+    return fullName;
+};
+
+const createDemoActions = (scale: number) => {
+    const actions = {
+        login_daily: randomInt(40, 70) * scale,
+        create_post: randomInt(14, 30) * scale,
+        comment_post: randomInt(25, 55) * scale,
+        like_post: randomInt(60, 120) * scale,
+        share_post: randomInt(8, 22) * scale,
+        send_feedback: randomInt(10, 24) * scale,
+        answer_survey: randomInt(12, 28) * scale,
+        record_mood: randomInt(18, 45) * scale,
+    };
+
+    const total = Object.values(actions).reduce((sum, value) => sum + value, 0);
+
+    return { actions, total };
+};
+
+const createDemoDashboardData = (): DemoDashboardData => {
+    const usedNames = new Set<string>();
+    const top = Array.from({ length: 3 }, (_, index) => ({
+        position: index + 1,
+        user_id: index + 1,
+        name: createBrazilianName(usedNames),
+        profile_image_url: null,
+        total_coins: randomInt(1800 - index * 250, 2400 - index * 180),
+    })).sort((a, b) => b.total_coins - a.total_coins).map((item, index) => ({
+        ...item,
+        position: index + 1,
+    }));
+
+    const campaigns: Campaign[] = campaignNames.slice(0, 3).map((name, index) => {
+        const type = index % 2 === 0 ? 'engagement' : 'sales';
+        const goal = type === 'engagement' ? randomInt(3000, 7000) : randomInt(120000, 280000);
+        const progress = randomInt(38, 92);
+        return {
+            id: index + 1,
+            name,
+            type,
+            goal,
+            goal_campaign: goal,
+            current_value: Math.round(goal * (progress / 100)),
+            progress_percentage: progress,
+            participants_count: randomInt(18, 95),
+        };
+    });
+
+    const engagementIndex: EngagementIndexItem[] = storeNames.slice(0, 4).map((storeName, index) => {
+        const breakdown = {
+            logins: randomInt(80, 160),
+            posts: randomInt(10, 28),
+            comments: randomInt(18, 44),
+            likes: randomInt(50, 130),
+            feedbacks: randomInt(8, 20),
+            surveys: randomInt(12, 26),
+        };
+        const score = Object.values(breakdown).reduce((sum, value) => sum + value, 0);
+        return {
+            store_id: index + 1,
+            store_name: storeName,
+            score,
+            participants: randomInt(16, 48),
+            breakdown,
+        };
+    });
+
+    const monthlyActions = createDemoActions(1);
+    const weeklyActions = createDemoActions(1);
+    const dailyActions = createDemoActions(1);
+
+    return {
+        stats: {
+            active_users: { value: randomInt(95, 180), growth_percentage: randomGrowth(4, 22) },
+            engagement: { value: `${randomInt(72, 96)}%`, growth_percentage: randomGrowth(3, 18) },
+            coins_generated: { value: randomInt(18000, 52000), growth_percentage: randomGrowth(5, 28) },
+            redemptions: { value: randomInt(24, 95), growth_percentage: randomGrowth(-8, 16) },
+        },
+        top,
+        campaigns,
+        engagementIndex,
+        actionsSummary: {
+            current_month: { period: 'current_month', ...monthlyActions },
+            current_week: { period: 'current_week', ...weeklyActions },
+            current_day: { period: 'current_day', ...dailyActions },
+        },
+    };
+};
+
 export const DashboardPage = () => {
     const {user, token, coinName} = useAuth();
     const {theme} = useTheme();
-
-    // DEV flag: when true, inject temporary random growth_percentage values for presentation.
-    // Toggle to false or remove before production.
-    const DEV_RANDOM_STATS = true;
-
-    const randomGrowth = (min = -20, max = 20) => Math.round(Math.random() * (max - min) + min);
+    const [demoData] = useState<DemoDashboardData>(() => createDemoDashboardData());
+    const isDemoDashboardEnabled = DEMO_DASHBOARD_ENABLED && resolvePortalDomain() === DEMO_DOMAIN;
 
     const [loadingStats, setLoadingStats] = useState(true);
     const [stats, setStats] = useState<{
-        active_users: { value: number | string; growth_percentage: number | null } | null;
-        engagement: { value: number | string; growth_percentage: number | null } | null;
-        coins_generated: { value: number | string; growth_percentage: number | null } | null;
-        redemptions: { value: number | string; growth_percentage: number | null } | null;
+        active_users: DashboardStat;
+        engagement: DashboardStat;
+        coins_generated: DashboardStat;
+        redemptions: DashboardStat;
     }>({active_users: null, engagement: null, coins_generated: null, redemptions: null});
 
-    const [top, setTop] = useState<Array<{
-        position: number;
-        user_id: number;
-        name: string;
-        profile_image_url?: string | null;
-        total_coins: number
-    }>>([]);
+    const [top, setTop] = useState<TopCollaborator[]>([]);
     const [loadingTop, setLoadingTop] = useState(true);
-    const [campaigns, setCampaigns] = useState<Array<{
-        id: number;
-        name: string;
-        type: string;
-        goal: number;
-        current_value: number;
-        progress_percentage: number;
-        participants_count: number
-    }>>([]);
+    const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [loadingCampaigns, setLoadingCampaigns] = useState(true);
-    const [engagementIndex, setEngagementIndex] = useState<Array<{
-        store_id: number;
-        store_name: string;
-        score: number;
-        participants: number;
-        breakdown: Record<string, number>
-    }>>([]);
+    const [engagementIndex, setEngagementIndex] = useState<EngagementIndexItem[]>([]);
     const [loadingEngagementIndex, setLoadingEngagementIndex] = useState(true);
 
-    type ActionsPeriod = 'current_month' | 'current_week' | 'current_day';
     const [actionsPeriod, setActionsPeriod] = useState<ActionsPeriod>('current_month');
-    const [actionsSummary, setActionsSummary] = useState<{
-        period: string;
-        actions: Record<string, number>;
-        total: number
-    } | null>(null);
+    const [actionsSummary, setActionsSummary] = useState<ActionsSummary | null>(null);
     const [loadingActions, setLoadingActions] = useState(true);
 
     useEffect(() => {
+        if (isDemoDashboardEnabled) {
+            setLoadingStats(false);
+            setStats(demoData.stats);
+            setLoadingTop(false);
+            setTop(demoData.top);
+            setLoadingCampaigns(false);
+            setCampaigns(demoData.campaigns);
+            setLoadingEngagementIndex(false);
+            setEngagementIndex(demoData.engagementIndex);
+            return;
+        }
+
         const fetchStats = async () => {
             if (!token) return;
             setLoadingStats(true);
             try {
                 const data = await dashboardService.getDashboard(token);
-
-                // API returns keys as in example: active_users, engagement, coins_generated, redemptions
-                // Optionally inject random growth percentages for presentation (DEV flag)
-                const injectGrowth = (item: any) => {
-                    if (!item) return null;
-                    const existing = typeof item.growth_percentage === 'number' ? item.growth_percentage : null;
-                    const gp = DEV_RANDOM_STATS ? randomGrowth() : existing;
-                    return {...item, growth_percentage: gp};
-                };
-
                 setStats({
-                    active_users: injectGrowth(data.active_users) || null,
-                    engagement: injectGrowth(data.engagement) || null,
-                    coins_generated: injectGrowth(data.coins_generated) || null,
-                    redemptions: injectGrowth(data.redemptions) || null,
+                    active_users: data.active_users || null,
+                    engagement: data.engagement || null,
+                    coins_generated: data.coins_generated || null,
+                    redemptions: data.redemptions || null,
                 });
             } catch (err) {
                 console.error('Failed to load dashboard stats', err);
@@ -142,9 +291,15 @@ export const DashboardPage = () => {
             }
         };
         fetchEngagementIndex();
-    }, [token]);
+    }, [token, demoData, isDemoDashboardEnabled]);
 
     useEffect(() => {
+        if (isDemoDashboardEnabled) {
+            setLoadingActions(false);
+            setActionsSummary(demoData.actionsSummary[actionsPeriod]);
+            return;
+        }
+
         const fetchActionsSummary = async () => {
             if (!token) return;
             setLoadingActions(true);
@@ -158,7 +313,7 @@ export const DashboardPage = () => {
             }
         };
         fetchActionsSummary();
-    }, [token, actionsPeriod]);
+    }, [token, actionsPeriod, demoData, isDemoDashboardEnabled]);
 
     if (!user) return null;
 
