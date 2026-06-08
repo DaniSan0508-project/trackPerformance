@@ -29,6 +29,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [coinName, setCoinName] = useState<string>('coins');
   const [primaryColor, setPrimaryColor] = useState<string>(DEFAULT_PRIMARY_COLOR);
   const [loading, setLoading] = useState(true);
+  const [isSessionExpired, setIsSessionExpired] = useState(false);
 
   // Initialize state from storage
   useEffect(() => {
@@ -142,6 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setPrimaryColor(DEFAULT_PRIMARY_COLOR);
     localStorage.removeItem('track_performance_auth');
     sessionStorage.removeItem('track_performance_auth');
+    window.location.href = '/login';
   }, []);
 
   const updateCurrentUser = useCallback((updatedUser: User) => {
@@ -167,12 +169,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Listen for unauthorized events from api service
   useEffect(() => {
     const handleUnauthorized = () => {
-      logout();
+      setIsSessionExpired(true);
     };
 
     window.addEventListener('auth-unauthorized', handleUnauthorized);
     return () => window.removeEventListener('auth-unauthorized', handleUnauthorized);
-  }, [logout]);
+  }, []);
 
   const refreshAccessToken = useCallback(async () => {
     if (!token) return;
@@ -265,7 +267,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AuthContext.Provider value={{ user, tenant, token, logoUrl, coinName, primaryColor, login, logout, updateCurrentUser, isAuthenticated: !!token, refreshAccessToken }}>
       {!loading && children}
+      {isSessionExpired && (
+        <SessionExpiredModal
+          onConfirm={() => {
+            setIsSessionExpired(false);
+            logout();
+          }}
+        />
+      )}
     </AuthContext.Provider>
+  );
+};
+
+interface SessionExpiredModalProps {
+  onConfirm: () => void;
+}
+
+const AlertIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12 text-amber-500">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+  </svg>
+);
+
+const SessionExpiredModal: React.FC<SessionExpiredModalProps> = ({ onConfirm }) => {
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-sm">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mb-4 border border-amber-500/20">
+            <AlertIcon />
+          </div>
+          <h3 className="text-xl font-bold text-zinc-100 mb-2">Sessão Expirada</h3>
+          <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+            Sua sessão expirou. Para continuar utilizando a plataforma, por favor faça login novamente.
+          </p>
+          <button
+            onClick={onConfirm}
+            className="w-full py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-orange-500/20 active:scale-[0.98]"
+          >
+            Fazer Login Novamente
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

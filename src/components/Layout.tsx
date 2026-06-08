@@ -90,7 +90,6 @@ export const Layout: React.FC = () => {
 
     const handleLogout = () => {
         logout();
-        navigate('/login');
     };
 
     if (!user) return null;

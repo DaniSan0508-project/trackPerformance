@@ -2,7 +2,10 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localho
 
 export const handleResponse = async (response: Response) => {
   if (response.status === 401) {
-    window.dispatchEvent(new CustomEvent('auth-unauthorized'));
+    const isLoginEndpoint = response.url.includes('/portal/login') || response.url.endsWith('/login');
+    if (!isLoginEndpoint) {
+      window.dispatchEvent(new CustomEvent('auth-unauthorized'));
+    }
     throw new Error('Não autorizado');
   }
 
