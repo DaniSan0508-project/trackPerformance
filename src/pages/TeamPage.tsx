@@ -1119,7 +1119,7 @@ export const TeamPage: React.FC = () => {
                       value={rolesSearch}
                       onChange={(e) => setRolesSearch(e.target.value)}
                       placeholder="Buscar cargos..."
-                      className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-zinc-800"
+                      className="w-full pl-10 pr-4 py-2 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                     />
                   </div>
 
