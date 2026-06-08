@@ -179,8 +179,8 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
                   <ArrowLeft className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />
                 </button>
               )}
-              <div className="bg-primary-100 dark:bg-primary-900/30 p-2 rounded-xl">
-                <KeyRound className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+              <div className="bg-orange-100 dark:bg-orange-950/45 p-2 rounded-xl">
+                <KeyRound className="w-6 h-6 text-orange-500 dark:text-orange-400" />
               </div>
               <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
                 {step === 'email' && 'Esqueci a senha'}
@@ -218,10 +218,10 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-primary-500 sm:text-sm transition-all ${
+                      className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-orange-500 sm:text-sm transition-all ${
                         validationErrors.email
                           ? 'border-red-500 focus:ring-red-500'
-                          : 'border-zinc-300 dark:border-zinc-700 focus:ring-primary-500'
+                          : 'border-zinc-300 dark:border-zinc-700 focus:ring-orange-500'
                       }`}
                       placeholder="seu@email.com"
                     />
@@ -234,7 +234,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {isLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -269,10 +269,10 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
                       maxLength={6}
                       value={code}
                       onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                      className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-primary-500 sm:text-sm transition-all ${
+                      className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-orange-500 sm:text-sm transition-all ${
                         validationErrors.code
                           ? 'border-red-500 focus:ring-red-500'
-                          : 'border-zinc-300 dark:border-zinc-700 focus:ring-primary-500'
+                          : 'border-zinc-300 dark:border-zinc-700 focus:ring-orange-500'
                       }`}
                       placeholder="000000"
                     />
@@ -285,7 +285,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
                       type="button"
                       onClick={handleResendCode}
                       disabled={resendTimer > 0}
-                      className="text-xs text-primary-600 hover:text-primary-500 dark:text-primary-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="text-xs text-orange-500 hover:text-orange-400 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {resendTimer > 0 ? `Reenviar em ${resendTimer}s` : 'Reenviar código'}
                     </button>
@@ -305,10 +305,10 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className={`block w-full pl-10 pr-10 py-2.5 border rounded-xl bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-primary-500 sm:text-sm transition-all ${
+                      className={`block w-full pl-10 pr-10 py-2.5 border rounded-xl bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-orange-500 sm:text-sm transition-all ${
                         validationErrors.password
                           ? 'border-red-500 focus:ring-red-500'
-                          : 'border-zinc-300 dark:border-zinc-700 focus:ring-primary-500'
+                          : 'border-zinc-300 dark:border-zinc-700 focus:ring-orange-500'
                       }`}
                       placeholder="Mínimo 6 caracteres"
                     />
@@ -338,10 +338,10 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
                       type={showPasswordConfirmation ? 'text' : 'password'}
                       value={passwordConfirmation}
                       onChange={(e) => setPasswordConfirmation(e.target.value)}
-                      className={`block w-full pl-10 pr-10 py-2.5 border rounded-xl bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-primary-500 sm:text-sm transition-all ${
+                      className={`block w-full pl-10 pr-10 py-2.5 border rounded-xl bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-orange-500 sm:text-sm transition-all ${
                         validationErrors.passwordConfirmation
                           ? 'border-red-500 focus:ring-red-500'
-                          : 'border-zinc-300 dark:border-zinc-700 focus:ring-primary-500'
+                          : 'border-zinc-300 dark:border-zinc-700 focus:ring-orange-500'
                       }`}
                       placeholder="Repita a nova senha"
                     />
@@ -361,7 +361,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {isLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -385,7 +385,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
                 </p>
                 <button
                   onClick={handleClose}
-                  className="w-full py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all"
+                  className="w-full py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-all"
                 >
                   Voltar ao login
                 </button>

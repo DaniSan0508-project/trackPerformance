@@ -70,43 +70,39 @@ export const LoginPage: React.FC = () => {
           alt="Background"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-zinc-900/30 dark:bg-zinc-950/40 backdrop-blur-[2px]"></div>
+        <div className="absolute inset-0 bg-zinc-900/40 backdrop-blur-[3px]"></div>
       </div>
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="sm:mx-auto sm:w-full sm:max-w-md relative z-10"
-      >
-        <div className="flex justify-center">
-          <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl border border-white/20 transform hover:scale-105 transition-transform duration-300">
-            <img 
-              src="/logo.jpeg" 
-              alt="Engora Logo" 
-              className="w-48 h-auto object-contain"
-            />
-          </div>
-        </div>
-        <p className="mt-2 text-center text-sm text-zinc-200">
-            Suba de nível na gestão da sua empresa!
-        </p>
-      </motion.div>
-
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10"
+        className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4 sm:px-0"
       >
-        <div className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md py-8 px-4 shadow-2xl rounded-2xl sm:px-10 border border-white/20 dark:border-zinc-700/50 transition-colors duration-200">
+        <div className="bg-zinc-950/80 backdrop-blur-md py-8 px-4 shadow-2xl rounded-2xl sm:px-10 border border-zinc-800/80 transition-all duration-300">
+          
+          {/* Logo & Subtitle inside the box */}
+          <div className="flex flex-col items-center justify-center mb-8">
+            <div className="transform hover:scale-105 transition-transform duration-300">
+              <img 
+                src="/logo.png" 
+                alt="Engora Logo" 
+                className="w-48 h-auto object-contain"
+              />
+            </div>
+            <p className="mt-2 text-center text-sm text-zinc-400 font-medium">
+              Suba de nível na gestão da sua empresa!
+            </p>
+          </div>
+
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <label htmlFor="email" className="block text-sm font-medium text-zinc-300">
                 E-mail
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-zinc-400 dark:text-zinc-500" />
+                  <Mail className="h-5 w-5 text-zinc-500" />
                 </div>
                 <input
                   id="email"
@@ -116,26 +112,26 @@ export const LoginPage: React.FC = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className={`block w-full pl-10 pr-3 py-2 border rounded-xl leading-5 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-primary-500 sm:text-sm transition-all ${
+                  className={`block w-full pl-10 pr-3 py-2 border rounded-xl leading-5 bg-zinc-900/60 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:border-orange-500 focus:ring-orange-500 sm:text-sm transition-all ${
                     validationErrors.email
                       ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                      : 'border-zinc-300 dark:border-zinc-700 focus:ring-primary-500'
+                      : 'border-zinc-800 focus:ring-orange-500'
                   }`}
                   placeholder="Digite seu e-mail"
                 />
               </div>
               {validationErrors.email && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.email}</p>
+                <p className="mt-1 text-sm text-red-400">{validationErrors.email}</p>
               )}
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <label htmlFor="password" className="block text-sm font-medium text-zinc-300">
                 Senha
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-zinc-400 dark:text-zinc-500" />
+                  <Lock className="h-5 w-5 text-zinc-500" />
                 </div>
                 <input
                   id="password"
@@ -145,16 +141,16 @@ export const LoginPage: React.FC = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={`block w-full pl-10 pr-3 py-2 border rounded-xl leading-5 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:border-primary-500 sm:text-sm transition-all ${
+                  className={`block w-full pl-10 pr-3 py-2 border rounded-xl leading-5 bg-zinc-900/60 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:border-orange-500 focus:ring-orange-500 sm:text-sm transition-all ${
                     validationErrors.password
                       ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                      : 'border-zinc-300 dark:border-zinc-700 focus:ring-primary-500'
+                      : 'border-zinc-800 focus:ring-orange-500'
                   }`}
                   placeholder="Digite sua senha"
                 />
               </div>
               {validationErrors.password && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.password}</p>
+                <p className="mt-1 text-sm text-red-400">{validationErrors.password}</p>
               )}
             </div>
 
@@ -167,9 +163,9 @@ export const LoginPage: React.FC = () => {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-zinc-300 dark:border-zinc-700 rounded cursor-pointer bg-white dark:bg-zinc-900"
+                    className="h-4 w-4 text-orange-500 focus:ring-orange-500 border-zinc-700 rounded cursor-pointer bg-zinc-900 accent-orange-500"
                   />
-                  <label htmlFor="remember-me" className="ml-2 block text-sm text-zinc-900 dark:text-zinc-300 cursor-pointer">
+                  <label htmlFor="remember-me" className="ml-2 block text-sm text-zinc-300 cursor-pointer select-none">
                     Manter-me conectado
                   </label>
                 </div>
@@ -178,7 +174,7 @@ export const LoginPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowForgotPassword(true)}
-                    className="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-500 dark:hover:text-primary-400"
+                    className="font-medium text-orange-500 hover:text-orange-400 transition-colors"
                   >
                     Esqueceu a senha?
                   </button>
@@ -190,14 +186,14 @@ export const LoginPage: React.FC = () => {
               <motion.div 
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 dark:border-red-500 p-4 rounded-md"
+                className="bg-red-950/30 border-l-4 border-red-500 p-4 rounded-md"
               >
                 <div className="flex">
                   <div className="flex-shrink-0">
-                    <AlertCircle className="h-5 w-5 text-red-400 dark:text-red-500" />
+                    <AlertCircle className="h-5 w-5 text-red-500" />
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+                    <p className="text-sm text-red-400">{error}</p>
                   </div>
                 </div>
               </motion.div>
@@ -207,7 +203,7 @@ export const LoginPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 focus:ring-offset-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {isLoading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
