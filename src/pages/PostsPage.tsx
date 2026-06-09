@@ -3414,7 +3414,7 @@ export const PostsPage: React.FC = () => {
           image={cropperModal.image}
           onClose={() => setCropperModal(prev => ({ ...prev, isOpen: false }))}
           onCropComplete={handleCropComplete}
-          aspect={16 / 9}
+          aspect={4 / 3}
         />
     </>
   );

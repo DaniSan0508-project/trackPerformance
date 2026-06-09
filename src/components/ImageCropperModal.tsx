@@ -129,6 +129,9 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
                 zoom={zoom}
                 rotation={rotation}
                 aspect={aspect}
+                minZoom={0.3}
+                maxZoom={3}
+                restrictPosition={false}
                 onCropChange={onCropChange}
                 onCropComplete={onCropCompleteInternal}
                 onZoomChange={onZoomChange}
@@ -141,14 +144,14 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     <span className="flex items-center gap-2"><ZoomIn size={16} /> Zoom</span>
-                    <span>{zoom.toFixed(1)}x</span>
+                    <span>{zoom.toFixed(2)}x</span>
                   </div>
                   <input
                     type="range"
                     value={zoom}
-                    min={1}
+                    min={0.3}
                     max={3}
-                    step={0.1}
+                    step={0.05}
                     aria-labelledby="Zoom"
                     onChange={(e) => setZoom(Number(e.target.value))}
                     className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
