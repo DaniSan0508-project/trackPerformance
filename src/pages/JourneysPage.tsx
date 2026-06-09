@@ -316,6 +316,28 @@ export const JourneysPage: React.FC = () => {
                       </div>
                     )}
 
+                    {/* Descrição e Regras */}
+                    {(detailJourney.description || detailJourney.rules) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-zinc-50 dark:bg-zinc-800/40 p-4 rounded-xl border border-zinc-100 dark:border-zinc-850/50">
+                        {detailJourney.description ? (
+                          <div>
+                            <h4 className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1">Descrição</h4>
+                            <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{detailJourney.description}</p>
+                          </div>
+                        ) : (
+                          <div className="hidden md:block" />
+                        )}
+                        {detailJourney.rules ? (
+                          <div>
+                            <h4 className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1">Regras da Jornada</h4>
+                            <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{detailJourney.rules}</p>
+                          </div>
+                        ) : (
+                          <div className="hidden md:block" />
+                        )}
+                      </div>
+                    )}
+
                     {/* Níveis */}
                     {detailJourney.levels.length > 0 && (
                       <div>

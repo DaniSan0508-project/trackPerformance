@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, ShoppingBag, Package, Coins, Images as ImagesIcon, X, Plus, Camera, Trash2, Edit2, Save, Gift, ClipboardList, CheckCircle, XCircle, Clock, AlertCircle, Ticket, Trophy } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, ShoppingBag, Package, Coins, Images as ImagesIcon, X, Plus, Camera, Trash2, Edit2, Save, Gift, ClipboardList, CheckCircle, XCircle, Clock, AlertCircle, Ticket, Trophy, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Reward, RewardImage, Redemption, RedemptionStatus, RedemptionStatusHistory } from '../types';
@@ -1668,13 +1668,16 @@ export const RewardsPage: React.FC = () => {
                       <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                         Data e hora limite para resgate
                       </label>
-                      <input
-                        type="datetime-local"
-                        value={formData.valid_until}
-                        min={new Date().toISOString().slice(0, 16)}
-                        onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
-                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                      />
+                      <div className="relative">
+                        <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 dark:text-primary-400 pointer-events-none z-10" />
+                        <input
+                          type="datetime-local"
+                          value={formData.valid_until}
+                          min={new Date().toISOString().slice(0, 16)}
+                          onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
+                          className="w-full pl-9 pr-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                        />
+                      </div>
                       <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 italic">
                         Define até quando a recompensa estará disponível no catálogo para resgate.
                       </p>

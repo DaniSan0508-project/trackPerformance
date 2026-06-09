@@ -625,6 +625,7 @@ export interface Journey {
   id: number;
   name: string;
   description: string | null;
+  rules: string | null;
   status: JourneyStatus;
   start_date: string;
   end_date: string;
@@ -655,6 +656,7 @@ export interface JourneyLevelPayload {
 export interface JourneyPayload {
   name: string;
   description?: string | null;
+  rules?: string | null;
   start_date: string;
   end_date: string;
   coins_factor: number;

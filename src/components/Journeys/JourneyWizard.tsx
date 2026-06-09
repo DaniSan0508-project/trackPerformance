@@ -63,6 +63,7 @@ interface LevelPayloadWithColor extends JourneyLevelPayload {
 interface WizardFormData {
   name: string;
   description: string;
+  rules: string;
   start_date: string;
   end_date: string;
   coins_factor: number;
@@ -143,6 +144,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
   const [formData, setFormData] = useState<WizardFormData>({
     name: '',
     description: '',
+    rules: '',
     start_date: '',
     end_date: '',
     coins_factor: 10,
@@ -175,7 +177,8 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
   const debouncedRewardSearch = useDebounce(rewardSearch, 500);
   const [loadingRewards, setLoadingRewards] = useState(false);
   const [rewardPage, setRewardPage] = useState(0);
-  const rewardsPerPage = 4;
+  const rewardsPerPage = 6;
+  const totalRewardPages = Math.ceil((rewards.length + 1) / rewardsPerPage);
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
@@ -207,6 +210,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
       setFormData({
         name: editingJourney.name,
         description: editingJourney.description ?? '',
+        rules: editingJourney.rules ?? '',
         start_date: editingJourney.start_date?.split('T')[0] ?? '',
         end_date: editingJourney.end_date?.split('T')[0] ?? '',
         coins_factor: editingJourney.coins_factor,
@@ -220,6 +224,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
       setFormData({
         name: '',
         description: '',
+        rules: '',
         start_date: '',
         end_date: '',
         coins_factor: 10,
@@ -408,10 +413,10 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
 
     if (step === 2) {
       if (formData.levels.length < 2) errs.levels = 'Adicione pelo menos 2 níveis.';
-      if (formData.levels[0]?.xp_threshold !== 0) errs.levels = 'O primeiro nível deve ter limiar de XP = 0.';
+      if (formData.levels[0]?.xp_threshold !== 0) errs.levels = 'O primeiro nível deve ter XP Necessário = 0.';
       for (let i = 1; i < formData.levels.length; i++) {
         if (formData.levels[i].xp_threshold <= formData.levels[i - 1].xp_threshold) {
-          errs.levels = 'Os limiares de XP devem ser estritamente crescentes.';
+          errs.levels = 'Os valores de XP Necessário devem ser estritamente crescentes.';
           break;
         }
       }
@@ -449,6 +454,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
       const payload: JourneyPayload = {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
+        rules: formData.rules.trim() || null,
         start_date: formData.start_date,
         end_date: formData.end_date,
         coins_factor: formData.coins_factor,
@@ -697,12 +703,25 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Descrição</label>
                   <textarea
                     maxLength={500}
-                    rows={3}
+                    rows={2}
                     disabled={isReadOnly}
                     value={formData.description}
                     onChange={e => setFormData(f => ({ ...f, description: e.target.value }))}
-                    className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none disabled:opacity-60"
+                    className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none disabled:opacity-60 text-sm"
                     placeholder="Descrição opcional da jornada..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Regras da Jornada</label>
+                  <textarea
+                    maxLength={1000}
+                    rows={2}
+                    disabled={isReadOnly}
+                    value={formData.rules}
+                    onChange={e => setFormData(f => ({ ...f, rules: e.target.value }))}
+                    className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none disabled:opacity-60 text-sm"
+                    placeholder="Regras específicas para esta jornada..."
                   />
                 </div>
 
@@ -1099,7 +1118,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                            Limiar de XP {index === 0 && <span className="text-zinc-400">(fixo: 0)</span>}
+                            XP Necessário {index === 0 && <span className="text-zinc-400">(fixo: 0)</span>}
                           </label>
                           <input
                             type="text"
@@ -1114,7 +1133,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                               }
                               const noZeros = val.replace(/^0+(?=\d)/, '');
                               const numVal = parseInt(noZeros, 10) || 0;
-                              const finalVal = Math.min(999, Math.max(0, numVal));
+                              const finalVal = Math.min(1000000, Math.max(0, numVal));
                               updateLevel(index, 'xp_threshold', finalVal);
                             }}
                             className="w-full px-2.5 py-1.5 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-60"
@@ -1261,9 +1280,10 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                   ) : (
                     <div className="relative group">
                       {/* Botões de Navegação */}
-                      {rewards.length > rewardsPerPage && (
+                      {rewards.length + 1 > rewardsPerPage && (
                         <>
                           <button
+                            type="button"
                             onClick={() => setRewardPage(p => Math.max(0, p - 1))}
                             disabled={rewardPage === 0}
                             className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 p-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-full shadow-lg text-zinc-600 dark:text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 disabled:opacity-0 transition-all"
@@ -1271,8 +1291,9 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                             <ChevronLeft size={18} />
                           </button>
                           <button
-                            onClick={() => setRewardPage(p => Math.min(Math.ceil(rewards.length / rewardsPerPage) - 1, p + 1))}
-                            disabled={rewardPage >= Math.ceil(rewards.length / rewardsPerPage) - 1}
+                            type="button"
+                            onClick={() => setRewardPage(p => Math.min(totalRewardPages - 1, p + 1))}
+                            disabled={rewardPage >= totalRewardPages - 1}
                             className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 p-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-full shadow-lg text-zinc-600 dark:text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 disabled:opacity-0 transition-all"
                           >
                             <ChevronRight size={18} />
@@ -1282,15 +1303,15 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
 
                       <div className="overflow-hidden p-1">
                         <motion.div 
-                          className="flex flex-col gap-2"
+                          className="grid grid-cols-1 sm:grid-cols-2 gap-3"
                           initial={false}
                           animate={{ x: 0 }}
                           key={rewardPage}
                         >
-                          {/* Opção Sem Prêmio - Fixa no topo ou apenas na primeira página se desejar */}
+                          {/* Opção Sem Prêmio - Fixa na página 0 */}
                           {rewardPage === 0 && (
                             <label 
-                              className={`flex items-center gap-3 p-2.5 rounded-xl border-2 transition-all cursor-pointer ${
+                              className={`group flex items-center gap-3.5 p-3 rounded-2xl border-2 transition-all cursor-pointer ${
                                 formData.prize_reward_id === null 
                                   ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 shadow-sm' 
                                   : 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-800 hover:border-primary-200'
@@ -1304,81 +1325,90 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                                 disabled={isReadOnly}
                                 className="sr-only"
                               />
-                              <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-700 rounded-lg flex items-center justify-center text-zinc-400 shrink-0">
-                                <X size={18} />
+                              <div className="w-14 h-14 bg-zinc-100 dark:bg-zinc-700/60 rounded-xl flex items-center justify-center text-zinc-400 dark:text-zinc-500 shrink-0">
+                                <X size={24} />
                               </div>
-                              <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-tight">Sem prêmio (Opcional)</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-zinc-900 dark:text-white mb-0.5">
+                                  Sem prêmio
+                                </p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2">
+                                  Nenhum prêmio será entregue ao concluir.
+                                </p>
+                              </div>
+                              {formData.prize_reward_id === null && (
+                                <div className="w-5 h-5 rounded-full bg-primary-500 flex items-center justify-center shrink-0">
+                                  <Check size={12} className="text-white" />
+                                </div>
+                              )}
                             </label>
                           )}
 
                           {/* Itens Paginados */}
-                          <div className="grid grid-cols-1 gap-2">
-                            {rewards
-                              .slice(
-                                rewardPage * rewardsPerPage - (rewardPage > 0 ? 1 : 0), 
-                                (rewardPage + 1) * rewardsPerPage - (rewardPage > 0 ? 1 : 0)
-                              )
-                              .map(r => (
-                                <motion.label 
-                                  key={r.id} 
-                                  initial={{ opacity: 0, x: 10 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  className={`group flex items-center gap-3 p-2 rounded-xl border-2 transition-all cursor-pointer ${
-                                    formData.prize_reward_id === r.id 
-                                      ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 shadow-sm' 
-                                      : 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-800 hover:border-primary-200'
-                                  }`}
-                                >
-                                  <input
-                                    type="radio"
-                                    name="reward"
-                                    checked={formData.prize_reward_id === r.id}
-                                    onChange={() => setFormData(f => ({ ...f, prize_reward_id: r.id }))}
-                                    disabled={isReadOnly}
-                                    className="sr-only"
-                                  />
-                                  
-                                  <div className="w-10 h-10 rounded-lg overflow-hidden border border-zinc-100 dark:border-zinc-700 bg-white dark:bg-zinc-900 shrink-0">
-                                    {r.images?.[0]?.image_full_url ? (
-                                      <img src={r.images[0].image_full_url} alt={r.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center text-zinc-200 dark:text-zinc-700">
-                                        <GiftIcon size={18} />
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-bold text-zinc-900 dark:text-white truncate mb-0.5">
-                                      {r.name}
-                                    </p>
-                                    <div className="flex items-center gap-1.5">
-                                      {r.fulfillment_type === 'voucher' ? (
-                                        <span className="text-blue-500 text-[7px] font-black uppercase">Voucher</span>
-                                      ) : (
-                                        <span className="text-green-500 text-[7px] font-black uppercase">Físico</span>
-                                      )}
-                                      <span className="text-[7px] text-zinc-400">•</span>
-                                      <p className="text-[8px] text-zinc-500 dark:text-zinc-400 truncate">
-                                        {r.description || 'Sem descrição'}
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  {formData.prize_reward_id === r.id && (
-                                    <div className="w-4 h-4 rounded-full bg-primary-500 flex items-center justify-center shrink-0">
-                                      <Check size={10} className="text-white" />
+                          {rewards
+                            .slice(
+                              rewardPage === 0 ? 0 : rewardPage * rewardsPerPage - 1, 
+                              (rewardPage + 1) * rewardsPerPage - 1
+                            )
+                            .map(r => (
+                              <motion.label 
+                                key={r.id} 
+                                initial={{ opacity: 0, x: 10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className={`group flex items-center gap-3.5 p-3 rounded-2xl border-2 transition-all cursor-pointer ${
+                                  formData.prize_reward_id === r.id 
+                                    ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 shadow-sm' 
+                                    : 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-800 hover:border-primary-200'
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name="reward"
+                                  checked={formData.prize_reward_id === r.id}
+                                  onChange={() => setFormData(f => ({ ...f, prize_reward_id: r.id }))}
+                                  disabled={isReadOnly}
+                                  className="sr-only"
+                                />
+                                
+                                <div className="w-14 h-14 rounded-xl overflow-hidden border border-zinc-100 dark:border-zinc-700 bg-white dark:bg-zinc-900 shrink-0">
+                                  {r.images?.[0]?.image_full_url ? (
+                                    <img src={r.images[0].image_full_url} alt={r.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-zinc-200 dark:text-zinc-700">
+                                      <GiftIcon size={24} />
                                     </div>
                                   )}
-                                </motion.label>
-                              ))}
-                          </div>
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 mb-0.5">
+                                    {r.fulfillment_type === 'voucher' ? (
+                                      <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[9px] font-black px-1.5 py-0.5 rounded uppercase">Voucher</span>
+                                    ) : (
+                                      <span className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-[9px] font-black px-1.5 py-0.5 rounded uppercase">Físico</span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">
+                                    {r.name}
+                                  </p>
+                                  <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-1">
+                                    {r.description || 'Sem descrição'}
+                                  </p>
+                                </div>
+
+                                {formData.prize_reward_id === r.id && (
+                                  <div className="w-5 h-5 rounded-full bg-primary-500 flex items-center justify-center shrink-0">
+                                    <Check size={12} className="text-white" />
+                                  </div>
+                                )}
+                              </motion.label>
+                            ))}
                         </motion.div>
                         
                         {/* Indicador de Páginas */}
-                        {rewards.length > rewardsPerPage && (
-                          <div className="flex justify-center gap-1 mt-2">
-                            {Array.from({ length: Math.ceil(rewards.length / rewardsPerPage) }).map((_, i) => (
+                        {rewards.length + 1 > rewardsPerPage && (
+                          <div className="flex justify-center gap-1 mt-3">
+                            {Array.from({ length: totalRewardPages }).map((_, i) => (
                               <div 
                                 key={i}
                                 className={`w-1.5 h-1.5 rounded-full transition-all ${
