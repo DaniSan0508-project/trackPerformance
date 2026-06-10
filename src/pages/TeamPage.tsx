@@ -978,7 +978,7 @@ export const TeamPage: React.FC = () => {
                     )}
 
                     <div className={stores.length > 0 ? 'col-span-2' : ''}>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Código de integração (Referência externa)</label>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Código de integração (Ref externa)</label>
                       <input
                         type="text"
                         value={formData.external_id}

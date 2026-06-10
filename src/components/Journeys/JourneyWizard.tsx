@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, ChevronRight, ChevronLeft, Plus, Trash2, Check, Search, Loader2, Trophy, Star, Zap, Flag, Crown, Medal, Shield, Target, Rocket, Heart, Diamond, Gift as GiftIcon, ArrowUp, ArrowDown, Save, Calendar, Pause } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Plus, Trash2, Check, Search, Loader2, Trophy, Star, Zap, Flag, Crown, Medal, Shield, Target, Rocket, Heart, Diamond, Gift as GiftIcon, ArrowUp, ArrowDown, Save, Calendar, StopCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -653,24 +653,24 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
             {steps.map((step, i) => (
               <React.Fragment key={i}>
                 <button
-                  onClick={() => i < currentStep && setCurrentStep(i)}
+                  onClick={() => (i < currentStep || !!editingJourney) && setCurrentStep(i)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                     i === currentStep
                       ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
-                      : i < currentStep
+                      : (i < currentStep || !!editingJourney)
                       ? 'text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 cursor-pointer'
                       : 'text-zinc-400 dark:text-zinc-600 cursor-default'
                   }`}
                 >
                   <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                    i < currentStep ? 'bg-primary-600 text-white' : i === currentStep ? 'bg-primary-600 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'
+                    (i < currentStep || !!editingJourney) ? 'bg-primary-600 text-white' : i === currentStep ? 'bg-primary-600 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'
                   }`}>
-                    {i < currentStep ? <Check size={10} /> : i + 1}
+                    {(i < currentStep || (!!editingJourney && i !== currentStep)) ? <Check size={10} /> : i + 1}
                   </span>
                   <span className="hidden sm:inline">{step}</span>
                 </button>
                 {i < steps.length - 1 && (
-                  <div className={`flex-1 h-0.5 ${i < currentStep ? 'bg-primary-500' : 'bg-zinc-200 dark:bg-zinc-700'}`} />
+                  <div className={`flex-1 h-0.5 ${(i < currentStep || !!editingJourney) ? 'bg-primary-500' : 'bg-zinc-200 dark:bg-zinc-700'}`} />
                 )}
               </React.Fragment>
             ))}
@@ -1576,9 +1576,9 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
               <button
                 onClick={() => setShowEndConfirm(true)}
                 disabled={ending || saving}
-                className="flex items-center gap-2 px-4 py-2 text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-sm font-medium disabled:opacity-60"
+                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg transition-colors text-sm font-medium disabled:opacity-60"
               >
-                {ending ? <Loader2 size={14} className="animate-spin" /> : <Pause size={16} />}
+                {ending ? <Loader2 size={14} className="animate-spin" /> : <StopCircle size={16} />}
                 Encerrar
               </button>
             )}

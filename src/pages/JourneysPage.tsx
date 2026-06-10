@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Map, Calendar, Users, Trophy, Send, TrendingUp, BarChart3, AlertCircle, Flag, Pause } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Map, Calendar, Users, Trophy, Send, TrendingUp, BarChart3, AlertCircle, Flag, StopCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -276,7 +276,7 @@ export const JourneysPage: React.FC = () => {
                       className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                       title="Encerrar jornada"
                     >
-                      <Pause size={18} />
+                      <StopCircle size={18} />
                     </button>
                   )}
                   {isAdmin && (detailJourney.status === 'draft' || detailJourney.status === 'ended') && (
@@ -730,7 +730,7 @@ const JourneyCard: React.FC<JourneyCardProps> = ({
                   className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                   title="Encerrar jornada"
                 >
-                  <Pause size={20} />
+                  <StopCircle size={20} />
                 </button>
               )}
 

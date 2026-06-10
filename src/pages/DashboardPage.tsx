@@ -4,6 +4,7 @@ import {useAuth} from '../context/AuthContext';
 import {useTheme} from '../context/ThemeContext';
 import { authService, dashboardService, usersService, campaignsService, productsService, manufacturersService, rolesService, rewardsService, feedbacksService, postsService, redemptionsService, tenantConfigsService, surveysService, storesService, coinsService } from '../services';
 import {getFullImageUrl, resolvePortalDomain} from '../utils';
+import { generateColorShades } from '../utils/colorUtils';
 import { motion } from 'motion/react';
 import {
     Chart as ChartJS,
@@ -196,7 +197,7 @@ const createDemoDashboardData = (): DemoDashboardData => {
 
 export const DashboardPage = () => {
     const {user, token, coinName} = useAuth();
-    const {theme} = useTheme();
+    const {theme, primaryColor} = useTheme();
     const [demoData] = useState<DemoDashboardData>(() => createDemoDashboardData());
     const isDemoDashboardEnabled = DEMO_DASHBOARD_ENABLED && resolvePortalDomain() === DEMO_DOMAIN;
 
@@ -419,9 +420,10 @@ export const DashboardPage = () => {
                         const labels = Object.keys(actionsSummary.actions).map(k => actionLabelMap[k] ?? k);
                         const values = Object.values(actionsSummary.actions);
 
-                        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary-500').trim() || '#10b981';
-                        const primaryDark = getComputedStyle(document.documentElement).getPropertyValue('--color-primary-600').trim() || '#059669';
-                        const primaryLight = getComputedStyle(document.documentElement).getPropertyValue('--color-primary-400').trim() || '#34d399';
+                        const shades = generateColorShades(primaryColor);
+                        const primaryColorVal = shades[500];
+                        const primaryDark = shades[600];
+                        const primaryLight = shades[400];
 
                         const chartData = {
                             labels,
@@ -429,7 +431,7 @@ export const DashboardPage = () => {
                                 {
                                     label: 'Ações',
                                     data: values,
-                                    backgroundColor: primaryColor,
+                                    backgroundColor: primaryColorVal,
                                     hoverBackgroundColor: isDark ? primaryLight : primaryDark,
                                     borderRadius: 6,
                                     borderSkipped: false,
