@@ -716,6 +716,7 @@ export const CampaignsPage: React.FC = () => {
           ]);
 
           const campaignDetails = campaignDetailsRes.data;
+          setEditingCampaign(campaignDetails);
 
           // Processar Usuários (IDs completos selecionados)
           const campaignUserIds = (usersRes.data || []).map((u: any) => u.id);
@@ -2748,21 +2749,29 @@ export const CampaignsPage: React.FC = () => {
                         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Prêmio da Campanha (Opcional)</label>
                         <div className={`p-4 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center min-h-[140px] ${formData.reward_id ? 'border-primary-500 bg-primary-50/30 dark:bg-primary-900/10' : 'border-zinc-200 dark:border-zinc-700'}`}>
                           {(() => {
-                            const selectedReward = rewards.find(r => r.id === formData.reward_id);
+                            const selectedReward = rewards.find(r => r.id === formData.reward_id) || 
+                              (editingCampaign?.reward && formData.reward_id && Number(editingCampaign.reward.id) === Number(formData.reward_id) ? editingCampaign.reward : null);
+                            const isCampaignPublished = editingCampaign && (editingCampaign.is_public === true || Number(editingCampaign.is_public) === 1);
                             if (selectedReward) {
+                              const rewardImageUrl = selectedReward.images?.[0]?.image_full_url || 
+                                (typeof selectedReward.primary_image === 'string' 
+                                  ? selectedReward.primary_image 
+                                  : (selectedReward.primary_image as any)?.image_full_url);
                               return (
                                 <div className="flex flex-col items-center text-center space-y-2 w-full">
                                   <div className="w-16 h-16 rounded-xl overflow-hidden border border-primary-200 dark:border-primary-800 shadow-sm bg-white dark:bg-zinc-800">
-                                    {selectedReward.images?.[0]?.image_full_url ? (
-                                      <img src={selectedReward.images[0].image_full_url} alt={selectedReward.name} className="w-full h-full object-cover" />
+                                    {rewardImageUrl ? (
+                                      <img src={rewardImageUrl} alt={selectedReward.name} className="w-full h-full object-cover" />
                                     ) : <div className="w-full h-full flex items-center justify-center text-zinc-300"><ShoppingBag /></div>}
                                   </div>
                                   <div>
                                     <p className="text-sm font-bold text-zinc-900 dark:text-white">{selectedReward.name}</p>
-                                    <div className="flex gap-3 justify-center mt-1">
-                                      <button type="button" onClick={() => setIsRewardModalOpen(true)} className="text-[10px] font-bold text-primary-600 dark:text-primary-400 hover:underline uppercase">Trocar</button>
-                                      <button type="button" onClick={() => setFormData({ ...formData, reward_id: '' })} className="text-[10px] font-bold text-red-500 hover:underline uppercase">Remover</button>
-                                    </div>
+                                    {!isCampaignPublished && (
+                                      <div className="flex gap-3 justify-center mt-1">
+                                        <button type="button" onClick={() => setIsRewardModalOpen(true)} className="text-[10px] font-bold text-primary-600 dark:text-primary-400 hover:underline uppercase">Trocar</button>
+                                        <button type="button" onClick={() => setFormData({ ...formData, reward_id: '' })} className="text-[10px] font-bold text-red-500 hover:underline uppercase">Remover</button>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               );
@@ -2771,7 +2780,9 @@ export const CampaignsPage: React.FC = () => {
                               <div className="text-center space-y-2">
                                 <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto text-zinc-400"><Gift size={20} /></div>
                                 <p className="text-xs text-zinc-500 dark:text-zinc-400">Nenhum prêmio vinculado</p>
-                                <button type="button" onClick={() => setIsRewardModalOpen(true)} className="px-4 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg text-[10px] font-bold hover:opacity-90 transition-all">Vincular Prêmio</button>
+                                {!isCampaignPublished && (
+                                  <button type="button" onClick={() => setIsRewardModalOpen(true)} className="px-4 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg text-[10px] font-bold hover:opacity-90 transition-all">Vincular Prêmio</button>
+                                )}
                               </div>
                             );
                           })()}
