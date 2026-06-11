@@ -181,11 +181,12 @@ export const rewardSchema = z.object({
     .string()
     .min(1, 'Preço é obrigatório')
     .regex(/^\d+$/, 'Deve ser um número válido')
-    .refine((value) => Number(value) <= 9999999, 'Preço máximo é 9999999'),
+    .refine((value) => Number(value) <= 100000000, 'Preço máximo é 100.000.000'),
   stock: z
     .string()
     .min(1, 'Estoque é obrigatório')
-    .regex(/^\d+$/, 'Deve ser um número válido'),
+    .regex(/^\d+$/, 'Deve ser um número válido')
+    .refine((value) => Number(value) <= 100000000, 'Estoque máximo é 100.000.000'),
   fulfillment_type: z
     .enum(['physical', 'voucher'])
     .default('physical'),
@@ -211,11 +212,12 @@ export const rewardUpdateSchema = z.object({
     .string()
     .min(1, 'Preço é obrigatório')
     .regex(/^\d+$/, 'Deve ser um número válido')
-    .refine((value) => Number(value) <= 9999999, 'Preço máximo é 9999999'),
+    .refine((value) => Number(value) <= 100000000, 'Preço máximo é 100.000.000'),
   stock: z
     .string()
     .min(1, 'Estoque é obrigatório')
-    .regex(/^\d+$/, 'Deve ser um número válido'),
+    .regex(/^\d+$/, 'Deve ser um número válido')
+    .refine((value) => Number(value) <= 100000000, 'Estoque máximo é 100.000.000'),
   fulfillment_type: z
     .enum(['physical', 'voucher'])
     .default('physical'),

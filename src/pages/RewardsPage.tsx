@@ -867,18 +867,18 @@ export const RewardsPage: React.FC = () => {
                         {reward.description}
                       </p>
 
-                      <div className="flex items-center justify-between mt-auto">
+                      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 mt-auto pt-2 border-t border-zinc-100 dark:border-zinc-800/60">
                         {reward.reward_type !== 'campaign' ? (
-                          <div className="flex items-center gap-1.5 text-amber-500 font-bold">
-                            <Coins size={18} className="fill-current" />
-                            <span>{parseFloat(reward.price_coins as string).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+                          <div className="flex items-center gap-1 text-amber-500 font-bold text-sm min-w-0">
+                            <Coins size={16} className="fill-current flex-shrink-0" />
+                            <span className="truncate" title={parseFloat(reward.price_coins as string).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}>{parseFloat(reward.price_coins as string).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
                           </div>
                         ) : (
                           <div />
                         )}
-                        <div className="text-xs text-zinc-400 dark:text-zinc-500">
+                        <div className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">
                           {reward.reward_type !== 'campaign' && (
-                            reward.stock > 0 ? `${reward.stock} em estoque` : 'Esgotado'
+                            reward.stock > 0 ? `${reward.stock.toLocaleString('pt-BR')} em estoque` : 'Esgotado'
                           )}
                         </div>
                       </div>
@@ -1409,7 +1409,7 @@ export const RewardsPage: React.FC = () => {
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-zinc-500 dark:text-zinc-400">Estoque disponível:</span>
                             <span className={`font-medium ${selectedReward.stock > 0 ? 'text-primary-600 dark:text-primary-400' : 'text-red-600 dark:text-red-400'}`}>
-                              {selectedReward.stock} unidades
+                              {selectedReward.stock.toLocaleString('pt-BR')} unidades
                             </span>
                           </div>
                         </div>
@@ -1620,14 +1620,14 @@ export const RewardsPage: React.FC = () => {
                               return;
                             }
                             const numVal = parseInt(val) || 0;
-                            setFormData({ ...formData, price_coins: String(Math.min(9999999, Math.max(0, numVal))) });
+                            setFormData({ ...formData, price_coins: String(Math.min(100000000, Math.max(0, numVal))) });
                           }}
                           className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                             formErrors.price_coins ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                           }`}
                           placeholder="100"
                           min="0"
-                          max="9999999"
+                          max="100000000"
                         />
                         {formErrors.price_coins && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.price_coins}</p>}
                       </div>
@@ -1649,13 +1649,14 @@ export const RewardsPage: React.FC = () => {
                               return;
                             }
                             const numVal = parseInt(val) || 0;
-                            setFormData({ ...formData, stock: String(Math.max(0, numVal)) });
+                            setFormData({ ...formData, stock: String(Math.min(100000000, Math.max(0, numVal))) });
                           }}
                           className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                             formErrors.stock ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                           }`}
                           placeholder="50"
                           min="0"
+                          max="100000000"
                         />
                         {formErrors.stock && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.stock}</p>}
                       </div>
