@@ -180,7 +180,8 @@ export const rewardSchema = z.object({
   price_coins: z
     .string()
     .min(1, 'Preço é obrigatório')
-    .regex(/^\d+$/, 'Deve ser um número válido'),
+    .regex(/^\d+$/, 'Deve ser um número válido')
+    .refine((value) => Number(value) <= 9999999, 'Preço máximo é 9999999'),
   stock: z
     .string()
     .min(1, 'Estoque é obrigatório')
@@ -209,7 +210,8 @@ export const rewardUpdateSchema = z.object({
   price_coins: z
     .string()
     .min(1, 'Preço é obrigatório')
-    .regex(/^\d+$/, 'Deve ser um número válido'),
+    .regex(/^\d+$/, 'Deve ser um número válido')
+    .refine((value) => Number(value) <= 9999999, 'Preço máximo é 9999999'),
   stock: z
     .string()
     .min(1, 'Estoque é obrigatório')
