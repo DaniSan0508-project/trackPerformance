@@ -26,28 +26,22 @@ export const authService = {
     return handleResponse(response);
   },
 
-  requestResetCode: async (email: string, tenantId: number) => {
-    const response = await fetch(`${API_BASE_URL}/app/password/reset-code`, {
+  requestResetCode: async (email: string, domain: string) => {
+    const response = await fetch(`${API_BASE_URL}/portal/password/reset-code`, {
       method: 'POST',
-      headers: {
-        ...getHeaders(),
-        'X-API-SECRET': API_SECRET,
-      },
-      body: JSON.stringify({ email: email.toLowerCase().trim(), tenant_id: tenantId }),
+      headers: getHeaders(),
+      body: JSON.stringify({ email: email.toLowerCase().trim(), domain }),
     });
     return handleResponse(response);
   },
 
-  resetPassword: async (email: string, tenantId: number, code: string, password: string, passwordConfirmation: string) => {
-    const response = await fetch(`${API_BASE_URL}/app/password/reset`, {
+  resetPassword: async (email: string, domain: string, code: string, password: string, passwordConfirmation: string) => {
+    const response = await fetch(`${API_BASE_URL}/portal/password/reset`, {
       method: 'POST',
-      headers: {
-        ...getHeaders(),
-        'X-API-SECRET': API_SECRET,
-      },
+      headers: getHeaders(),
       body: JSON.stringify({
         email: email.toLowerCase().trim(),
-        tenant_id: tenantId,
+        domain,
         code,
         password,
         password_confirmation: passwordConfirmation,

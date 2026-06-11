@@ -3,14 +3,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Mail, Lock, KeyRound, AlertCircle, CheckCircle, Loader2, ArrowLeft, Send, Eye, EyeOff } from 'lucide-react';
 import { authService } from '../../services';
 import { resetEmailSchema, resetPasswordSchema } from '../../validators/schemas';
+import { resolvePortalDomain } from '../../utils';
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-// TODO: Obter tenant_id dinamicamente (ex: pelo domínio do email ou via rota dedicada)
-const TENANT_ID = 1;
 
 type Step = 'email' | 'code' | 'success';
 
@@ -48,14 +46,15 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
       return;
     }
 
-    if (!TENANT_ID) {
-      setError('Não foi possível identificar o tenant. Entre em contato com o suporte.');
+    const domain = resolvePortalDomain() || 'teste1';
+    if (!domain) {
+      setError('Não foi possível identificar o domínio do portal para redefinição.');
       return;
     }
 
     setIsLoading(true);
     try {
-      await authService.requestResetCode(email, TENANT_ID);
+      await authService.requestResetCode(email, domain);
       setSuccessMessage('Se existir um usuário com este e-mail, o código de redefinição foi enviado.');
       setStep('code');
       setResendTimer(60); // 60 segundos para reenviar
@@ -82,14 +81,15 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
       return;
     }
 
-    if (!TENANT_ID) {
-      setError('Não foi possível identificar o tenant. Entre em contato com o suporte.');
+    const domain = resolvePortalDomain() || 'teste1';
+    if (!domain) {
+      setError('Não foi possível identificar o domínio do portal para redefinição.');
       return;
     }
 
     setIsLoading(true);
     try {
-      await authService.resetPassword(email, TENANT_ID, code, password, passwordConfirmation);
+      await authService.resetPassword(email, domain, code, password, passwordConfirmation);
       setStep('success');
     } catch (err: any) {
       const errorMsg = err.message || 'Ocorreu um erro ao redefinir a senha.';
