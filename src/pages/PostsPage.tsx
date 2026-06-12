@@ -1705,28 +1705,16 @@ export const PostsPage: React.FC = () => {
 
                   {/* Image / Video Thumbnail */}
                   {(post.image_full_url || (post.images && post.images.length > 0) || post.video_url) && (
-                    <div className="w-full relative bg-zinc-100 dark:bg-zinc-800 border-y border-zinc-100 dark:border-zinc-800 flex items-center justify-center overflow-hidden h-[400px]">
-                      {/* Background blurred image for an elegant look when the aspect ratio doesn't match */}
-                      {!post.video_url && (
-                        <div 
-                          className="absolute inset-0 opacity-30 dark:opacity-20 blur-xl scale-110 pointer-events-none"
-                          style={{
-                            backgroundImage: `url(${post.images && post.images.length > 0 && post.images[0]?.url ? post.images[0].url : (post.image_full_url || '')})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center'
-                          }}
-                        />
-                      )}
-                      
+                    <div className="w-full relative overflow-hidden" style={{ aspectRatio: '4/3' }}>
                       {post.video_url ? (
-                        <div 
-                          className="relative w-full h-full cursor-pointer group flex items-center justify-center bg-black"
+                        <div
+                          className="absolute inset-0 cursor-pointer group bg-black"
                           onClick={() => setVideoModalPost(post)}
                         >
                           <img
                             src={post.video_thumbnail_url || getYouTubeThumbnailUrl(post.video_url) || ''}
                             alt="YouTube video thumbnail"
-                            className="max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-105"
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                             loading="lazy"
                           />
                           <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
@@ -1739,7 +1727,7 @@ export const PostsPage: React.FC = () => {
                         <img
                           src={post.images && post.images.length > 0 && post.images[0]?.url ? post.images[0].url : (post.image_full_url || '')}
                           alt="Post content"
-                          className="relative z-10 max-w-full max-h-full object-contain transition-transform duration-500 hover:scale-105"
+                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                           loading="lazy"
                         />
                       )}
