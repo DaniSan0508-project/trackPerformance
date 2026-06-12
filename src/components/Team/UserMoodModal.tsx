@@ -7,6 +7,8 @@ import { Chart, registerables } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { format, subMonths, parse } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useTheme } from '../../context/ThemeContext';
+import { hexToRgb } from '../../utils/colorUtils';
 
 Chart.register(...registerables);
 
@@ -112,6 +114,11 @@ export const UserMoodModal: React.FC<UserMoodModalProps> = ({ isOpen, user, toke
 
   const totalListPages = Math.ceil(filteredMoods.length / ITEMS_PER_PAGE);
 
+  const { primaryColor } = useTheme();
+  const primaryHex = primaryColor || '#10b981';
+  const rgb = hexToRgb(primaryHex);
+  const chartBgColor = rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)` : 'rgba(16, 185, 129, 0.1)';
+
   const chartData = {
     labels: moods.map(m => {
         try {
@@ -126,8 +133,8 @@ export const UserMoodModal: React.FC<UserMoodModalProps> = ({ isOpen, user, toke
         label: 'Nível de Humor',
         data: moods.map(m => moodValues[m.mood]),
         fill: true,
-        backgroundColor: 'rgba(var(--color-primary-500-rgb, 16, 185, 129), 0.1)',
-        borderColor: 'rgb(var(--color-primary-500-rgb, 16, 185, 129))',
+        backgroundColor: chartBgColor,
+        borderColor: primaryHex,
         tension: 0.4,
         pointRadius: 6,
         pointBackgroundColor: moods.map(m => {
@@ -167,8 +174,8 @@ export const UserMoodModal: React.FC<UserMoodModalProps> = ({ isOpen, user, toke
     },
     scales: {
       y: {
-        min: 1,
-        max: 5,
+        min: 0.5,
+        max: 5.5,
         grid: { color: 'rgba(161, 161, 170, 0.1)' },
         ticks: {
           stepSize: 1,
@@ -177,7 +184,7 @@ export const UserMoodModal: React.FC<UserMoodModalProps> = ({ isOpen, user, toke
             const moodKey = Object.keys(moodValues).find(
               key => moodValues[key as keyof typeof moodValues] === value
             );
-            return moodLabels[moodKey as keyof typeof moodLabels];
+            return moodKey ? moodLabels[moodKey as keyof typeof moodLabels] : '';
           },
         },
       },
