@@ -88,15 +88,27 @@ const buildActionPayload = (
   actionName?: string
 ): Record<string, unknown> => {
   const payload: Record<string, unknown> = { id: action.id, coins: action.coins };
-  if (actionName !== DISCOVERY_ACTION_NAME) return payload;
+  const isDiscovery = actionName === DISCOVERY_ACTION_NAME || !!action.discoveryRequirement;
+  if (!isDiscovery) return payload;
 
-  if (action.discoveryRequirement === 'minutes' && action.minutes_required != null && action.minutes_required >= 1) {
-    payload.minutes_required = action.minutes_required;
-  } else if (action.discoveryRequirement === 'videos' && action.videos_required != null && action.videos_required >= 1) {
-    payload.videos_required = action.videos_required;
+  if (action.discoveryRequirement === 'minutes') {
+    if (action.minutes_required != null && action.minutes_required >= 1) {
+      payload.minutes_required = action.minutes_required;
+    }
+  } else if (action.discoveryRequirement === 'videos') {
+    if (action.videos_required != null && action.videos_required >= 1) {
+      payload.videos_required = action.videos_required;
+    }
+  } else {
+    if (action.minutes_required != null && action.minutes_required >= 1) {
+      payload.minutes_required = action.minutes_required;
+    } else if (action.videos_required != null && action.videos_required >= 1) {
+      payload.videos_required = action.videos_required;
+    }
   }
-  if (action.once_per_day) {
-    payload.once_per_day = true;
+
+  if (action.once_per_day != null) {
+    payload.once_per_day = action.once_per_day;
   }
   return payload;
 };
@@ -709,10 +721,11 @@ export const CampaignsPage: React.FC = () => {
         setLoadingAux(true);
         try {
           // Busca APENAS os detalhes essenciais da campanha (incluindo hashtags e ações com coins)
-          const [campaignDetailsRes, usersRes, productsRes] = await Promise.all([
+          const [campaignDetailsRes, usersRes, productsRes, actionsRes] = await Promise.all([
             campaignsService.getCampaignById(token, campaign.id),
             campaignsService.getCampaignUsers(token, campaign.id).catch(() => ({ data: [] })),
             campaign.type === 'sales' ? campaignsService.getCampaignProducts(token, campaign.id).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+            campaign.type === 'engagement' ? campaignsService.getCampaignActions(token, campaign.id).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
           ]);
 
           const campaignDetails = campaignDetailsRes.data;
@@ -731,17 +744,17 @@ export const CampaignsPage: React.FC = () => {
           setSelectedHashtags(hashtags);
 
           if (campaign.type === 'engagement') {
-            // Mapeia ações do previews.actions (que contém os coins configurados)
-            const campaignActions: SelectedCampaignAction[] = (campaignDetails.previews?.actions || []).map((a: any) => {
+            // Mapeia ações do getCampaignActions (que contém os coins configurados)
+            const campaignActions: SelectedCampaignAction[] = (actionsRes.data || []).map((a: any) => {
               const hasMinutes = a.minutes_required != null && a.minutes_required !== '';
               const hasVideos = a.videos_required != null && a.videos_required !== '';
               return {
-                id: a.action_id || a.id,
+                id: a.id,
                 coins: parseInt(a.coins) || 0,
-                discoveryRequirement: hasMinutes ? 'minutes' as const : hasVideos ? 'videos' as const : undefined,
-                minutes_required: hasMinutes ? parseInt(a.minutes_required) : undefined,
-                videos_required: hasVideos ? parseInt(a.videos_required) : undefined,
-                once_per_day: a.once_per_day !== undefined && a.once_per_day !== null ? !!a.once_per_day : undefined,
+                discoveryRequirement: a.metric_type || (hasMinutes ? 'minutes' as const : hasVideos ? 'videos' as const : undefined),
+                minutes_required: a.minutes_required != null ? parseInt(a.minutes_required) : undefined,
+                videos_required: a.videos_required != null ? parseInt(a.videos_required) : undefined,
+                once_per_day: a.once_per_day != null ? Boolean(a.once_per_day) : undefined,
               };
             });
             setSelectedActions(campaignActions);
@@ -805,17 +818,16 @@ export const CampaignsPage: React.FC = () => {
             
             setSelectedActions(prev => {
               const exists = prev.find(a => a.id === discoveryAction.id);
-              const apiOncePerDay = discoveryAction.once_per_day === true || discoveryAction.once_per_day === 'true' || discoveryAction.once_per_day === 1 || discoveryAction.once_per_day === '1' || discoveryAction.once_per_day === 't' || discoveryAction.once_per_day === 'T';
               
               if (exists) {
                 return prev.map(a => {
                   if (a.id === discoveryAction.id) {
                     return {
                       ...a,
-                      discoveryRequirement: hasMinutes ? 'minutes' : hasVideos ? 'videos' : undefined,
-                      minutes_required: hasMinutes ? Number(discoveryAction.minutes_required) : undefined,
-                      videos_required: hasVideos ? Number(discoveryAction.videos_required) : undefined,
-                      once_per_day: apiOncePerDay,
+                      discoveryRequirement: a.discoveryRequirement || (hasMinutes ? 'minutes' : hasVideos ? 'videos' : undefined),
+                      minutes_required: a.minutes_required !== undefined ? a.minutes_required : (hasMinutes ? Number(discoveryAction.minutes_required) : undefined),
+                      videos_required: a.videos_required !== undefined ? a.videos_required : (hasVideos ? Number(discoveryAction.videos_required) : undefined),
+                      once_per_day: a.once_per_day !== undefined ? a.once_per_day : (discoveryAction.once_per_day != null ? Boolean(discoveryAction.once_per_day) : undefined),
                     };
                   }
                   return a;
@@ -829,7 +841,7 @@ export const CampaignsPage: React.FC = () => {
                     discoveryRequirement: hasMinutes ? 'minutes' : hasVideos ? 'videos' : undefined,
                     minutes_required: hasMinutes ? Number(discoveryAction.minutes_required) : undefined,
                     videos_required: hasVideos ? Number(discoveryAction.videos_required) : undefined,
-                    once_per_day: apiOncePerDay,
+                    once_per_day: discoveryAction.once_per_day != null ? Boolean(discoveryAction.once_per_day) : undefined,
                   }
                 ];
               }
@@ -1356,7 +1368,8 @@ export const CampaignsPage: React.FC = () => {
 
         for (const selected of selectedActions) {
           const meta = engagementActions.find(a => a.id === selected.id);
-          if (meta?.name === DISCOVERY_ACTION_NAME) {
+          const isDiscovery = meta?.name === DISCOVERY_ACTION_NAME || selected.discoveryRequirement !== undefined;
+          if (isDiscovery) {
             const discoveryError = validateDiscoveryAction(selected);
             if (discoveryError) {
               setFormErrors({ actions: discoveryError });
@@ -1487,6 +1500,8 @@ export const CampaignsPage: React.FC = () => {
           dataToSave.hashtags = selectedHashtags;
         }
       }
+
+      console.log('Saving campaign payload:', JSON.stringify(dataToSave, null, 2));
 
       if (editingCampaign) {
         await campaignsService.updateCampaign(token, editingCampaign.id, dataToSave);
@@ -1702,12 +1717,17 @@ export const CampaignsPage: React.FC = () => {
             discoveryRequirement: hasMinutes ? 'minutes' as const : hasVideos ? 'videos' as const : 'minutes' as const,
             minutes_required: hasMinutes && action.minutes_required ? Number(action.minutes_required) : undefined,
             videos_required: hasVideos && action.videos_required ? Number(action.videos_required) : undefined,
-            once_per_day: !!action.once_per_day,
+            once_per_day: action.once_per_day != null ? Boolean(action.once_per_day) : undefined,
           };
         } else if (isDiscovery) {
           discoveryFields = {
             discoveryRequirement: 'minutes' as const,
-            once_per_day: false,
+          };
+        } else if (action) {
+          discoveryFields = {
+            minutes_required: action.minutes_required != null ? Number(action.minutes_required) : undefined,
+            videos_required: action.videos_required != null ? Number(action.videos_required) : undefined,
+            once_per_day: action.once_per_day != null ? Boolean(action.once_per_day) : undefined,
           };
         }
         
@@ -1729,7 +1749,7 @@ export const CampaignsPage: React.FC = () => {
 
   const updateDiscoveryAction = (
     actionId: number,
-    patch: Partial<Pick<SelectedCampaignAction, 'discoveryRequirement' | 'minutes_required' | 'videos_required' | 'once_per_day'>>
+    patch: Partial<Pick<SelectedCampaignAction, 'discoveryRequirement' | 'minutes_required' | 'videos_required'>>
   ) => {
     setSelectedActions(prev =>
       prev.map(a => {
@@ -3108,6 +3128,7 @@ export const CampaignsPage: React.FC = () => {
                               // Permite desmarcar ações já selecionadas, mesmo que estejam em uso em outra campanha
                               const canToggle = isSelected || !isDisabled;
 
+                              const isCoinsInvalid = isSelected && (!selectedEntry?.coins || selectedEntry.coins < 1);
                               const coinsInput = (
                                 <div className="flex items-center gap-2 shrink-0">
                                   <span className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -3136,7 +3157,9 @@ export const CampaignsPage: React.FC = () => {
                                       updateActionCoins(action.id, finalVal);
                                     }}
                                     onClick={(e) => e.stopPropagation()}
-                                    className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
+                                    className={`w-20 p-1.5 border ${
+                                      isCoinsInvalid ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                    } rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white`}
                                   />
                                 </div>
                               );
@@ -3229,69 +3252,59 @@ export const CampaignsPage: React.FC = () => {
                                           <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
                                             {selectedEntry.discoveryRequirement === 'minutes' ? 'Mins:' : 'Vídeos:'}
                                           </span>
-                                          <input
-                                            type="number"
-                                            min="1"
-                                            max="999"
-                                            placeholder={selectedEntry.discoveryRequirement === 'minutes' ? 'Ex: 30' : 'Ex: 3'}
-                                            value={
-                                              selectedEntry.discoveryRequirement === 'minutes'
-                                                ? (selectedEntry.minutes_required ?? '')
-                                                : (selectedEntry.videos_required ?? '')
-                                            }
-                                            onKeyDown={(e) => {
-                                              if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
-                                                e.preventDefault();
-                                              }
-                                            }}
-                                            onChange={(e) => {
-                                              const val = e.target.value;
-                                              if (val === '') {
-                                                updateDiscoveryAction(action.id, {
-                                                  minutes_required: undefined,
-                                                  videos_required: undefined,
-                                                });
-                                                return;
-                                              }
-                                              const cleanVal = val.replace(/\D/g, '');
-                                              if (cleanVal === '') {
-                                                updateDiscoveryAction(action.id, {
-                                                  minutes_required: undefined,
-                                                  videos_required: undefined,
-                                                });
-                                                return;
-                                              }
-                                              const numVal = parseInt(cleanVal, 10);
-                                              const finalVal = Math.min(999, Math.max(1, numVal));
-                                              
-                                              if (selectedEntry.discoveryRequirement === 'minutes') {
-                                                updateDiscoveryAction(action.id, { minutes_required: finalVal });
-                                              } else {
-                                                updateDiscoveryAction(action.id, { videos_required: finalVal });
-                                              }
-                                            }}
-                                            onClick={(e) => e.stopPropagation()}
-                                            className="w-20 p-1.5 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all shadow-sm"
-                                          />
-                                        </div>
-
-                                        {/* Separador Desktop */}
-                                        <div className="hidden md:block h-6 w-px bg-zinc-200 dark:bg-zinc-700" />
-
-                                        {/* Checkbox */}
-                                        <div className="flex items-center shrink-0">
-                                          <label className="flex items-center gap-2 cursor-pointer select-none">
-                                            <input
-                                              type="checkbox"
-                                              checked={!!selectedEntry.once_per_day}
-                                              onChange={(e) => updateDiscoveryAction(action.id, { once_per_day: e.target.checked })}
-                                              onClick={(e) => e.stopPropagation()}
-                                              className="w-4 h-4 rounded border-zinc-300 text-amber-500 focus:ring-amber-500 cursor-pointer shadow-sm"
-                                            />
-                                            <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
-                                              Uma vez por dia
-                                            </span>
-                                          </label>
+                                          {(() => {
+                                            const isValueInvalid = selectedEntry.discoveryRequirement === 'minutes'
+                                              ? (!selectedEntry.minutes_required || selectedEntry.minutes_required < 1)
+                                              : (!selectedEntry.videos_required || selectedEntry.videos_required < 1);
+                                            return (
+                                              <input
+                                                type="number"
+                                                min="1"
+                                                max="999"
+                                                placeholder={selectedEntry.discoveryRequirement === 'minutes' ? 'Ex: 30' : 'Ex: 3'}
+                                                value={
+                                                  selectedEntry.discoveryRequirement === 'minutes'
+                                                    ? (selectedEntry.minutes_required ?? '')
+                                                    : (selectedEntry.videos_required ?? '')
+                                                }
+                                                onKeyDown={(e) => {
+                                                  if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
+                                                    e.preventDefault();
+                                                  }
+                                                }}
+                                                onChange={(e) => {
+                                                  const val = e.target.value;
+                                                  if (val === '') {
+                                                    updateDiscoveryAction(action.id, {
+                                                      minutes_required: undefined,
+                                                      videos_required: undefined,
+                                                    });
+                                                    return;
+                                                  }
+                                                  const cleanVal = val.replace(/\D/g, '');
+                                                  if (cleanVal === '') {
+                                                    updateDiscoveryAction(action.id, {
+                                                      minutes_required: undefined,
+                                                      videos_required: undefined,
+                                                    });
+                                                    return;
+                                                  }
+                                                  const numVal = parseInt(cleanVal, 10);
+                                                  const finalVal = Math.min(999, Math.max(1, numVal));
+                                                  
+                                                  if (selectedEntry.discoveryRequirement === 'minutes') {
+                                                    updateDiscoveryAction(action.id, { minutes_required: finalVal });
+                                                  } else {
+                                                    updateDiscoveryAction(action.id, { videos_required: finalVal });
+                                                  }
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className={`w-20 p-1.5 border ${
+                                                  isValueInvalid ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                                } rounded-lg text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all shadow-sm`}
+                                              />
+                                            );
+                                          })()}
                                         </div>
                                       </div>
                                     </div>

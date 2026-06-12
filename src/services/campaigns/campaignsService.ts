@@ -39,7 +39,7 @@ export const campaignsService = {
 
   getCampaignById: async (token: string, id: number) => {
     // Incluímos os parâmetros de include para garantir que o backend retorne as relações necessárias
-    const response = await fetch(`${API_BASE_URL}/campaigns/${id}?include=users,products,actions,hashtags,reward,reward.images`, {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${id}?include=hashtags,reward,reward.images`, {
       headers: getHeaders(token),
     });
     return handleResponse(response);

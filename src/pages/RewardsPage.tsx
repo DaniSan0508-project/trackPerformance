@@ -363,9 +363,7 @@ export const RewardsPage: React.FC = () => {
       data.append('stock', formData.reward_type === 'campaign' ? '1' : formData.stock);
       data.append('reward_type', formData.reward_type);
       data.append('fulfillment_type', formData.fulfillment_type);
-      if (formData.valid_until) {
-        data.append('valid_until', formData.valid_until);
-      }
+      data.append('valid_until', formData.valid_until || '');
       if (formData.voucher_instructions) {
         data.append('voucher_instructions', formData.voucher_instructions);
       }

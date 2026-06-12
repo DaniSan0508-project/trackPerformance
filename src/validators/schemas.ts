@@ -83,6 +83,52 @@ export const userUpdateSchema = z.object({
   external_id: z.string().max(255, 'Código de integração deve ter no máximo 255 caracteres').optional().or(z.literal('')),
 });
 
+// Schema para Perfil (atualização do usuário logado)
+export const profileUpdateSchema = z.object({
+  name: z
+    .string()
+    .min(1, 'Nome é obrigatório')
+    .min(3, 'Nome deve ter no mínimo 3 caracteres'),
+  email: z
+    .string()
+    .min(1, 'E-mail é obrigatório')
+    .email('E-mail inválido'),
+  phone: z
+    .string()
+    .optional()
+    .refine((val) => !val || /^\(\d{2}\)\s?\d{4,5}-\d{4}$/.test(val), {
+      message: 'Telefone inválido',
+    }),
+  description: z.string().optional().or(z.literal('')),
+  password: z.string().optional().or(z.literal('')),
+  password_confirmation: z.string().optional().or(z.literal('')),
+  current_password: z.string().optional().or(z.literal('')),
+}).refine((data) => {
+  if (data.password && data.password.length > 0) {
+    return data.password.length >= 6;
+  }
+  return true;
+}, {
+  message: 'A nova senha deve ter no mínimo 6 caracteres',
+  path: ['password'],
+}).refine((data) => {
+  if (data.password && data.password.length > 0) {
+    return data.password === data.password_confirmation;
+  }
+  return true;
+}, {
+  message: 'As senhas não coincidem',
+  path: ['password_confirmation'],
+}).refine((data) => {
+  if (data.password && data.password.length > 0) {
+    return !!data.current_password && data.current_password.length > 0;
+  }
+  return true;
+}, {
+  message: 'A senha atual é obrigatória ao alterar a senha',
+  path: ['current_password'],
+});
+
 // Schema para Loja
 export const storeSchema = z.object({
   name: z
@@ -324,6 +370,7 @@ export type LoginFormData = z.infer<typeof loginSchema>;
 export type ResetEmailFormData = z.infer<typeof resetEmailSchema>;
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 export type UserFormData = z.infer<typeof userSchema>;
+export type ProfileUpdateFormData = z.infer<typeof profileUpdateSchema>;
 export type StoreFormData = z.infer<typeof storeSchema>;
 export type StoreGroupFormData = z.infer<typeof storeGroupSchema>;
 export type FeedbackFormData = z.infer<typeof feedbackSchema>;

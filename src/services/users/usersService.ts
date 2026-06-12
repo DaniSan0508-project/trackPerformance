@@ -92,4 +92,13 @@ export const usersService = {
     });
     return handleResponse(response);
   },
+
+  updateProfile: async (token: string, data: any) => {
+    const response = await fetch(`${API_BASE_URL}/profile`, {
+      method: 'POST',
+      headers: getHeaders(token),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
 };
