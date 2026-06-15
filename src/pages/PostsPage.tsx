@@ -50,6 +50,28 @@ const UserListItem: React.FC<{ user?: UserType | { name: string; profile_image_u
   </div>
 );
 
+const ImagePreview: React.FC<{ file: File }> = ({ file }) => {
+  const [url, setUrl] = useState<string>('');
+
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [file]);
+
+  if (!url) return null;
+
+  return (
+    <img
+      src={url}
+      alt="Preview"
+      className="w-full h-full object-cover"
+    />
+  );
+};
+
 export const PostsPage: React.FC = () => {
   const { token, user: currentUser, coinName } = useAuth();
   const { addToast } = useToast();
@@ -1473,7 +1495,7 @@ export const PostsPage: React.FC = () => {
                   key={post.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col relative w-full max-w-[450px] mx-auto"
+                  className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col relative w-full"
                 >
                   {/* Header */}
                   <div className="p-3 flex items-center justify-between gap-3">
@@ -1727,7 +1749,7 @@ export const PostsPage: React.FC = () => {
                         <img
                           src={post.images && post.images.length > 0 && post.images[0]?.url ? post.images[0].url : (post.image_full_url || '')}
                           alt="Post content"
-                          className="w-full h-full object-contain transition-transform duration-500 hover:scale-105"
+                          className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                           loading="lazy"
                         />
                       )}
@@ -2722,14 +2744,10 @@ export const PostsPage: React.FC = () => {
                           </div>
                         </label>
                         {editImages.length > 0 && (
-                          <div className="grid grid-cols-3 gap-2">
+                          <div className="grid grid-cols-2 gap-3">
                             {editImages.map((file, idx) => (
-                              <div key={idx} className="relative aspect-square bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                                <img
-                                  src={URL.createObjectURL(file)}
-                                  alt={`Preview ${idx}`}
-                                  className="w-full h-full object-cover"
-                                />
+                              <div key={idx} className="relative aspect-[16/9] bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                                <ImagePreview file={file} />
                                 <button
                                   type="button"
                                   onClick={() => setEditImages(prev => prev.filter((_, i) => i !== idx))}
@@ -3267,14 +3285,10 @@ export const PostsPage: React.FC = () => {
                             </div>
                           </label>
                           {newPostImages.length > 0 && (
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-2 gap-3">
                               {newPostImages.map((file, idx) => (
-                                <div key={idx} className="relative aspect-square bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                                  <img
-                                    src={URL.createObjectURL(file)}
-                                    alt={`Preview ${idx}`}
-                                    className="w-full h-full object-cover"
-                                  />
+                                <div key={idx} className="relative aspect-[16/9] bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                                  <ImagePreview file={file} />
                                   <button
                                     type="button"
                                     onClick={() => setNewPostImages(prev => prev.filter((_, i) => i !== idx))}

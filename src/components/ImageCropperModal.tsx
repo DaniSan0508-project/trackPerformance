@@ -24,16 +24,16 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
-  const [selectedAspect, setSelectedAspect] = useState<number | undefined>(16 / 9);
+  const [selectedAspect, setSelectedAspect] = useState<number | undefined>(aspect !== undefined ? aspect : 16 / 9);
 
   useEffect(() => {
     if (isOpen) {
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setRotation(0);
-      setSelectedAspect(16 / 9);
+      setSelectedAspect(aspect !== undefined ? aspect : 16 / 9);
     }
-  }, [isOpen, image]);
+  }, [isOpen, image, aspect]);
 
 
   const onCropChange = (crop: { x: number; y: number }) => {
@@ -87,14 +87,8 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
 
     ctx.drawImage(image, 0, 0);
 
-    // Ajuste de 0.8 cm (aprox. 30px em 96 DPI) para retirar as margens superior e inferior
-    // Calculado proporcionalmente à largura do corte (5% de trim em cima e 5% em baixo para simular 30px em tela de 600px)
-    let trimPixels = 0;
-    if (selectedAspect === undefined || selectedAspect > 1.2) {
-      trimPixels = Math.round(pixelCrop.width * 0.05);
-    }
-    const targetY = Math.max(0, pixelCrop.y + trimPixels);
-    const targetHeight = Math.max(1, pixelCrop.height - (trimPixels * 2));
+    const targetY = pixelCrop.y;
+    const targetHeight = pixelCrop.height;
 
     const data = ctx.getImageData(
       pixelCrop.x,
