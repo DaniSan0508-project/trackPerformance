@@ -24,6 +24,8 @@ vi.mock('../../services/auth/authService', () => ({
 
 const mockAuthData: AuthResponse = {
   access_token: 'token-abc-123',
+  token_type: 'bearer',
+  expires_in: 3600,
   user: {
     id: 1,
     name: 'Admin Teste',

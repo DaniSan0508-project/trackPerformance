@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import Cropper from 'react-easy-crop';
-import { X, Check, RotateCcw, ZoomIn } from 'lucide-react';
+import { X, Check, RotateCcw, ZoomIn, Crop } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ImageCropperModalProps {
@@ -11,17 +11,30 @@ interface ImageCropperModalProps {
   aspect?: number;
 }
 
+
+
 const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
   isOpen,
   image,
   onClose,
   onCropComplete,
-  aspect = 16 / 9,
+  aspect,
 }) => {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [selectedAspect, setSelectedAspect] = useState<number | undefined>(16 / 9);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setRotation(0);
+      setSelectedAspect(16 / 9);
+    }
+  }, [isOpen, image]);
+
 
   const onCropChange = (crop: { x: number; y: number }) => {
     setCrop(crop);
@@ -74,15 +87,24 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
 
     ctx.drawImage(image, 0, 0);
 
+    // Ajuste de 0.8 cm (aprox. 30px em 96 DPI) para retirar as margens superior e inferior
+    // Calculado proporcionalmente à largura do corte (5% de trim em cima e 5% em baixo para simular 30px em tela de 600px)
+    let trimPixels = 0;
+    if (selectedAspect === undefined || selectedAspect > 1.2) {
+      trimPixels = Math.round(pixelCrop.width * 0.05);
+    }
+    const targetY = Math.max(0, pixelCrop.y + trimPixels);
+    const targetHeight = Math.max(1, pixelCrop.height - (trimPixels * 2));
+
     const data = ctx.getImageData(
       pixelCrop.x,
-      pixelCrop.y,
+      targetY,
       pixelCrop.width,
-      pixelCrop.height
+      targetHeight
     );
 
     canvas.width = pixelCrop.width;
-    canvas.height = pixelCrop.height;
+    canvas.height = targetHeight;
 
     ctx.putImageData(data, 0, 0);
 
@@ -128,7 +150,7 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
                 crop={crop}
                 zoom={zoom}
                 rotation={rotation}
-                aspect={aspect}
+                aspect={selectedAspect}
                 minZoom={0.3}
                 maxZoom={3}
                 restrictPosition={false}
@@ -141,6 +163,8 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
 
             <div className="p-6 space-y-6 bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800">
               <div className="flex flex-col gap-4">
+
+
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     <span className="flex items-center gap-2"><ZoomIn size={16} /> Zoom</span>

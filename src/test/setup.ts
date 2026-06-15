@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import { beforeAll, afterAll } from 'vitest';
 
 // Silence console.error in tests to keep output clean
 const originalError = console.error;

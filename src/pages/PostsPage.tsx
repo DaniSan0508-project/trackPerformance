@@ -1473,7 +1473,7 @@ export const PostsPage: React.FC = () => {
                   key={post.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col relative"
+                  className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col relative w-full max-w-[450px] mx-auto"
                 >
                   {/* Header */}
                   <div className="p-3 flex items-center justify-between gap-3">
@@ -1705,10 +1705,10 @@ export const PostsPage: React.FC = () => {
 
                   {/* Image / Video Thumbnail */}
                   {(post.image_full_url || (post.images && post.images.length > 0) || post.video_url) && (
-                    <div className="w-full relative overflow-hidden" style={{ aspectRatio: '4/3' }}>
+                    <div className="w-full relative overflow-hidden aspect-[16/9] flex items-center justify-center bg-zinc-50 dark:bg-zinc-800/30">
                       {post.video_url ? (
                         <div
-                          className="absolute inset-0 cursor-pointer group bg-black"
+                          className="w-full relative aspect-video cursor-pointer group bg-black"
                           onClick={() => setVideoModalPost(post)}
                         >
                           <img
@@ -1727,7 +1727,7 @@ export const PostsPage: React.FC = () => {
                         <img
                           src={post.images && post.images.length > 0 && post.images[0]?.url ? post.images[0].url : (post.image_full_url || '')}
                           alt="Post content"
-                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                          className="w-full h-full object-contain transition-transform duration-500 hover:scale-105"
                           loading="lazy"
                         />
                       )}
@@ -2215,13 +2215,13 @@ export const PostsPage: React.FC = () => {
 
                   {/* Carrossel de Imagens */}
                   {((contentModalPost.images && contentModalPost.images.length > 0) || contentModalPost.image_full_url) && (
-                    <div className="mb-6 relative group bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden aspect-video flex items-center justify-center">
+                    <div className="mb-6 relative group bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden w-full aspect-[16/9] flex items-center justify-center">
                       {contentModalPost.images && contentModalPost.images.length > 0 ? (
                         <>
                           <img
                             src={contentModalPost.images[carouselIndex]?.url || ''}
                             alt={`Post image ${carouselIndex + 1}`}
-                            className="max-w-full max-h-full object-contain"
+                            className="w-full h-full object-contain"
                           />
                           
                           {contentModalPost.images.length > 1 && (
@@ -2254,7 +2254,7 @@ export const PostsPage: React.FC = () => {
                         <img
                           src={contentModalPost.image_full_url!}
                           alt="Post content"
-                          className="max-w-full max-h-full object-contain"
+                          className="w-full h-full object-contain"
                         />
                       )}
                     </div>
@@ -3402,7 +3402,6 @@ export const PostsPage: React.FC = () => {
           image={cropperModal.image}
           onClose={() => setCropperModal(prev => ({ ...prev, isOpen: false }))}
           onCropComplete={handleCropComplete}
-          aspect={4 / 3}
         />
     </>
   );
