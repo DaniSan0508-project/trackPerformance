@@ -69,7 +69,7 @@ const actionLabels: Record<string, string> = {
   create_post: 'Criar Post',
   change_profile_photo: 'Alterar Foto do Perfil',
   record_mood: 'Registrar Humor',
-  discovery: 'Discovery',
+  discovery: 'Discovery EAD',
 };
 
 const DISCOVERY_ACTION_NAME = 'discovery';
@@ -114,8 +114,8 @@ const buildActionPayload = (
 };
 
 const validateDiscoveryAction = (action: SelectedCampaignAction): string | null => {
-  if (action.coins < 1) return 'Discovery exige pelo menos 1 coin.';
-  if (!action.discoveryRequirement) return 'Selecione minutos ou vídeos como requisito da Discovery.';
+  if (action.coins < 1) return 'Discovery EAD exige pelo menos 1 coin.';
+  if (!action.discoveryRequirement) return 'Selecione minutos ou vídeos como requisito da Discovery EAD.';
   if (action.discoveryRequirement === 'minutes') {
     if (!action.minutes_required || action.minutes_required < 1) {
       return 'Informe os minutos obrigatórios (mínimo 1).';
