@@ -24,6 +24,14 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+const renderLevelIcon = (iconValue: string | null | undefined, className = "w-8 h-8 object-contain") => {
+  if (!iconValue) return <span>⭐</span>;
+  if (iconValue.startsWith('data:image')) {
+    return <img src={iconValue} className={className} alt="Icon" />;
+  }
+  return <span>{iconValue}</span>;
+};
+
 export const TeamPage: React.FC = () => {
   const { token, user: currentUser } = useAuth();
   const { addToast } = useToast();
@@ -627,58 +635,13 @@ export const TeamPage: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-all duration-200 flex flex-col"
                 >
-                  <div className="flex items-start justify-between gap-2 mb-4">
-                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-primary-100 to-teal-100 dark:from-primary-900/30 dark:to-teal-900/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 overflow-hidden border-2 border-primary-200 dark:border-primary-800 flex-shrink-0">
-                        {user.profile_image_url ? (
-                          <img src={getFullImageUrl(user.profile_image_url) || ''} alt={user.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <User size={28} />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <h3 className="font-bold text-zinc-900 dark:text-white line-clamp-1" title={user.name}>{user.name}</h3>
-                          {user.is_super_admin && (
-                            <Crown size={14} className="text-amber-500 fill-amber-500 flex-shrink-0" title="Super Administrador" />
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap mt-1">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getUserTypeColor(user.user_type_id)}`}>
-                            {getUserTypeLabel(user.user_type_id)}
-                          </span>
-                          {user.role && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 border border-primary-200 dark:bg-primary-900/40 dark:text-primary-300 dark:border-primary-800">
-                              {user.role}
-                            </span>
-                          )}
-                          {user.journey_level && (
-                            <span
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border cursor-default"
-                              style={{
-                                borderColor: user.journey_level.level_color ?? '#a3a3a3',
-                                color: user.journey_level.level_color ?? '#a3a3a3',
-                                backgroundColor: `${user.journey_level.level_color ?? '#a3a3a3'}18`,
-                              }}
-                              title={`Jornada: ${user.journey_level.journey_name}`}
-                            >
-                              <span>{user.journey_level.level_icon}</span>
-                              <span>{user.journey_level.level_name}</span>
-                            </span>
-                          )}
-                          <span 
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border cursor-default transition-colors ${
-                              user.push_notifications_enabled 
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
-                                : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800'
-                            }`}
-                            title={user.push_notifications_enabled ? 'Ativo' : 'Inativo'}
-                          >
-                            {user.push_notifications_enabled ? <Bell size={10} /> : <BellOff size={10} />}
-                            {user.push_notifications_enabled ? 'Notificação ativa' : 'Notificação inativa'}
-                          </span>
-                        </div>
-                      </div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-primary-100 to-teal-100 dark:from-primary-900/30 dark:to-teal-900/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 overflow-hidden border-2 border-primary-200 dark:border-primary-800 flex-shrink-0">
+                      {user.profile_image_url ? (
+                        <img src={getFullImageUrl(user.profile_image_url) || ''} alt={user.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <User size={28} />
+                      )}
                     </div>
                     <div className="flex gap-0.5 sm:gap-1 flex-shrink-0 ml-2">
                       {/* Ver extrato: Apenas colaboradores possuem extrato. Admin e Super Admin podem ver de colaboradores. */}
@@ -724,6 +687,50 @@ export const TeamPage: React.FC = () => {
                           {deletingId === user.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                         </button>
                       )}
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h3 className="font-bold text-zinc-900 dark:text-white line-clamp-1 text-base sm:text-lg" title={user.name}>{user.name}</h3>
+                      {user.is_super_admin && (
+                        <Crown size={15} className="text-amber-500 fill-amber-500 flex-shrink-0" title="Super Administrador" />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold border ${getUserTypeColor(user.user_type_id)}`}>
+                        {getUserTypeLabel(user.user_type_id)}
+                      </span>
+                      {user.role && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-primary-100 text-primary-800 border border-primary-200 dark:bg-primary-900/40 dark:text-primary-300 dark:border-primary-800">
+                          {user.role}
+                        </span>
+                      )}
+                      {user.journey_level && (
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold border cursor-default"
+                          style={{
+                            borderColor: user.journey_level.level_color ?? '#a3a3a3',
+                            color: user.journey_level.level_color ?? '#a3a3a3',
+                            backgroundColor: `${user.journey_level.level_color ?? '#a3a3a3'}18`,
+                          }}
+                          title={`Jornada: ${user.journey_level.journey_name}`}
+                        >
+                          {renderLevelIcon(user.journey_level.level_icon, "w-3.5 h-3.5 object-contain inline-block")}
+                          <span>{user.journey_level.level_name}</span>
+                        </span>
+                      )}
+                      <span 
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold border cursor-default transition-colors ${
+                          user.push_notifications_enabled 
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
+                            : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800'
+                        }`}
+                        title={user.push_notifications_enabled ? 'Notificação ativa' : 'Notificação inativa'}
+                      >
+                        {user.push_notifications_enabled ? <Bell size={10} /> : <BellOff size={10} />}
+                        {user.push_notifications_enabled ? 'Notif. ativa' : 'Notif. inativa'}
+                      </span>
                     </div>
                   </div>
 

@@ -37,6 +37,14 @@ const statusColors: Record<JourneyStatus, string> = {
   ended: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400',
 };
 
+const renderLevelIcon = (iconValue: string | null | undefined, className = "w-8 h-8 object-contain") => {
+  if (!iconValue) return <span>⭐</span>;
+  if (iconValue.startsWith('data:image')) {
+    return <img src={iconValue} className={className} alt="Icon" />;
+  }
+  return <span>{iconValue}</span>;
+};
+
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export const JourneysPage: React.FC = () => {
@@ -353,7 +361,7 @@ export const JourneysPage: React.FC = () => {
                                 color: level.color ?? '#71717a',
                               }}
                             >
-                              <span>{level.icon}</span>
+                              {renderLevelIcon(level.icon, "w-4 h-4 object-contain inline-block")}
                               <span>{level.name}</span>
                               <span className="opacity-70">({level.xp_threshold} XP)</span>
                             </div>
@@ -395,7 +403,7 @@ export const JourneysPage: React.FC = () => {
                                           color: p.level.color ?? '#71717a',
                                         }}
                                       >
-                                        {p.level.icon} {p.level.name}
+                                        {renderLevelIcon(p.level.icon, "w-4 h-4 object-contain inline-block")} {p.level.name}
                                       </span>
                                     ) : '—'}
                                   </td>
@@ -611,7 +619,7 @@ const JourneyCard: React.FC<JourneyCardProps> = ({
               borderColor: 'transparent',
             }}
           >
-            {topLevel ? topLevel.icon : <Map className="w-6 h-6 text-primary-600 dark:text-primary-400" />}
+            {topLevel ? renderLevelIcon(topLevel.icon, "w-10 h-10 object-contain") : <Map className="w-6 h-6 text-primary-600 dark:text-primary-400" />}
           </div>
 
           <div className="flex-1 min-w-0">
@@ -682,7 +690,7 @@ const JourneyCard: React.FC<JourneyCardProps> = ({
                       color: l.color ?? '#71717a',
                     }}
                   >
-                    {l.icon} {l.name}
+                    {renderLevelIcon(l.icon, "w-3 h-3 object-contain inline-block mr-1")} {l.name}
                   </span>
                 ))}
                 {journey.levels.length > 5 && (

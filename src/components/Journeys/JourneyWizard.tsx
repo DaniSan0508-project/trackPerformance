@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, ChevronRight, ChevronLeft, Plus, Trash2, Check, Search, Loader2, Trophy, Star, Zap, Flag, Crown, Medal, Shield, Target, Rocket, Heart, Diamond, Gift as GiftIcon, ArrowUp, ArrowDown, Save, Calendar, StopCircle } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Plus, Trash2, Check, Search, Loader2, Trophy, Star, Zap, Flag, Crown, Medal, Shield, Target, Rocket, Heart, Diamond, Gift as GiftIcon, ArrowUp, ArrowDown, Save, Calendar, StopCircle, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -48,6 +48,13 @@ const LEVEL_COLORS = [
   { value: '#F77F00', label: 'Laranja' },
   { value: '#06D6A0', label: 'Turquesa' },
 ];
+
+const renderLevelIcon = (iconValue: string, className = "w-8 h-8 object-contain") => {
+  if (iconValue?.startsWith('data:image')) {
+    return <img src={iconValue} className={className} alt="Icon" />;
+  }
+  return <span>{iconValue || '⭐'}</span>;
+};
 
 const DEFAULT_LEVELS: JourneyLevelPayload[] = [
   { position: 1, name: 'Iniciante', icon: '🥉', color: '#CD7F32', xp_threshold: 0 },
@@ -1106,7 +1113,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                               borderColor: level.color ?? '#e4e4e7',
                             }}
                           >
-                            {level.icon || '⭐'}
+                            {renderLevelIcon(level.icon, "w-8 h-8 object-contain")}
                           </div>
                           <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                             Nível {index + 1}{level.name ? ` — ${level.name}` : ''}
@@ -1177,23 +1184,62 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                           <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
                             Ícone <span className="text-red-500">*</span>
                           </label>
-                          <div className="flex flex-wrap gap-1.5 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 bg-zinc-50 dark:bg-zinc-800/50">
-                            {LEVEL_ICONS.map(ic => (
-                              <button
-                                key={ic.value}
-                                type="button"
-                                disabled={isReadOnly}
-                                onClick={() => updateLevel(index, 'icon', ic.value)}
-                                title={ic.label}
-                                className={`text-lg w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
-                                  level.icon === ic.value
-                                    ? 'bg-primary-100 dark:bg-primary-900/40 ring-2 ring-primary-500'
-                                    : 'hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                                } disabled:opacity-60`}
-                              >
-                                {ic.value}
-                              </button>
-                            ))}
+                           <div className="space-y-2">
+                            <div className="flex flex-wrap gap-1.5 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 bg-zinc-50 dark:bg-zinc-800/50">
+                              {LEVEL_ICONS.map(ic => (
+                                <button
+                                  key={ic.value}
+                                  type="button"
+                                  disabled={isReadOnly}
+                                  onClick={() => updateLevel(index, 'icon', ic.value)}
+                                  title={ic.label}
+                                  className={`text-lg w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
+                                    level.icon === ic.value
+                                      ? 'bg-primary-100 dark:bg-primary-900/40 ring-2 ring-primary-500'
+                                      : 'hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                                  } disabled:opacity-60`}
+                                >
+                                  {ic.value}
+                                </button>
+                              ))}
+                            </div>
+                            {!isReadOnly && (
+                              <div className="flex items-center gap-2">
+                                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-semibold text-zinc-700 dark:text-zinc-300 cursor-pointer shadow-sm transition-colors">
+                                  <Upload size={13} className="text-zinc-500" />
+                                  <span>Enviar PNG (512x512)</span>
+                                  <input
+                                    type="file"
+                                    accept="image/png"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        if (file.size > 250 * 1024) {
+                                          addToast('error', 'A imagem deve ter no máximo 250KB.');
+                                          return;
+                                        }
+                                        const reader = new FileReader();
+                                        reader.onload = (event) => {
+                                          const base64 = event.target?.result as string;
+                                          updateLevel(index, 'icon', base64);
+                                        };
+                                        reader.readAsDataURL(file);
+                                      }
+                                    }}
+                                  />
+                                </label>
+                                {level.icon?.startsWith('data:image') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => updateLevel(index, 'icon', '⭐')}
+                                    className="text-xs text-red-500 hover:underline font-semibold"
+                                  >
+                                    Limpar
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                           {errors[`level_${index}_icon`] && <p className="text-xs text-red-500 mt-0.5">{errors[`level_${index}_icon`]}</p>}
                         </div>
@@ -1225,7 +1271,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                                 borderColor: level.color ?? '#e4e4e7',
                               }}
                             >
-                              {level.icon || '⭐'}
+                              {renderLevelIcon(level.icon, "w-6 h-6 object-contain")}
                             </div>
                             {level.name && (
                               <span
@@ -1552,7 +1598,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                             color: l.color ?? '#71717a',
                           }}
                         >
-                          {l.icon} {l.name || `Nível ${i + 1}`} ({l.xp_threshold} XP)
+                          {renderLevelIcon(l.icon, "w-4 h-4 object-contain inline-block mr-1")} {l.name || `Nível ${i + 1}`} ({l.xp_threshold} XP)
                         </span>
                       ))}
                     </div>
