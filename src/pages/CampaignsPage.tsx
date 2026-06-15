@@ -4064,93 +4064,106 @@ export const CampaignsPage: React.FC = () => {
                     <div className="flex justify-center py-12">
                       <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
                     </div>
-                  ) : rankingModal.ranking.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Trophy className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
-                      <p className="text-zinc-500 dark:text-zinc-400">Nenhum dado de ranking disponível.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {rankingModal.ranking.map((item, index) => {
-                        const isTop3 = index < 3;
-                        const medalEmojis = ['🥇', '🥈', '🥉'];
-                        const bgStyles = [
-                          'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 shadow-sm',
-                          'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700 shadow-sm',
-                          'bg-orange-50/50 dark:bg-orange-900/10 border-orange-100 dark:border-orange-900/30 shadow-sm',
-                        ];
-                        
-                        const userName = item.user_name || item.name;
-                        const store = item.store;
-                        const displayValue = rankingModal.campaign?.type === 'sales'
-                          ? (item.sales_amount ?? item.value ?? 0)
-                          : (item.coins_total ?? item.value ?? 0);
+                  ) : (() => {
+                    const filteredRanking = rankingModal.ranking.filter(item => {
+                      const displayValue = rankingModal.campaign?.type === 'sales'
+                        ? (item.sales_amount ?? item.value ?? 0)
+                        : (item.coins_total ?? item.value ?? 0);
+                      return Number(displayValue) > 0;
+                    });
 
-                        return (
-                          <motion.div
-                            key={item.user_id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
-                              isTop3 ? bgStyles[index] : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'
-                            }`}
-                          >
-                            <div className="relative flex-shrink-0">
-                              <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bold text-xl overflow-hidden border-2 ${
-                                isTop3 
-                                  ? (index === 0 ? 'border-amber-400' : index === 1 ? 'border-zinc-300' : 'border-orange-400')
-                                  : 'border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50'
-                              }`}>
-                                {item.profile_image_url || item.profile_image_path ? (
-                                  <img 
-                                    src={getFullImageUrl(item.profile_image_url || item.profile_image_path) || ''} 
-                                    alt={userName} 
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="bg-zinc-100 dark:bg-zinc-800 w-full h-full flex items-center justify-center text-zinc-400">
-                                    <User size={24} />
-                                  </div>
-                                )}
+                    if (filteredRanking.length === 0) {
+                      return (
+                        <div className="text-center py-8">
+                          <Trophy className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+                          <p className="text-zinc-500 dark:text-zinc-400">Nenhum dado de ranking disponível.</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-3">
+                        {filteredRanking.map((item, index) => {
+                          const isTop3 = index < 3;
+                          const medalEmojis = ['🥇', '🥈', '🥉'];
+                          const bgStyles = [
+                            'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 shadow-sm',
+                            'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700 shadow-sm',
+                            'bg-orange-50/50 dark:bg-orange-900/10 border-orange-100 dark:border-orange-900/30 shadow-sm',
+                          ];
+                          
+                          const userName = item.user_name || item.name;
+                          const store = item.store;
+                          const displayValue = rankingModal.campaign?.type === 'sales'
+                            ? (item.sales_amount ?? item.value ?? 0)
+                            : (item.coins_total ?? item.value ?? 0);
+
+                          return (
+                            <motion.div
+                              key={item.user_id}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.05 }}
+                              className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
+                                isTop3 ? bgStyles[index] : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'
+                              }`}
+                            >
+                              <div className="relative flex-shrink-0">
+                                <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bold text-xl overflow-hidden border-2 ${
+                                  isTop3 
+                                    ? (index === 0 ? 'border-amber-400' : index === 1 ? 'border-zinc-300' : 'border-orange-400')
+                                    : 'border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50'
+                                }`}>
+                                  {item.profile_image_url || item.profile_image_path ? (
+                                    <img 
+                                      src={getFullImageUrl(item.profile_image_url || item.profile_image_path) || ''} 
+                                      alt={userName} 
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="bg-zinc-100 dark:bg-zinc-800 w-full h-full flex items-center justify-center text-zinc-400">
+                                      <User size={24} />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="absolute -top-1 -right-1 bg-white dark:bg-zinc-900 rounded-full w-6 h-6 flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-800">
+                                  {isTop3 ? (
+                                    <span className="text-sm filter drop-shadow-sm">{medalEmojis[index]}</span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold text-zinc-500">{index + 1}º</span>
+                                  )}
+                                </div>
                               </div>
-                              <div className="absolute -top-1 -right-1 bg-white dark:bg-zinc-900 rounded-full w-6 h-6 flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-800">
-                                {isTop3 ? (
-                                  <span className="text-sm filter drop-shadow-sm">{medalEmojis[index]}</span>
-                                ) : (
-                                  <span className="text-[10px] font-bold text-zinc-500">{index + 1}º</span>
-                                )}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-zinc-900 dark:text-white truncate">{userName}</p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  {store && (
+                                    <span className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                      <StoreIcon size={12} />
+                                      {store.name}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-bold text-zinc-900 dark:text-white truncate">{userName}</p>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                {store && (
-                                  <span className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                    <StoreIcon size={12} />
-                                    {store.name}
-                                  </span>
-                                )}
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-[10px] uppercase tracking-wider font-bold text-zinc-400 dark:text-zinc-500 mb-0.5">
+                                  {rankingModal.campaign?.type === 'sales' ? 'Vendas' : 'Pontuação'}
+                                </p>
+                                <p className={`font-black text-lg ${
+                                  isTop3 ? 'text-primary-600 dark:text-primary-400' : 'text-zinc-700 dark:text-zinc-300'
+                                }`}>
+                                  {rankingModal.campaign?.type === 'sales'
+                                    ? formatCurrency(String(displayValue))
+                                    : `${displayValue} ${coinName}`
+                                  }
+                                </p>
                               </div>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                              <p className="text-[10px] uppercase tracking-wider font-bold text-zinc-400 dark:text-zinc-500 mb-0.5">
-                                {rankingModal.campaign?.type === 'sales' ? 'Vendas' : 'Pontuação'}
-                              </p>
-                              <p className={`font-black text-lg ${
-                                isTop3 ? 'text-primary-600 dark:text-primary-400' : 'text-zinc-700 dark:text-zinc-300'
-                              }`}>
-                                {rankingModal.campaign?.type === 'sales'
-                                  ? formatCurrency(String(displayValue))
-                                  : `${displayValue} ${coinName}`
-                                }
-                              </p>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  )}
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               </motion.div>
             </div>
