@@ -224,6 +224,22 @@ describe('campaignSchema', () => {
       'Nome deve ter no mínimo 3 caracteres'
     );
   });
+
+  it('rejeita data de início com ano fora do limite', () => {
+    const result = campaignSchema.safeParse({ ...base, start_date: '31231-03-21' });
+    expect(result.success).toBe(false);
+    expect(result.error?.flatten().fieldErrors.start_date).toContain(
+      'Data de início inválida ou ano fora do limite (máx 2100)'
+    );
+  });
+
+  it('rejeita data de término com ano fora do limite', () => {
+    const result = campaignSchema.safeParse({ ...base, end_date: '275760-12-12' });
+    expect(result.success).toBe(false);
+    expect(result.error?.flatten().fieldErrors.end_date).toContain(
+      'Data de término inválida ou ano fora do limite (máx 2100)'
+    );
+  });
 });
 
 // ─── rewardSchema ─────────────────────────────────────────────────────────────

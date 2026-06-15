@@ -403,9 +403,23 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
     if (step === 0) {
       if (!formData.name.trim()) errs.name = 'Nome é obrigatório.';
       if (formData.name.trim().length > 100) errs.name = 'Nome deve ter no máximo 100 caracteres.';
-      if (!formData.start_date) errs.start_date = 'Data de início é obrigatória.';
-      if (!formData.end_date) errs.end_date = 'Data de fim é obrigatória.';
-      if (formData.start_date && formData.end_date && formData.end_date <= formData.start_date) {
+      if (!formData.start_date) {
+        errs.start_date = 'Data de início é obrigatória.';
+      } else {
+        const startYear = parseInt(formData.start_date.split('-')[0]);
+        if (isNaN(startYear) || startYear < 1900 || startYear > 2100) {
+          errs.start_date = 'Ano de início inválido (deve ser entre 1900 e 2100).';
+        }
+      }
+      if (!formData.end_date) {
+        errs.end_date = 'Data de fim é obrigatória.';
+      } else {
+        const endYear = parseInt(formData.end_date.split('-')[0]);
+        if (isNaN(endYear) || endYear < 1900 || endYear > 2100) {
+          errs.end_date = 'Ano de término inválido (deve ser entre 1900 e 2100).';
+        }
+      }
+      if (formData.start_date && formData.end_date && !errs.start_date && !errs.end_date && formData.end_date <= formData.start_date) {
         errs.end_date = 'Data de fim deve ser posterior à data de início.';
       }
       if (formData.coins_factor < 1) errs.coins_factor = 'Fator de conversão deve ser >= 1.';
@@ -428,6 +442,20 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
 
     setErrors(errs);
     return Object.keys(errs).length === 0;
+  };
+
+  const handleJourneyDateChange = (field: 'start_date' | 'end_date', value: string) => {
+    if (!value) {
+      setFormData(prev => ({ ...prev, [field]: '' }));
+      return;
+    }
+    const parts = value.split('-');
+    if (parts[0] && parts[0].length > 4) {
+      parts[0] = parts[0].slice(0, 4);
+      setFormData(prev => ({ ...prev, [field]: parts.join('-') }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const handleNext = () => {
@@ -740,9 +768,10 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                       <input
                         type="date"
                         min={editingJourney ? undefined : getTodayISO()}
+                        max="2100-12-31"
                         disabled={isReadOnly}
                         value={formData.start_date}
-                        onChange={e => setFormData(f => ({ ...f, start_date: e.target.value }))}
+                        onChange={e => handleJourneyDateChange('start_date', e.target.value)}
                         className="w-full pl-9 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-60 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                       />
                     </div>
@@ -762,9 +791,10 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                       <input
                         type="date"
                         min={formData.start_date || getTodayISO()}
+                        max="2100-12-31"
                         disabled={isReadOnly}
                         value={formData.end_date}
-                        onChange={e => setFormData(f => ({ ...f, end_date: e.target.value }))}
+                        onChange={e => handleJourneyDateChange('end_date', e.target.value)}
                         className="w-full pl-9 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-60 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                       />
                     </div>

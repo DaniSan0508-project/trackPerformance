@@ -978,6 +978,20 @@ export const CampaignsPage: React.FC = () => {
     setFullySelectedRoles(new Set());
     setFullySelectedManufacturers(new Set());
     setFormErrors({});
+  };
+
+  const handleCampaignDateChange = (field: 'start_date' | 'end_date', value: string) => {
+    if (!value) {
+      setFormData(prev => ({ ...prev, [field]: '' }));
+      return;
+    }
+    const parts = value.split('-');
+    if (parts[0] && parts[0].length > 4) {
+      parts[0] = parts[0].slice(0, 4);
+      setFormData(prev => ({ ...prev, [field]: parts.join('-') }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
     setActionSearch('');
     setHasFetchedHashtags(false);
     setUserSearch('');
@@ -1264,15 +1278,27 @@ export const CampaignsPage: React.FC = () => {
       return;
     }
 
+    const [startYear, startMonth, startDay] = formData.start_date.split('-').map(Number);
+    const [endYear, endMonth, endDay] = formData.end_date.split('-').map(Number);
+
+    if (isNaN(startYear) || startYear < 1900 || startYear > 2100) {
+      addToast('error', 'O ano da data de início deve ser entre 1900 e 2100.');
+      setFormErrors(prev => ({ ...prev, start_date: 'Ano fora do limite (1900-2100)' }));
+      setActiveTab('basic');
+      return;
+    }
+
+    if (isNaN(endYear) || endYear < 1900 || endYear > 2100) {
+      addToast('error', 'O ano da data de término deve ser entre 1900 e 2100.');
+      setFormErrors(prev => ({ ...prev, end_date: 'Ano fora do limite (1900-2100)' }));
+      setActiveTab('basic');
+      return;
+    }
+
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
-    // Converte as datas dos inputs (que vêm como YYYY-MM-DD) para objetos Date
-    // Usando .split('-') e setFullYear/Month/Date para evitar problemas de timezone
-    const [startYear, startMonth, startDay] = formData.start_date.split('-').map(Number);
     const startDate = new Date(startYear, startMonth - 1, startDay);
-
-    const [endYear, endMonth, endDay] = formData.end_date.split('-').map(Number);
     const endDate = new Date(endYear, endMonth - 1, endDay);
 
     // 1. Data de início não pode ser anterior a hoje
@@ -1971,10 +1997,13 @@ export const CampaignsPage: React.FC = () => {
 
   // Formata valor para moeda brasileira (BRL)
   const formatCurrencyInput = (value: string) => {
+    if (!value) return '';
     // Remove tudo que não é dígito
     const digits = value.replace(/\D/g, '');
+    if (!digits) return '';
     // Converte para número e divide por 100 para ter os centavos
     const numberValue = parseInt(digits) / 100;
+    if (isNaN(numberValue)) return '';
     // Formata como moeda brasileira
     return numberValue.toLocaleString('pt-BR', {
       minimumFractionDigits: 2,
@@ -1985,6 +2014,10 @@ export const CampaignsPage: React.FC = () => {
   const handleGoalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const digits = value.replace(/\D/g, '');
+    if (!digits) {
+      setFormData({ ...formData, goal: '' });
+      return;
+    }
     let numberValue = parseInt(digits) / 100;
 
     // Limite máximo de 999.999,00
@@ -2006,6 +2039,10 @@ export const CampaignsPage: React.FC = () => {
     const value = e.target.value;
     if (formData.type === 'sales') {
       const digits = value.replace(/\D/g, '');
+      if (!digits) {
+        setFormData({ ...formData, goal_campaign: '' });
+        return;
+      }
       let numberValue = parseInt(digits) / 100;
 
       // Limite máximo de 999.999,00
@@ -2685,20 +2722,25 @@ export const CampaignsPage: React.FC = () => {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Data de Início *</label>
-                              <div className="relative group cursor-pointer" onClick={(e) => {
-                                const input = e.currentTarget.querySelector('input');
-                                if (input && 'showPicker' in input) {
-                                  try { input.showPicker(); } catch (err) { console.error(err); }
-                                }
-                              }}>
-                                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 pointer-events-none group-hover:text-primary-600 transition-colors z-10" />
+                              <div className="relative group">
+                                <Calendar
+                                  size={16}
+                                  className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 cursor-pointer group-hover:text-primary-600 transition-colors z-10"
+                                  onClick={(e) => {
+                                    const input = e.currentTarget.nextElementSibling as HTMLInputElement;
+                                    if (input && 'showPicker' in input) {
+                                      try { input.showPicker(); } catch (err) { console.error(err); }
+                                    }
+                                  }}
+                                />
                                 <input
                                   type="date"
                                   value={formData.start_date}
-                                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                                  onChange={(e) => handleCampaignDateChange('start_date', e.target.value)}
                                   min={getMinDate()}
+                                  max="2100-12-31"
                                   disabled={!!editingCampaign}
-                                  className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
+                                  className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:hidden ${
                                     formErrors.start_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   } ${editingCampaign ? 'opacity-60 cursor-not-allowed' : ''}`}
                                 />
@@ -2708,20 +2750,25 @@ export const CampaignsPage: React.FC = () => {
 
                             <div>
                               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Data de Término *</label>
-                              <div className="relative group cursor-pointer" onClick={(e) => {
-                                const input = e.currentTarget.querySelector('input');
-                                if (input && 'showPicker' in input) {
-                                  try { input.showPicker(); } catch (err) { console.error(err); }
-                                }
-                              }}>
-                                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 pointer-events-none group-hover:text-primary-600 transition-colors z-10" />
+                              <div className="relative group">
+                                <Calendar
+                                  size={16}
+                                  className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 cursor-pointer group-hover:text-primary-600 transition-colors z-10"
+                                  onClick={(e) => {
+                                    const input = e.currentTarget.nextElementSibling as HTMLInputElement;
+                                    if (input && 'showPicker' in input) {
+                                      try { input.showPicker(); } catch (err) { console.error(err); }
+                                    }
+                                  }}
+                                />
                                 <input
                                   type="date"
                                   value={formData.end_date}
-                                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                                  onChange={(e) => handleCampaignDateChange('end_date', e.target.value)}
                                   min={formData.start_date || getMinDate()}
+                                  max="2100-12-31"
                                   disabled={!!editingCampaign}
-                                  className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
+                                  className={`w-full pl-9 pr-2.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white [&::-webkit-calendar-picker-indicator]:hidden ${
                                     formErrors.end_date ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   } ${editingCampaign ? 'opacity-60 cursor-not-allowed' : ''}`}
                                 />
@@ -3743,8 +3790,46 @@ export const CampaignsPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => {
-                          if (activeTab === 'basic') setActiveTab('users');
-                          else if (activeTab === 'users') {
+                          if (activeTab === 'basic') {
+                            const errors: Record<string, string> = {};
+                            if (!formData.name?.trim()) {
+                              errors.name = 'Nome é obrigatório';
+                            } else if (formData.name.trim().length < 3) {
+                              errors.name = 'Nome deve ter no mínimo 3 caracteres';
+                            }
+                            if (!formData.type) errors.type = 'Selecione o tipo de campanha';
+                            if (!formData.start_date) {
+                              errors.start_date = 'Data de início é obrigatória';
+                            } else {
+                              const year = parseInt(formData.start_date.split('-')[0]);
+                              if (isNaN(year) || year < 1900 || year > 2100) {
+                                errors.start_date = 'Ano deve ser entre 1900 e 2100';
+                              }
+                            }
+                            if (!formData.end_date) {
+                              errors.end_date = 'Data de término é obrigatória';
+                            } else {
+                              const year = parseInt(formData.end_date.split('-')[0]);
+                              if (isNaN(year) || year < 1900 || year > 2100) {
+                                errors.end_date = 'Ano deve ser entre 1900 e 2100';
+                              }
+                            }
+
+                            if (formData.start_date && formData.end_date && !errors.start_date && !errors.end_date) {
+                              if (formData.end_date < formData.start_date) {
+                                errors.end_date = 'Data de término deve ser posterior ou igual à data de início';
+                              }
+                            }
+
+                            if (Object.keys(errors).length > 0) {
+                              setFormErrors(errors);
+                              addToast('error', 'Preencha os campos obrigatórios corretamente.');
+                              return;
+                            }
+
+                            setFormErrors({});
+                            setActiveTab('users');
+                          } else if (activeTab === 'users') {
                             const isEngagement = editingCampaign?.type === 'engagement' || (!editingCampaign && formData.type === 'engagement');
                             setActiveTab(isEngagement ? 'actions' : 'products');
                           }

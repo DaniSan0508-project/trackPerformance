@@ -295,10 +295,18 @@ export const campaignSchema = z.object({
     .optional(),
   start_date: z
     .string()
-    .min(1, 'Data de início é obrigatória'),
+    .min(1, 'Data de início é obrigatória')
+    .refine((val) => {
+      const year = parseInt(val.split('-')[0]);
+      return val.length === 10 && year >= 1900 && year <= 2100;
+    }, 'Data de início inválida ou ano fora do limite (máx 2100)'),
   end_date: z
     .string()
-    .min(1, 'Data de término é obrigatória'),
+    .min(1, 'Data de término é obrigatória')
+    .refine((val) => {
+      const year = parseInt(val.split('-')[0]);
+      return val.length === 10 && year >= 1900 && year <= 2100;
+    }, 'Data de término inválida ou ano fora do limite (máx 2100)'),
   status: z
     .string()
     .min(1, 'Situação é obrigatório')
