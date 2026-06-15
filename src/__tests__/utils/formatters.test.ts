@@ -17,15 +17,19 @@ import {
 
 describe('formatCurrency', () => {
   it('formata número como moeda BRL', () => {
-    expect(formatCurrency(1234.56)).toMatch(/1\.234,56/);
+    expect(formatCurrency(1234.56)).toMatch(/1\,234\.56/);
   });
 
-  it('aceita string numérica', () => {
-    expect(formatCurrency('500')).toMatch(/500,00/);
+  it('aceita string numérica e oculta centavos zerados', () => {
+    const res = formatCurrency('500');
+    expect(res).toContain('500');
+    expect(res).not.toContain(',00');
   });
 
-  it('formata zero corretamente', () => {
-    expect(formatCurrency(0)).toMatch(/0,00/);
+  it('formata zero corretamente e oculta centavos', () => {
+    const res = formatCurrency(0);
+    expect(res).toContain('0');
+    expect(res).not.toContain(',00');
   });
 });
 

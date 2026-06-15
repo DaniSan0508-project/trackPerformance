@@ -23,9 +23,22 @@ export const getFullImageUrl = (imageUrl: string | null | undefined): string | n
  */
 export const formatCurrency = (value: number | string): string => {
   const numericValue = typeof value === 'string' ? parseFloat(value) : value;
-  return numericValue.toLocaleString('pt-BR', {
+  if (isNaN(numericValue)) return 'R$ 0';
+  
+  if (numericValue % 1 === 0) {
+    return numericValue.toLocaleString('en-US', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+  }
+  
+  return numericValue.toLocaleString('en-US', {
     style: 'currency',
     currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 };
 

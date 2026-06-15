@@ -709,7 +709,7 @@ export const CampaignsPage: React.FC = () => {
         name: campaign.name,
         type: campaign.type,
         goal: campaign.goal ? String(campaign.goal) : '',
-        goal_campaign: campaign.goal_campaign ? String(campaign.goal_campaign) : '',
+        goal_campaign: campaign.goal_campaign ? String(Math.floor(Number(campaign.goal_campaign))) : '',
         start_date: formatToDate(campaign.start_date),
         end_date: formatToDate(campaign.end_date),
         status: currentStatus,
@@ -1476,6 +1476,11 @@ export const CampaignsPage: React.FC = () => {
 
         dataToSave.reward_id = formData.reward_id || null;
 
+        // Permite alterar goal_campaign na edição
+        if (formData.goal_campaign !== undefined) {
+          dataToSave.goal_campaign = formData.goal_campaign ? parseFloat(formData.goal_campaign) : null;
+        }
+
         // NÃO envia goal na edição (somente na criação)
 
         // Envia conforme o tipo da campanha
@@ -1665,7 +1670,20 @@ export const CampaignsPage: React.FC = () => {
   };
 
   const formatCurrency = (value: string) => {
-    return parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const num = parseFloat(value);
+    if (isNaN(num)) return '-';
+    // Se o número for inteiro, exibe sem casas decimais. Caso contrário, mantém as duas casas.
+    if (num % 1 === 0) {
+      return num.toLocaleString('en-US', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+    return num.toLocaleString('en-US', { style: 'currency', currency: 'BRL' });
+  };
+
+  const formatIntegerInput = (value: string) => {
+    if (!value) return '';
+    const num = parseInt(value);
+    if (isNaN(num)) return '';
+    return num.toLocaleString('en-US');
   };
 
   const formatDateTime = (dateString: string) => {
@@ -1995,7 +2013,7 @@ export const CampaignsPage: React.FC = () => {
     }
   };
 
-  // Formata valor para moeda brasileira (BRL)
+  // Formata valor para moeda (BRL com separadores en-US)
   const formatCurrencyInput = (value: string) => {
     if (!value) return '';
     // Remove tudo que não é dígito
@@ -2004,8 +2022,8 @@ export const CampaignsPage: React.FC = () => {
     // Converte para número e divide por 100 para ter os centavos
     const numberValue = parseInt(digits) / 100;
     if (isNaN(numberValue)) return '';
-    // Formata como moeda brasileira
-    return numberValue.toLocaleString('pt-BR', {
+    // Formata como moeda
+    return numberValue.toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
@@ -2026,12 +2044,12 @@ export const CampaignsPage: React.FC = () => {
       addToast('warning', 'O valor máximo permitido é R$ 999.999,00');
     }
 
-    const formatted = numberValue.toLocaleString('pt-BR', {
+    const formatted = numberValue.toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
     // Converte de volta para formato numérico com ponto decimal
-    const numericValue = formatted.replace(/\./g, '').replace(',', '.');
+    const numericValue = formatted.replace(/,/g, '');
     setFormData({ ...formData, goal: numericValue });
   };
 
@@ -2043,20 +2061,15 @@ export const CampaignsPage: React.FC = () => {
         setFormData({ ...formData, goal_campaign: '' });
         return;
       }
-      let numberValue = parseInt(digits) / 100;
+      const numberValue = parseInt(digits) || 0;
 
-      // Limite máximo de 999.999,00
+      // Limite máximo de 999.999
       if (numberValue > 999999) {
-        numberValue = 999999;
-        addToast('warning', 'O valor máximo permitido é R$ 999.999,00');
+        addToast('warning', 'O valor máximo permitido é R$ 999.999');
+        setFormData({ ...formData, goal_campaign: '999999' });
+      } else {
+        setFormData({ ...formData, goal_campaign: String(numberValue) });
       }
-
-      const formatted = numberValue.toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
-      const numericValue = formatted.replace(/\./g, '').replace(',', '.');
-      setFormData({ ...formData, goal_campaign: numericValue });
     } else {
       // Limite para moedas (engajamento) - 99.999
       const numVal = parseInt(value) || 0;
@@ -2555,49 +2568,93 @@ export const CampaignsPage: React.FC = () => {
 
                       {/* Campos somente leitura na edição */}
                       {editingCampaign && (
-                        <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700">
-                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
-                            ℹ️ Os campos abaixo não podem ser alterados na edição
-                          </p>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Tipo</label>
-                              <p className="text-sm font-medium text-zinc-900 dark:text-white capitalize">
-                                {campaignTypeLabels[editingCampaign.type] || editingCampaign.type}
-                              </p>
-                            </div>
-                            <div>
-                              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta Individual</label>
-                              <p className="text-sm font-medium text-zinc-900 dark:text-white">
-                                {editingCampaign.type === 'engagement'
-                                  ? `${Math.floor(Number(editingCampaign.goal) || 0)} ${coinName}`
-                                  : formatCurrency(String(editingCampaign.goal))
-                                }
-                              </p>
-                            </div>
-                            {editingCampaign.goal_campaign && (
+                        <div className="space-y-4">
+                          <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+                              ℹ️ Os campos abaixo não podem ser alterados na edição
+                            </p>
+                            <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta Campanha</label>
+                                <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Tipo</label>
+                                <p className="text-sm font-medium text-zinc-900 dark:text-white capitalize">
+                                  {campaignTypeLabels[editingCampaign.type] || editingCampaign.type}
+                                </p>
+                              </div>
+                              <div>
+                                <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Meta Individual</label>
                                 <p className="text-sm font-medium text-zinc-900 dark:text-white">
                                   {editingCampaign.type === 'engagement'
-                                    ? `${Math.floor(Number(editingCampaign.goal_campaign) || 0)} ${coinName}`
-                                    : formatCurrency(String(editingCampaign.goal_campaign))
+                                    ? `${Math.floor(Number(editingCampaign.goal) || 0)} ${coinName}`
+                                    : formatCurrency(String(editingCampaign.goal))
                                   }
                                 </p>
                               </div>
-                            )}
-                            <div>
-                              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Início</label>
-                              <p className="text-sm font-medium text-zinc-900 dark:text-white">
-                                {formatDate(editingCampaign.start_date)}
-                              </p>
+                              <div>
+                                <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Início</label>
+                                <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                                  {formatDate(editingCampaign.start_date)}
+                                </p>
+                              </div>
+                              <div>
+                                <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Término</label>
+                                <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                                  {formatDate(editingCampaign.end_date)}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Término</label>
-                              <p className="text-sm font-medium text-zinc-900 dark:text-white">
-                                {formatDate(editingCampaign.end_date)}
-                              </p>
-                            </div>                          </div>
+                          </div>
+
+                          {/* Campo Meta Campanha Editável na Edição */}
+                          <div>
+                            {editingCampaign.type === 'sales' ? (
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta Campanha (R$) (Opcional)</label>
+                                <input
+                                  type="text"
+                                  value={formData.goal_campaign ? formatIntegerInput(formData.goal_campaign) : ''}
+                                  onChange={handleGoalCampaignChange}
+                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                    formErrors.goal_campaign ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                  }`}
+                                  placeholder="Ex: 10000"
+                                />
+                                {formErrors.goal_campaign && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal_campaign}</p>}
+                              </div>
+                            ) : (
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta Campanha ({coinName.charAt(0).toUpperCase() + coinName.slice(1)}) (Opcional)</label>
+                                <input
+                                  type="number"
+                                  value={formData.goal_campaign}
+                                  onKeyDown={(e) => {
+                                    if (['-', '+', 'e', 'E', ',', '.'].includes(e.key)) {
+                                      e.preventDefault();
+                                    }
+                                  }}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === '') {
+                                      setFormData({ ...formData, goal_campaign: '' });
+                                      return;
+                                    }
+                                    const numVal = parseInt(val) || 0;
+                                    const finalVal = Math.min(99999, Math.max(0, numVal));
+                                    if (numVal > 99999) {
+                                      addToast('warning', `O valor máximo permitido é 99.999 ${coinName}`);
+                                    }
+                                    setFormData({ ...formData, goal_campaign: String(finalVal) });
+                                  }}
+                                  className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                    formErrors.goal_campaign ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                  }`}
+                                  placeholder="Ex: 500"
+                                  min="0"
+                                  max="99999"
+                                />
+                                {formErrors.goal_campaign && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal_campaign}</p>}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
 
@@ -2637,12 +2694,12 @@ export const CampaignsPage: React.FC = () => {
                                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Meta Campanha (R$) (Opcional)</label>
                                 <input
                                   type="text"
-                                  value={formData.goal_campaign ? formatCurrencyInput(formData.goal_campaign.replace(/\./g, '').replace(',', '.')) : ''}
+                                  value={formData.goal_campaign ? formatIntegerInput(formData.goal_campaign) : ''}
                                   onChange={handleGoalCampaignChange}
                                   className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
                                     formErrors.goal_campaign ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
                                   }`}
-                                  placeholder="R$ 0,00"
+                                  placeholder="Ex: 10000"
                                 />
                                 {formErrors.goal_campaign && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.goal_campaign}</p>}
                               </div>
