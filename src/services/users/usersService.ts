@@ -9,10 +9,10 @@ export const usersService = {
     return handleResponse(response);
   },
 
-  getUsers: async (token: string, page = 1, search = '', filterType: 'name' | 'email' = 'name') => {
+  getUsers: async (token: string, page = 1, search = '', filterType: 'name' | 'email' = 'name', perPage = 12) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
-    queryParams.append('per_page', '10');
+    queryParams.append('per_page', perPage.toString());
     queryParams.append('include', 'store');
     queryParams.append('sort', '-id');
     if (search) {

@@ -478,10 +478,20 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
     if (!validateStep(currentStep) || !token) return;
     setSaving(true);
     try {
-      // Jornada ativa: apenas sincroniza participantes via rota dedicada
+      // Jornada ativa: sincroniza participantes e atualizações de ícone/cor dos níveis
       if (editingJourney && editingJourney.status === 'active') {
-        await journeysService.addParticipants(token, editingJourney.id, formData.participant_ids);
-        addToast('success', 'Participantes atualizados com sucesso!');
+        const payload: Partial<JourneyPayload> = {
+          participant_ids: formData.participant_ids,
+          levels: formData.levels.map((l, i) => ({
+            position: i + 1,
+            name: l.name.trim(),
+            icon: l.icon,
+            color: l.color ?? null,
+            xp_threshold: l.xp_threshold,
+          })),
+        };
+        await journeysService.updateJourney(token, editingJourney.id, payload);
+        addToast('success', 'Alterações salvas com sucesso!');
         onSaved();
         return;
       }
@@ -669,7 +679,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
             {isReadOnly && (
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
                 {editingJourney?.status === 'active'
-                  ? 'Jornada ativa — apenas participantes podem ser editados'
+                  ? 'Jornada ativa — apenas participantes, ícones e cores dos níveis podem ser editados'
                   : 'Jornada publicada — somente leitura'}
               </p>
             )}
@@ -1190,7 +1200,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                                 <button
                                   key={ic.value}
                                   type="button"
-                                  disabled={isReadOnly}
+                                  disabled={isReadOnly && editingJourney?.status !== 'active'}
                                   onClick={() => updateLevel(index, 'icon', ic.value)}
                                   title={ic.label}
                                   className={`text-lg w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
@@ -1203,7 +1213,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                                 </button>
                               ))}
                             </div>
-                            {!isReadOnly && (
+                            {(!isReadOnly || editingJourney?.status === 'active') && (
                               <div className="flex items-center gap-2">
                                 <label className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-semibold text-zinc-700 dark:text-zinc-300 cursor-pointer shadow-sm transition-colors">
                                   <Upload size={13} className="text-zinc-500" />
@@ -1251,7 +1261,7 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
                               <button
                                 key={c.value}
                                 type="button"
-                                disabled={isReadOnly}
+                                disabled={isReadOnly && editingJourney?.status !== 'active'}
                                 onClick={() => updateLevel(index, 'color', c.value)}
                                 title={c.label}
                                 className={`w-7 h-7 rounded-full transition-all border-2 ${
@@ -1692,6 +1702,18 @@ export const JourneyWizard: React.FC<JourneyWizardProps> = ({ isOpen, editingJou
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                 Salvar Participantes
+              </button>
+            )}
+
+            {/* Jornada ativa na etapa de níveis: botão de salvar alterações */}
+            {editingJourney?.status === 'active' && currentStep === 2 && isReadOnly && (
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center gap-2 px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors text-sm font-medium disabled:opacity-60"
+              >
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                Salvar Alterações
               </button>
             )}
 

@@ -527,7 +527,7 @@ export const CampaignsPage: React.FC = () => {
     if (!token) return;
     setLoadingRewards(true);
     try {
-      const response = await rewardsService.getCampaignRewards(token, page, search);
+      const response = await rewardsService.getCampaignRewards(token, page, search, 12);
       setRewards(response.data || []);
       setRewardsTotalPages(response.meta?.last_page || response.last_page || 1);
       setRewardsPage(response.meta?.current_page || response.current_page || 1);

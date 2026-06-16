@@ -113,7 +113,7 @@ export const FeedbacksPage: React.FC = () => {
     setLoadingUsers(true);
     setUsersError(null);
     try {
-      const data = await usersService.getUsers(token, page, search);
+      const data = await usersService.getUsers(token, page, search, 'name', 12);
       // Filter out current user and administrators (user_type_id === 1) from the list
       const filteredUsers = data.data.filter(u => u.id !== currentUser?.id && u.user_type_id !== 1);
       setUsers(filteredUsers);
@@ -149,7 +149,7 @@ export const FeedbacksPage: React.FC = () => {
         is_anonymous: receivedFilters.is_anonymous === 'all' ? null : receivedFilters.is_anonymous === 'true',
         is_read: receivedFilters.is_read === 'all' ? null : receivedFilters.is_read === 'true',
         created_at: dateRange || undefined
-      });
+      }, 15);
       setReceivedFeedbacks(data.data);
       setReceivedPage(data.meta.current_page);
       setReceivedTotalPages(data.meta.last_page);
@@ -181,7 +181,7 @@ export const FeedbacksPage: React.FC = () => {
       const data = await feedbacksService.getSentFeedbacks(token, page, {
         recipient_name: sentFilters.recipient_name,
         created_at: dateRange || undefined
-      });
+      }, 12);
       setSentFeedbacks(data.data);
       setSentPage(data.meta.current_page);
       setSentTotalPages(data.meta.last_page);
@@ -209,7 +209,7 @@ export const FeedbacksPage: React.FC = () => {
         date_to: adminFilters.date_to
       };
 
-      const data = await feedbacksService.getAllTenantFeedbacks(token, page, filters);
+      const data = await feedbacksService.getAllTenantFeedbacks(token, page, filters, 15);
       setAllFeedbacks(data.data);
       setAllFeedbacksPage(data.meta.current_page);
       setAllFeedbacksTotalPages(data.meta.last_page);

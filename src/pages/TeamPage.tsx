@@ -156,7 +156,7 @@ export const TeamPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await usersService.getUsers(token, page, search);
+      const data = await usersService.getUsers(token, page, search, 'name', 12);
       setUsers(data.data);
       setCurrentPage(data.meta?.current_page || data.current_page || 1);
       setTotalPages(data.meta?.last_page || data.last_page || 1);

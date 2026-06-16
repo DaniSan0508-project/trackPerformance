@@ -19,10 +19,12 @@ export const feedbacksService = {
       sender_name?: string;
       recipient_name?: string;
       created_at?: string; // Range: YYYY-MM-DD,YYYY-MM-DD
-    } = {}
+    } = {},
+    perPage = 15
   ) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
+    queryParams.append('per_page', perPage.toString());
     queryParams.append('include', 'sender,recipient');
     queryParams.append('sort', '-id');
 
@@ -49,10 +51,12 @@ export const feedbacksService = {
       sender_name?: string;
       recipient_name?: string;
       created_at?: string; // Range: YYYY-MM-DD,YYYY-MM-DD
-    } = {}
+    } = {},
+    perPage = 12
   ) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
+    queryParams.append('per_page', perPage.toString());
     queryParams.append('include', 'sender,recipient');
     queryParams.append('sort', '-id');
 
@@ -83,10 +87,12 @@ export const feedbacksService = {
       is_anonymous?: boolean | null;
       date_from?: string;
       date_to?: string;
-    } = {}
+    } = {},
+    perPage = 15
   ) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
+    queryParams.append('per_page', perPage.toString());
     queryParams.append('include', 'sender,recipient');
     queryParams.append('sort', '-id');
     

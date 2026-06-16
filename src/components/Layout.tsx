@@ -118,7 +118,7 @@ export const Layout: React.FC = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
                         transition={{ duration: 0.2 }}
-                        src="/favicon.png"
+                        src={theme === 'dark' ? '/logo-icon.png' : '/logo-icon-azul.png'}
                         alt="Icon"
                         onLoad={() => setIsLogoLoading(false)}
                         className={`h-8 w-8 object-contain ${isLogoLoading ? 'invisible' : 'visible'}`}
@@ -140,11 +140,13 @@ export const Layout: React.FC = () => {
                                 className="h-10 w-auto object-contain max-w-[180px]"
                             />
                         ) : (
-                            <div className="flex items-center gap-3">
-                                <div className="bg-primary-600 p-2 rounded-lg shrink-0">
-                                    <Trophy className="w-5 h-5 text-white" />
-                                </div>
-                                <span className="font-bold text-xl text-zinc-900 dark:text-white truncate">Engora</span>
+                            <div className="flex items-center justify-center w-full">
+                                <img
+                                    src={theme === 'dark' ? '/logo-icon.png' : '/logo-icon-azul.png'}
+                                    alt="Engora Icon"
+                                    className="h-10 w-10 object-contain"
+                                    onLoad={() => setIsLogoLoading(false)}
+                                />
                             </div>
                         )}
                     </motion.div>

@@ -1,10 +1,14 @@
 import { API_BASE_URL, getHeaders, handleResponse } from '../core/apiClient';
 
 export const rewardsService = {
-  getRewards: async (token: string, page = 1, search = '') => {
+  getRewards: async (token: string, page = 1, search = '', perPage = 12, rewardType?: 'standard' | 'campaign') => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
+    queryParams.append('per_page', perPage.toString());
     queryParams.append('include', 'images');
+    if (rewardType) {
+      queryParams.append('filter[reward_type]', rewardType);
+    }
     if (search) {
       queryParams.append('filter[name]', search);
     }
@@ -74,9 +78,10 @@ export const rewardsService = {
     return handleResponse(response);
   },
 
-  getCampaignRewards: async (token: string, page = 1, search = '') => {
+  getCampaignRewards: async (token: string, page = 1, search = '', perPage = 12) => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
+    queryParams.append('per_page', perPage.toString());
     queryParams.append('include', 'images');
     queryParams.append('filter[reward_type]', 'campaign');
     if (search) {

@@ -131,7 +131,7 @@ export const RewardsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await rewardsService.getRewards(token, page, search);
+      const data = await rewardsService.getRewards(token, page, search, 12, isAdmin ? undefined : 'standard');
       
       // Usuários não-admin não veem rewards de campanha
       let allRewards = data.data || [];
