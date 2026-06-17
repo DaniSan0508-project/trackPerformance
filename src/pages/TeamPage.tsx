@@ -833,7 +833,7 @@ export const TeamPage: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border border-zinc-200 dark:border-zinc-800"
+                className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh] border border-zinc-200 dark:border-zinc-800"
               >
                 <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
                   <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
@@ -844,211 +844,237 @@ export const TeamPage: React.FC = () => {
                   </button>
                 </div>
                 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
-                  <div className="flex justify-center mb-6">
-                    <div className="relative group cursor-pointer">
-                      <div className="w-24 h-24 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border-2 border-zinc-200 dark:border-zinc-700">
-                        {formData.photo ? (
-                          <img 
-                            src={URL.createObjectURL(formData.photo)} 
-                            alt="Preview"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : editingUser?.profile_image_url ? (
-                          <img
-                            src={getFullImageUrl(editingUser.profile_image_url) || ''}
-                            alt={editingUser.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <User size={40} className="text-zinc-400" />
-                        )}
+                <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Coluna Esquerda: Foto e Tipo de Usuário (lg:col-span-4) */}
+                    <div className="lg:col-span-4 flex flex-col items-center gap-6 border-b lg:border-b-0 lg:border-r border-zinc-100 dark:border-zinc-800 pb-6 lg:pb-0 lg:pr-6">
+                      {/* Upload de Foto */}
+                      <div className="flex flex-col items-center w-full">
+                        <span className="block text-sm font-semibold text-zinc-500 dark:text-zinc-400 mb-3 uppercase tracking-wider">Foto do Perfil</span>
+                        <div className="relative group">
+                          <label htmlFor="photo-upload" className="block cursor-pointer">
+                            <div className="w-32 h-32 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border-2 border-zinc-200 dark:border-zinc-700 shadow-inner group-hover:border-primary-500 transition-colors duration-200">
+                              {formData.photo ? (
+                                <img 
+                                  src={URL.createObjectURL(formData.photo)} 
+                                  alt="Preview"
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : editingUser?.profile_image_url ? (
+                                <img
+                                  src={getFullImageUrl(editingUser.profile_image_url) || ''}
+                                  alt={editingUser.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <User size={56} className="text-zinc-400" />
+                              )}
+                            </div>
+                            <div className="absolute bottom-1 right-1 bg-primary-600 group-hover:bg-primary-700 text-white p-2 rounded-full shadow-md transition-colors duration-200">
+                              <Camera size={18} />
+                            </div>
+                            <input 
+                              id="photo-upload" 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  setFormData({ ...formData, photo: e.target.files[0] });
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                        <p className="text-xs text-zinc-400 mt-2 text-center">Clique na foto para alterá-la.</p>
                       </div>
-                      <label htmlFor="photo-upload" className="absolute bottom-0 right-0 bg-primary-600 text-white p-1.5 rounded-full shadow-md cursor-pointer hover:bg-primary-700 transition-colors">
-                        <Camera size={16} />
-                        <input 
-                          id="photo-upload" 
-                          type="file" 
-                          accept="image/*" 
-                          className="hidden"
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                              setFormData({ ...formData, photo: e.target.files[0] });
-                            }
-                          }}
-                        />
-                      </label>
-                    </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Nome *</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
-                        formErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                      }`}
-                      placeholder="Nome completo"
-                    />
-                    {formErrors.name && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.name}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Email *</label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
-                        formErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                      }`}
-                      placeholder="email@exemplo.com"
-                    />
-                    {formErrors.email && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.email}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Telefone (Opcional)</label>
-                    <input
-                      type="text"
-                      value={formData.phone}
-                      onChange={handlePhoneChange}
-                      className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
-                        formErrors.phone ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                      }`}
-                      placeholder="(00) 00000-0000"
-                    />
-                    {formErrors.phone && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.phone}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                      {editingUser ? 'Senha (deixe em branco para manter)' : 'Senha *'}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className={`w-full p-2.5 pr-10 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
-                          formErrors.password ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                        }`}
-                        placeholder="******"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
-                        title={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                      >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
-                    </div>
-                    {formErrors.password && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.password}</p>}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tipo de Usuário</label>
-                      <select
-                        value={formData.user_type_id}
-                        onChange={(e) => setFormData({ ...formData, user_type_id: Number(e.target.value) })}
-                        disabled={!isAdmin || (formData.user_type_id === 1 && !isSuperAdmin)}
-                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:bg-zinc-100 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500"
-                      >
-                        <option value={2}>Colaborador</option>
-                        {isSuperAdmin && <option value={1}>Administrador</option>}
-                        {/* Se por acaso um admin comum estiver editando um admin (não deveria via UI, mas por segurança), mostra a opção desabilitada ou apenas o label */}
-                        {!isSuperAdmin && formData.user_type_id === 1 && (
-                          <option value={1}>Administrador</option>
-                        )}
-                      </select>
-                    </div>
-
-                    {stores.length > 0 && (
-                      <div>
-                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Unidade</label>
-                        <select
-                          value={formData.store_id}
-                          onChange={(e) => setFormData({ ...formData, store_id: e.target.value ? Number(e.target.value) : '' })}
-                          disabled={!isAdmin}
-                          className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:bg-zinc-100 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500"
-                        >
-                          <option value="">Nenhuma unidade</option>
-                          {stores.map(store => (
-                            <option key={store.id} value={store.id}>{store.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    <div className={stores.length > 0 ? 'col-span-2' : ''}>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Código de integração (Ref externa)</label>
-                      <input
-                        type="text"
-                        value={formData.external_id}
-                        onChange={(e) => setFormData({ ...formData, external_id: e.target.value })}
-                        className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
-                          formErrors.external_id ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
-                        }`}
-                        placeholder="Ex: 12345"
-                        maxLength={255}
-                      />
-                      {formErrors.external_id && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.external_id}</p>}
-                    </div>
-
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Cargo (Opcional)</label>
-                      <div className="flex gap-2">
-                        <select
-                          value={formData.role_id}
-                          onChange={(e) => setFormData({ ...formData, role_id: e.target.value ? Number(e.target.value) : '' })}
-                          className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                        >
-                          <option value="">Selecione um cargo</option>
-                          {roles.map(role => (
-                            <option key={role.id} value={role.id}>{role.description}</option>
-                          ))}
-                        </select>
-                        {isAdmin && (
-                          <button
-                            type="button"
-                            onClick={handleOpenRolesModal}
-                            className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 transition-colors flex-shrink-0"
-                            title="Gerenciar Cargos"
+                      {/* Configurações básicas de acesso na coluna esquerda */}
+                      <div className="w-full space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tipo de Usuário</label>
+                          <select
+                            value={formData.user_type_id}
+                            onChange={(e) => setFormData({ ...formData, user_type_id: Number(e.target.value) })}
+                            disabled={!isAdmin || (formData.user_type_id === 1 && !isSuperAdmin)}
+                            className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:bg-zinc-100 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500"
                           >
-                            <Settings size={20} />
-                          </button>
-                        )}
+                            <option value={2}>Colaborador</option>
+                            {isSuperAdmin && <option value={1}>Administrador</option>}
+                            {!isSuperAdmin && formData.user_type_id === 1 && (
+                              <option value={1}>Administrador</option>
+                            )}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Código de integração (Ref externa)</label>
+                          <input
+                            type="text"
+                            value={formData.external_id}
+                            onChange={(e) => setFormData({ ...formData, external_id: e.target.value })}
+                            className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                              formErrors.external_id ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                            }`}
+                            placeholder="Ex: 12345"
+                            maxLength={255}
+                          />
+                          {formErrors.external_id && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.external_id}</p>}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Descrição (Opcional)</label>
-                      <textarea
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        placeholder="Ex: Gerente da unidade centro..."
-                        rows={3}
-                        className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white resize-none"
-                      />
+                    {/* Coluna Direita: Dados Pessoais e Organização (lg:col-span-8) */}
+                    <div className="lg:col-span-8 space-y-6">
+                      {/* Seção: Identificação */}
+                      <div>
+                        <h3 className="text-sm font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-3 pb-1 border-b border-zinc-100 dark:border-zinc-800">Dados Pessoais</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Nome *</label>
+                            <input
+                              type="text"
+                              value={formData.name}
+                              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                              className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                formErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                              }`}
+                              placeholder="Nome completo"
+                            />
+                            {formErrors.name && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.name}</p>}
+                          </div>
+
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Email *</label>
+                            <input
+                              type="email"
+                              value={formData.email}
+                              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                              className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                formErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                              }`}
+                              placeholder="email@exemplo.com"
+                            />
+                            {formErrors.email && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.email}</p>}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Telefone (Opcional)</label>
+                            <input
+                              type="text"
+                              value={formData.phone}
+                              onChange={handlePhoneChange}
+                              className={`w-full p-2.5 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                formErrors.phone ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                              }`}
+                              placeholder="(00) 00000-0000"
+                            />
+                            {formErrors.phone && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.phone}</p>}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                              {editingUser ? 'Senha (deixe em branco para manter)' : 'Senha *'}
+                            </label>
+                            <div className="relative">
+                              <input
+                                type={showPassword ? 'text' : 'password'}
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                className={`w-full p-2.5 pr-10 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 ${
+                                  formErrors.password ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                                }`}
+                                placeholder="******"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                                title={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                              >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                              </button>
+                            </div>
+                            {formErrors.password && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.password}</p>}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Seção: Organização e Atuação */}
+                      <div>
+                        <h3 className="text-sm font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-3 pb-1 border-b border-zinc-100 dark:border-zinc-800">Organização e Atuação</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {stores.length > 0 && (
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Unidade</label>
+                              <select
+                                value={formData.store_id}
+                                onChange={(e) => setFormData({ ...formData, store_id: e.target.value ? Number(e.target.value) : '' })}
+                                disabled={!isAdmin}
+                                className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white disabled:bg-zinc-100 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500"
+                              >
+                                <option value="">Nenhuma unidade</option>
+                                {stores.map(store => (
+                                  <option key={store.id} value={store.id}>{store.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+
+                          <div className={stores.length > 0 ? '' : 'md:col-span-2'}>
+                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Cargo (Opcional)</label>
+                            <div className="flex gap-2">
+                              <select
+                                value={formData.role_id}
+                                onChange={(e) => setFormData({ ...formData, role_id: e.target.value ? Number(e.target.value) : '' })}
+                                className="flex-1 p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                              >
+                                <option value="">Selecione um cargo</option>
+                                {roles.map(role => (
+                                  <option key={role.id} value={role.id}>{role.description}</option>
+                                ))}
+                              </select>
+                              {isAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={handleOpenRolesModal}
+                                  className="p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 transition-colors flex-shrink-0"
+                                  title="Gerenciar Cargos"
+                                >
+                                  <Settings size={20} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Descrição / Observações (Opcional)</label>
+                            <textarea
+                              value={formData.description}
+                              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                              placeholder="Ex: Gerente da unidade centro..."
+                              rows={3}
+                              className="w-full p-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white resize-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="pt-4 flex gap-3">
+                  {/* Rodapé do Modal (Ações) */}
+                  <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-3">
                     <button
                       type="button"
                       onClick={handleCloseModal}
-                      className="flex-1 px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 font-medium rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                      className="px-6 py-2.5 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 font-medium rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
                       disabled={saving}
-                      className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+                      className="px-8 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
                     >
                       {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
                       {saving ? 'Salvando...' : 'Salvar'}
