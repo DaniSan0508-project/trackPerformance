@@ -1347,6 +1347,33 @@ export const CampaignsPage: React.FC = () => {
           setActiveTab('users');
           return;
         }
+
+        if (selectedActions.length === 0 && selectedHashtags.length === 0) {
+          addToast('error', 'Campanhas de engajamento exigem pelo menos 1 ação ou 1 hashtag vinculada.');
+          setActiveTab('actions');
+          return;
+        }
+
+        const invalidActions = selectedActions.filter(a => !a.coins || a.coins < 1);
+        if (invalidActions.length > 0) {
+          addToast('error', 'Cada ação deve ter pelo menos 1 coin.');
+          setActiveTab('actions');
+          return;
+        }
+
+        for (const selected of selectedActions) {
+          const meta = engagementActions.find(a => a.id === selected.id);
+          const isDiscovery = meta?.name === DISCOVERY_ACTION_NAME || selected.discoveryRequirement !== undefined;
+          if (isDiscovery) {
+            const discoveryError = validateDiscoveryAction(selected);
+            if (discoveryError) {
+              setFormErrors({ actions: discoveryError });
+              addToast('error', discoveryError);
+              setActiveTab('actions');
+              return;
+            }
+          }
+        }
       }
       // Para sales e engagement na edição: permite atualizar qualquer campo sem validações obrigatórias de quantidade
     } else {
@@ -1490,13 +1517,11 @@ export const CampaignsPage: React.FC = () => {
             dataToSave.products = selectedProducts;
           }
         } else if (editingCampaign.type === 'engagement') {
-          // Envia actions apenas se houver selecionadas
-          if (selectedActions.length > 0) {
-            dataToSave.actions = selectedActions.map(a => {
-              const meta = engagementActions.find(e => e.id === a.id);
-              return buildActionPayload(a, meta?.name);
-            });
-          }
+          // Sempre envia as ações (que podem estar vazias, caso tenhamos apenas hashtags)
+          dataToSave.actions = selectedActions.map(a => {
+            const meta = engagementActions.find(e => e.id === a.id);
+            return buildActionPayload(a, meta?.name);
+          });
           // Envia hashtags
           dataToSave.hashtags = selectedHashtags;
         }
